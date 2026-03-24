@@ -2,7 +2,7 @@ package com.clickstechnology.Brillo.Mall.domain.user;
 
 import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.enums.UserStatus;
-import com.clickstechnology.Brillo.Mall.infrastructure.utils.JpaAuditor;
+import com.clickstechnology.Brillo.Mall.infrastructure.persistence.JpaAuditor;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
@@ -32,15 +32,15 @@ import java.util.List;
 @AllArgsConstructor
 @SQLRestriction("status <> 'DELETED'")
 @Table(
-        name = "FUTURE_HIVE_USER",
+        name = "BRILLO_USER",
         indexes = {
-                @Index(name = "idx_future_hive_user_email", columnList = "email"),
-                @Index(name = "idx_future_hive_user_phone", columnList = "phone_number"),
-                @Index(name = "idx_future_hive_user_status", columnList = "status")
+                @Index(name = "idx_brillo_user_email", columnList = "email"),
+                @Index(name = "idx_brillo_user_phone", columnList = "phone_number"),
+                @Index(name = "idx_brillo_user_status", columnList = "status")
         },
         uniqueConstraints = {
-                @UniqueConstraint(name = "uk_future_hive_user_email", columnNames = {"email"}),
-                @UniqueConstraint(name = "uk_future_hive_user_phone", columnNames = {"phone_number"})
+                @UniqueConstraint(name = "uk_brillo_user_email", columnNames = {"email"}),
+                @UniqueConstraint(name = "uk_brillo_user_phone", columnNames = {"phone_number"})
         }
 )
 class User extends JpaAuditor implements Serializable {
@@ -65,7 +65,7 @@ class User extends JpaAuditor implements Serializable {
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(
-            name = "FUTURE_HIVE_USER_ROLES",
+            name = "BRILLO_USER_ROLES",
             joinColumns = @JoinColumn(name = "user_id"),
             indexes = {
                     @Index(name = "idx_user_roles_user_id", columnList = "user_id"),

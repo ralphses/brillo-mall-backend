@@ -24,6 +24,8 @@ import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
 
+import static com.clickstechnology.Brillo.Mall.application.utils.AppConstants.SECURE_RANDOM;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -32,8 +34,6 @@ class OtpServiceImpl implements OtpService {
     private final CacheUtil cacheUtil;
     private final AppConfig appConfig;
     private final NotificationService notificationService;
-
-    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     @Override
     public void createOtp(CreateOtpRequest request, HttpServletRequest httpServletRequest) {

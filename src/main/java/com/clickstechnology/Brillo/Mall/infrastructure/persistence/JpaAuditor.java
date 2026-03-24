@@ -1,4 +1,4 @@
-package com.clickstechnology.Brillo.Mall.infrastructure.utils;
+package com.clickstechnology.Brillo.Mall.infrastructure.persistence;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.EntityListeners;

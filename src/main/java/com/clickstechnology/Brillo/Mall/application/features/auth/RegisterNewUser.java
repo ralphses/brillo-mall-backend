@@ -1,6 +1,5 @@
-package com.clickstechnology.Brillo.Mall.infrastructure.authentication;
+package com.clickstechnology.Brillo.Mall.application.features.auth;
 
-import com.clickstechnology.Brillo.Mall.application.api.contracts.AuthenticationService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.NotificationService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.RequestLogService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.UserInviteService;
@@ -9,37 +8,29 @@ import com.clickstechnology.Brillo.Mall.application.dto.InvitationDto;
 import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.dto.request.CreateNotificationRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.request.CreateOtpRequest;
-import com.clickstechnology.Brillo.Mall.application.dto.request.LoginRequest;
-import com.clickstechnology.Brillo.Mall.application.dto.request.NewPasswordRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.request.RegisterRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.request.RegisterResendOtpRequest;
-import com.clickstechnology.Brillo.Mall.application.dto.request.RegisterVerifyRequest;
-import com.clickstechnology.Brillo.Mall.application.dto.request.ResetPasswordRequest;
-import com.clickstechnology.Brillo.Mall.application.dto.response.LoginResponse;
-import com.clickstechnology.Brillo.Mall.application.dto.response.NewPasswordResponse;
 import com.clickstechnology.Brillo.Mall.application.dto.response.RegisterResendOtpResponse;
 import com.clickstechnology.Brillo.Mall.application.dto.response.RegisterResponse;
-import com.clickstechnology.Brillo.Mall.application.dto.response.RegisterVerifyResponse;
-import com.clickstechnology.Brillo.Mall.application.dto.response.ResetPasswordResponse;
 import com.clickstechnology.Brillo.Mall.application.enums.MessageMedium;
 import com.clickstechnology.Brillo.Mall.application.enums.OtpType;
 import com.clickstechnology.Brillo.Mall.application.enums.RequestStatus;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
 import com.clickstechnology.Brillo.Mall.infrastructure.otp.OtpService;
-import com.clickstechnology.Brillo.Mall.infrastructure.utils.AppUtils;
+import com.clickstechnology.Brillo.Mall.application.utils.AppUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Optional;
 
 @Slf4j
-@Service
+@Component
 @RequiredArgsConstructor
-class AuthenticationServiceImpl implements AuthenticationService {
+public class RegisterNewUser {
 
     private final UserService userService;
     private final RequestLogService requestLogService;
@@ -48,8 +39,7 @@ class AuthenticationServiceImpl implements AuthenticationService {
     private final NotificationService notificationService;
     private final PasswordEncoder passwordEncoder;
 
-    @Override
-    public RegisterResponse register(RegisterRequest request, HttpServletRequest httpServletRequest) {
+    public RegisterResponse execute(RegisterRequest request, HttpServletRequest httpServletRequest) {
 
         final String username = request.getEmailOrPhone();
         final String ipAddress = httpServletRequest.getRemoteAddr();
@@ -132,34 +122,44 @@ class AuthenticationServiceImpl implements AuthenticationService {
         }
     }
 
+    public RegisterResendOtpResponse resendOtp(RegisterResendOtpRequest request, HttpServletRequest httpServletRequest) {
 
-    @Override
-    public RegisterVerifyResponse verifyRegister(RegisterVerifyRequest request, HttpServletRequest httpServletRequest) {
-        return null;
-    }
+        final String ipAddress = httpServletRequest.getRemoteAddr();
+        final String userAgent = httpServletRequest.getHeader("User-Agent");
 
-    @Override
-    public RegisterResendOtpResponse registerResendOtp(RegisterResendOtpRequest request, HttpServletRequest httpServletRequest) {
-        return null;
-    }
+        String logId = requestLogService.logRequest(request, ipAddress, userAgent);
 
-    @Override
-    public ResetPasswordResponse resetPassword(ResetPasswordRequest request, HttpServletRequest httpServletRequest) {
-        return null;
-    }
+        // Check for incomplete user registration
+        Optional<UserDto> incompleteUserOpt = userService.getIncompleteUserByUser(request.getEmailOrPhone());
+        if (incompleteUserOpt.isPresent()) {
 
-    @Override
-    public NewPasswordResponse newPassword(NewPasswordRequest request, HttpServletRequest httpServletRequest) {
-        return null;
-    }
+            UserDto foundUser = incompleteUserOpt.get();
+            MessageMedium messageMedium = AppUtils.resolveMessageMedium(foundUser.getUsername());
 
-    @Override
-    public LoginResponse login(LoginRequest request, HttpServletRequest httpServletRequest) {
-        return null;
-    }
+            // Generate OTP
+            otpService.createOtp(
+                    CreateOtpRequest.builder()
+                            .messageMedium(messageMedium)
+                            .otpType(OtpType.REGISTRATION)
+                            .recipients(List.of(foundUser.getUsername()))
+                            .build(),
+                    httpServletRequest
+            );
 
-    @Override
-    public void logout(HttpServletRequest httpServletRequest) {
+            // Prepare response
+            RegisterResponse response = RegisterResponse.builder()
+                    .username(foundUser.getUsername())
+                    .fullName(foundUser.getFullName())
+                    .messageMedium(messageMedium)
+                    .build();
 
+            requestLogService.update(logId, response, RequestStatus.PROCESSED);
+            return new RegisterResendOtpResponse("OTP/Verification link has been resent successfully");
+
+        }
+        else {
+            requestLogService.update(logId, "Registration Resend OTP failed. Pending user not found", RequestStatus.FAILED);
+            throw new BusinessException("Registration Resend OTP failed. Pending user not found");
+        }
     }
 }

@@ -1,6 +1,5 @@
 package com.clickstechnology.Brillo.Mall.infrastructure.config;
 
-import com.clickstechnology.Brillo.Mall.infrastructure.Constants;
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -26,6 +25,9 @@ import org.springframework.security.web.SecurityFilterChain;
 
 import javax.crypto.spec.SecretKeySpec;
 
+import static com.clickstechnology.Brillo.Mall.application.utils.AppConstants.PASSWORD_STRENGTH;
+import static com.clickstechnology.Brillo.Mall.application.utils.AppConstants.WHITE_LIST_URL;
+
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -40,7 +42,7 @@ public class WebSecurityConfig {
         return http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(Constants.WHITE_LIST_URL).permitAll()
+                        .requestMatchers(WHITE_LIST_URL).permitAll()
                         .anyRequest().authenticated())
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -65,7 +67,7 @@ public class WebSecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(com.clickstechnology.Brillo.Mall.infrastructure.Constants.PASSWORD_STRENGTH);
+        return new BCryptPasswordEncoder(PASSWORD_STRENGTH);
     }
 
     @Bean

@@ -1,4 +1,4 @@
-package com.clickstechnology.Brillo.Mall.infrastructure.utils;
+package com.clickstechnology.Brillo.Mall.application.utils;
 
 import com.clickstechnology.Brillo.Mall.application.enums.MessageMedium;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;

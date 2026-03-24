@@ -1,7 +1,7 @@
 package com.clickstechnology.Brillo.Mall.domain.log;
 
 import com.clickstechnology.Brillo.Mall.application.enums.RequestStatus;
-import com.clickstechnology.Brillo.Mall.infrastructure.utils.JpaAuditor;
+import com.clickstechnology.Brillo.Mall.infrastructure.persistence.JpaAuditor;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -21,7 +21,7 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(
-        name = "FUTURE_HIVE_ALL_REQUEST",
+        name = "BRILLO_ALL_REQUEST",
         indexes = {
                 @Index(name = "idx_request_reference", columnList = "reference"),
                 @Index(name = "idx_request_status", columnList = "status")

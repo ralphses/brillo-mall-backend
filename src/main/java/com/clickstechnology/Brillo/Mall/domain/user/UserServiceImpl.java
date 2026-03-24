@@ -8,7 +8,7 @@ import com.clickstechnology.Brillo.Mall.application.dto.request.RegisterRequest;
 import com.clickstechnology.Brillo.Mall.application.enums.MessageMedium;
 import com.clickstechnology.Brillo.Mall.application.enums.UserStatus;
 import com.clickstechnology.Brillo.Mall.application.exception.ResourceNotFoundException;
-import com.clickstechnology.Brillo.Mall.infrastructure.utils.AppUtils;
+import com.clickstechnology.Brillo.Mall.application.utils.AppUtils;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
