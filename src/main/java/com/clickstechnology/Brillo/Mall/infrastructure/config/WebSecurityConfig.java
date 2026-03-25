@@ -14,7 +14,6 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -25,7 +24,6 @@ import org.springframework.security.web.SecurityFilterChain;
 
 import javax.crypto.spec.SecretKeySpec;
 
-import static com.clickstechnology.Brillo.Mall.application.utils.AppConstants.PASSWORD_STRENGTH;
 import static com.clickstechnology.Brillo.Mall.application.utils.AppConstants.WHITE_LIST_URL;
 
 @Configuration
@@ -35,7 +33,7 @@ import static com.clickstechnology.Brillo.Mall.application.utils.AppConstants.WH
 public class WebSecurityConfig {
 
     private final UserDetailsService userDetailsService;
-    private final AppConfig appConfig;
+    private final AppPropertiesConfig appPropertiesConfig;
 
     @Bean
     public SecurityFilterChain securityFilterChain(final HttpSecurity http) throws Exception {
@@ -54,20 +52,15 @@ public class WebSecurityConfig {
     @Bean
     public JwtEncoder jwtEncoder() {
         return new NimbusJwtEncoder(
-                new ImmutableSecret<>(appConfig.getJwt().getJwtSecrete().getBytes())
+                new ImmutableSecret<>(appPropertiesConfig.getJwt().getJwtSecrete().getBytes())
         );
     }
 
     @Bean
     public JwtDecoder jwtDecoder() {
-        byte[] bytes = appConfig.getJwt().getJwtSecrete().getBytes();
+        byte[] bytes = appPropertiesConfig.getJwt().getJwtSecrete().getBytes();
         SecretKeySpec key = new SecretKeySpec(bytes, 0, bytes.length, "RSA");
         return NimbusJwtDecoder.withSecretKey(key).macAlgorithm(MacAlgorithm.HS512).build();
-    }
-
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(PASSWORD_STRENGTH);
     }
 
     @Bean

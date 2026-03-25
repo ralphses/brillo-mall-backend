@@ -5,6 +5,6 @@ import lombok.Data;
 
 @Data
 @AllArgsConstructor
-public class RegisterResendOtpResponse {
+public class OtpSentResponse {
     private final String message;
 }

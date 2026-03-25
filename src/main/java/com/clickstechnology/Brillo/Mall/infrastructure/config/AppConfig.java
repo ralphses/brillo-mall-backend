@@ -1,23 +1,21 @@
 package com.clickstechnology.Brillo.Mall.infrastructure.config;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.stereotype.Component;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
-@Component
-@Data
-@ConfigurationProperties("app")
+import static com.clickstechnology.Brillo.Mall.application.utils.AppConstants.PASSWORD_STRENGTH;
+
+@Slf4j
+@Configuration
+@RequiredArgsConstructor
 public class AppConfig {
 
-    private Jwt jwt = new Jwt();
-    private Long otpDuration;
-
-    @Data
-    @AllArgsConstructor
-    @NoArgsConstructor
-    public static class Jwt {
-        private String jwtSecrete;
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder(PASSWORD_STRENGTH);
     }
 }

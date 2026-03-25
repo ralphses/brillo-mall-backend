@@ -29,4 +29,9 @@ public final class AppUtils {
         }
     }
 
+    public static void validatePasswordChange(String password, String confirmPassword) {
+        if (!password.equals(confirmPassword)) {
+            throw new BusinessException("New password must match confirm password.");
+        }
+    }
 }

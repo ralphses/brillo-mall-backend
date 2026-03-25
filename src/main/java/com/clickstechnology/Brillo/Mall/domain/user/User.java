@@ -90,6 +90,7 @@ class User extends JpaAuditor implements Serializable {
         return UserDto.builder()
                 .id(reference)
                 .fullName(fullName)
+                .username(username)
                 .email(email)
                 .phoneNumber(phoneNumber)
                 .roles(roles.stream().map(Enum::name).toList())
