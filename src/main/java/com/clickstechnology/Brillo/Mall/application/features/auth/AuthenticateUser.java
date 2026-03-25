@@ -4,9 +4,9 @@ import com.clickstechnology.Brillo.Mall.application.api.contracts.Authentication
 import com.clickstechnology.Brillo.Mall.application.dto.request.LoginRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.response.LoginResponse;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
-import com.clickstechnology.Brillo.Mall.infrastructure.logging.LoggableRequest;
 import com.clickstechnology.Brillo.Mall.infrastructure.authentication.JwtProvider;
 import com.clickstechnology.Brillo.Mall.infrastructure.config.AppPropertiesConfig;
+import com.clickstechnology.Brillo.Mall.infrastructure.logging.LoggableRequest;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +21,7 @@ import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -60,7 +61,9 @@ public class AuthenticateUser {
             JwtEncoderParameters jwtEncoderParameters = authenticationUtil.generateAccessToken(username, roles, now, expiresAt);
             String token = jwtEncoder.encode(jwtEncoderParameters).getTokenValue();
 
-            return new LoginResponse(token, expiresAt.toEpochMilli());
+            long expiresIn = Duration.between(now, expiresAt).getSeconds();
+
+            return new LoginResponse(token, expiresIn);
         } catch (BadCredentialsException e) {
             throw new BusinessException("Invalid username or password");
         }

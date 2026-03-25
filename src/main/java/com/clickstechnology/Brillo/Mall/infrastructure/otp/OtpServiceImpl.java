@@ -18,9 +18,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.security.SecureRandom;
 import java.time.Duration;
 import java.util.List;
+
+import static com.clickstechnology.Brillo.Mall.application.utils.AppConstants.SECURE_RANDOM;
 
 @Slf4j
 @Service
@@ -30,8 +31,6 @@ public class OtpServiceImpl implements OtpService {
     private final CacheUtil cacheUtil;
     private final AppPropertiesConfig appPropertiesConfig;
     private final NotificationService notificationService;
-
-    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     @Override
     public void createOtp(CreateOtpRequest request, HttpServletRequest httpServletRequest) {
