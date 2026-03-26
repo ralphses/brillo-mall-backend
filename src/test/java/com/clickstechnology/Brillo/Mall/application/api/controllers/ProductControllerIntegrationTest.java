@@ -73,7 +73,7 @@ class ProductControllerIntegrationTest {
         when(addProduct.execute(eq(businessId), any(AddProductRequest.class), any(HttpServletRequest.class)))
                 .thenReturn(expectedResponse);
 
-        mockMvc.perform(post("/api/v1/businesses/{businessId}/products", businessId)
+        mockMvc.perform(post("/api/v1/products/{businessId}", businessId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(validRequest)))
                 .andExpect(status().isOk())
@@ -87,7 +87,7 @@ class ProductControllerIntegrationTest {
     void addProduct_ValidationFailure_BlankName() throws Exception {
         validRequest.setName("");
 
-        mockMvc.perform(post("/api/v1/businesses/{businessId}/products", businessId)
+        mockMvc.perform(post("/api/v1/products/{businessId}", businessId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(validRequest)))
                 .andExpect(status().isBadRequest())
@@ -98,7 +98,7 @@ class ProductControllerIntegrationTest {
     void addProduct_ValidationFailure_NullPrice() throws Exception {
         validRequest.setPrice(null);
 
-        mockMvc.perform(post("/api/v1/businesses/{businessId}/products", businessId)
+        mockMvc.perform(post("/api/v1/products/{businessId}", businessId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(validRequest)))
                 .andExpect(status().isBadRequest())
@@ -109,7 +109,7 @@ class ProductControllerIntegrationTest {
     void addProduct_ValidationFailure_NegativePrice() throws Exception {
         validRequest.setPrice(BigDecimal.valueOf(-10.00));
 
-        mockMvc.perform(post("/api/v1/businesses/{businessId}/products", businessId)
+        mockMvc.perform(post("/api/v1/products/{businessId}", businessId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(validRequest)))
                 .andExpect(status().isBadRequest())
@@ -120,7 +120,7 @@ class ProductControllerIntegrationTest {
     void addProduct_ValidationFailure_NullQuantity() throws Exception {
         validRequest.setQuantity(null);
 
-        mockMvc.perform(post("/api/v1/businesses/{businessId}/products", businessId)
+        mockMvc.perform(post("/api/v1/products/{businessId}", businessId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(validRequest)))
                 .andExpect(status().isBadRequest())
@@ -132,7 +132,7 @@ class ProductControllerIntegrationTest {
         when(addProduct.execute(eq(businessId), any(AddProductRequest.class), any(HttpServletRequest.class)))
                 .thenThrow(new BusinessException("Business is not active"));
 
-        mockMvc.perform(post("/api/v1/businesses/{businessId}/products", businessId)
+        mockMvc.perform(post("/api/v1/products/{businessId}", businessId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(validRequest)))
                 .andExpect(status().isBadRequest())

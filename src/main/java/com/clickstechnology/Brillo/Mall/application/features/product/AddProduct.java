@@ -10,6 +10,7 @@ import com.clickstechnology.Brillo.Mall.application.dto.product.ProductDto;
 import com.clickstechnology.Brillo.Mall.application.dto.request.product.AddProductRequest;
 import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
+import com.clickstechnology.Brillo.Mall.infrastructure.config.AppPropertiesConfig;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +28,7 @@ public class AddProduct {
     private final BusinessService businessService;
     private final AuthenticationUtil authenticationUtil;
     private final UserService userService;
+    private final AppPropertiesConfig appPropertiesConfig;
 
     /**
      * Executes the process of adding a new product to a specific business.
@@ -78,8 +80,8 @@ public class AddProduct {
         }
 
         // 5. Create product and return dto
-        ProductDto createdProduct = productService.createProduct(businessId, request);
-        log.info("Successfully added product '{}' with SKU: {} for businessId: {}", createdProduct.getName(), createdProduct.getSku(), businessId);
+        ProductDto createdProduct = productService.createProduct(businessId, request, appPropertiesConfig.getDefaultProductImageUrl());
+        log.info(":::Successfully added product '{}' with SKU: {} for businessId: {}", createdProduct.getName(), createdProduct.getSku(), businessId);
 
         return createdProduct;
     }

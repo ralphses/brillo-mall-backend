@@ -14,6 +14,7 @@ public class AppPropertiesConfig {
     private Jwt jwt = new Jwt();
     private Long otpDuration;
     private String defaultBusinessLogoUrl;
+    private String defaultProductImageUrl = "https://test.png";
 
     @Data
     @AllArgsConstructor

@@ -27,6 +27,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class ProductServiceImplTest {
 
+    public static final String DEFAULT_PRODUCT_IMG_URL = "http://image.com";
+
     @Mock
     private ProductRepository productRepository;
 
@@ -110,7 +112,7 @@ class ProductServiceImplTest {
 
         when(productRepository.save(any(Product.class))).thenReturn(savedProduct);
 
-        ProductDto result = productService.createProduct(businessId, addProductRequest);
+        ProductDto result = productService.createProduct(businessId, addProductRequest, DEFAULT_PRODUCT_IMG_URL);
 
         assertNotNull(result);
         assertEquals("prod-ref-123", result.getId());

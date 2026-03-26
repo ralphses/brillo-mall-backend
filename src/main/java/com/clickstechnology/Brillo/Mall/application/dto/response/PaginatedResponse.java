@@ -44,7 +44,7 @@ public class PaginatedResponse<T> {
     private int perPage;
 
     /** Total number of items across all pages. */
-    private int total;
+    private long total;
 
     /** Total number of pages. */
     private int totalPages;

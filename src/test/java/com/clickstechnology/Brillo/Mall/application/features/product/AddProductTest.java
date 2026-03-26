@@ -11,6 +11,7 @@ import com.clickstechnology.Brillo.Mall.application.dto.request.product.AddProdu
 import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
 import com.clickstechnology.Brillo.Mall.application.exception.UnauthorizedUserException;
+import com.clickstechnology.Brillo.Mall.infrastructure.config.AppPropertiesConfig;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,6 +40,9 @@ import static org.mockito.Mockito.when;
 class AddProductTest {
 
     @Mock
+    private AppPropertiesConfig appPropertiesConfig;
+
+    @Mock
     private ProductService productService;
 
     @Mock
@@ -63,14 +67,23 @@ class AddProductTest {
 
     @BeforeEach
     void setUp() {
+
         businessId = "biz-123";
         String userId = "user-456";
-        request = new AddProductRequest("Test Product", "Description", BigDecimal.valueOf(100), BigDecimal.valueOf(90), "SKU123", 10);
+
+        request = new AddProductRequest(
+                "Test Product",
+                "Description",
+                BigDecimal.valueOf(100),
+                BigDecimal.valueOf(90),
+                "SKU123",
+                10
+        );
 
         activeBusiness = new BusinessDto();
         activeBusiness.setId(businessId);
         activeBusiness.setStatus(EntityStatus.ACTIVE);
-        activeBusiness.setOwnerId(userId); // Set owner
+        activeBusiness.setOwnerId(userId);
 
         UserDto userDto = new UserDto();
         userDto.setId(userId);
@@ -80,42 +93,64 @@ class AddProductTest {
                 .sku("SKU123")
                 .build();
 
-        // Mock authentication flow
-        when(authenticationUtil.getAuthenticatedUsername(httpServletRequest)).thenReturn("testuser");
-        when(userService.findByUsername("testuser")).thenReturn(userDto);
+        when(authenticationUtil.getAuthenticatedUsername(httpServletRequest))
+                .thenReturn("testuser");
+
+        when(userService.findByUsername("testuser"))
+                .thenReturn(userDto);
     }
 
     @Test
     void execute_Success_WithProvidedSku() {
-        when(businessService.findByBusinessId(businessId)).thenReturn(activeBusiness);
-        doNothing().when(productService).ensureProductNameDoesNotExist(businessId, request.getName());
-        doNothing().when(productService).ensureProductSkuDoesNotExist(businessId, request.getSku());
-        when(productService.createProduct(businessId, request)).thenReturn(expectedProductDto);
+
+        when(appPropertiesConfig.getDefaultProductImageUrl()).thenReturn("imageUrl");
+
+
+        when(businessService.findByBusinessId(businessId))
+                .thenReturn(activeBusiness);
+
+        doNothing().when(productService)
+                .ensureProductNameDoesNotExist(businessId, request.getName());
+
+        doNothing().when(productService)
+                .ensureProductSkuDoesNotExist(businessId, request.getSku());
+
+        when(productService.createProduct(
+                eq(businessId),
+                eq(request),
+                anyString()
+        )).thenReturn(expectedProductDto);
 
         ProductDto result = addProduct.execute(businessId, request, httpServletRequest);
 
         assertNotNull(result);
         assertEquals("Test Product", result.getName());
         assertEquals("SKU123", result.getSku());
-        verify(productService).createProduct(businessId, request);
+
+        verify(productService).createProduct(
+                eq(businessId),
+                eq(request),
+                anyString()
+        );
     }
 
     @Test
     void execute_Success_WithGeneratedSku() {
         when(businessService.findByBusinessId(businessId)).thenReturn(activeBusiness);
+        when(appPropertiesConfig.getDefaultProductImageUrl()).thenReturn("imageUrl");
 
         request.setSku(null); // Force SKU generation
         doNothing().when(productService).ensureProductNameDoesNotExist(businessId, request.getName());
 
         // Mock that the generated SKU does not exist
         doNothing().when(productService).ensureProductSkuDoesNotExist(eq(businessId), anyString());
-        when(productService.createProduct(eq(businessId), any(AddProductRequest.class))).thenReturn(expectedProductDto);
+        when(productService.createProduct(eq(businessId), any(AddProductRequest.class), any())).thenReturn(expectedProductDto);
 
         ProductDto result = addProduct.execute(businessId, request, httpServletRequest);
 
         assertNotNull(result);
         verify(productService).ensureProductSkuDoesNotExist(eq(businessId), anyString());
-        verify(productService).createProduct(eq(businessId), any(AddProductRequest.class));
+        verify(productService).createProduct(eq(businessId), any(AddProductRequest.class), any());
 
         // Verify SKU was generated and set on the request
         assertNotNull(request.getSku());
@@ -132,7 +167,7 @@ class AddProductTest {
         UnauthorizedUserException exception = assertThrows(UnauthorizedUserException.class, () -> addProduct.execute(businessId, request, httpServletRequest));
         assertEquals("Unauthorized User", exception.getMessage());
 
-        verify(productService, never()).createProduct(anyString(), any());
+        verify(productService, never()).createProduct(anyString(), any(), anyString());
     }
 
 
@@ -145,7 +180,7 @@ class AddProductTest {
         BusinessException exception = assertThrows(BusinessException.class, () -> addProduct.execute(businessId, request, httpServletRequest));
         assertTrue(exception.getMessage().contains("Business is not active"));
 
-        verify(productService, never()).createProduct(anyString(), any());
+        verify(productService, never()).createProduct(anyString(), any(), anyString());
     }
 
     @Test
@@ -156,7 +191,7 @@ class AddProductTest {
 
         assertThrows(BusinessException.class, () -> addProduct.execute(businessId, request, httpServletRequest));
 
-        verify(productService, never()).createProduct(anyString(), any());
+        verify(productService, never()).createProduct(anyString(), any(), anyString());
     }
 
     @Test
@@ -169,7 +204,7 @@ class AddProductTest {
 
         assertThrows(BusinessException.class, () -> addProduct.execute(businessId, request, httpServletRequest));
 
-        verify(productService, never()).createProduct(anyString(), any());
+        verify(productService, never()).createProduct(anyString(), any(), anyString());
     }
 
     @Test
@@ -187,6 +222,6 @@ class AddProductTest {
 
         // Verify it retried exactly 3 times
         verify(productService, times(3)).ensureProductSkuDoesNotExist(eq(businessId), anyString());
-        verify(productService, never()).createProduct(anyString(), any());
+        verify(productService, never()).createProduct(anyString(), any(), anyString());
     }
 }

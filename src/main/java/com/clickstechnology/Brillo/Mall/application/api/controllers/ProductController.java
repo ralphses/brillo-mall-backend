@@ -25,7 +25,7 @@ import static com.clickstechnology.Brillo.Mall.application.dto.response.Response
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("api/v1/businesses/{businessId}/products")
+@RequestMapping("api/v1/products")
 public class ProductController {
 
     private final AddProduct addProduct;
@@ -34,7 +34,7 @@ public class ProductController {
     private final UpdateProduct updateProduct;
     private final DeleteProduct deleteProduct;
 
-    @PostMapping
+    @PostMapping("/{businessId}")
     public ResponseWrapper<ProductDto> addProduct(
             @PathVariable final String businessId,
             @RequestBody @Valid final AddProductRequest request,
@@ -45,7 +45,7 @@ public class ProductController {
 
     @GetMapping
     public ResponseWrapper<PaginatedResponse<ProductDto>> getProducts(
-            @PathVariable final String businessId,
+            @RequestParam(required = false) final String businessId,
             @RequestParam(value = "page", defaultValue = "1") final Integer page,
             @RequestParam(value = "pageSize", defaultValue = "20") final Integer pageSize) {
         PaginatedResponse<ProductDto> response = listAllProducts.execute(businessId, page, pageSize);
@@ -54,13 +54,19 @@ public class ProductController {
 
     @GetMapping("{productId}")
     public ResponseWrapper<ProductDto> getProduct(
-            @PathVariable final String businessId,
             @PathVariable final String productId) {
-        ProductDto response = getProduct.execute(businessId, productId);
+        ProductDto response = getProduct.execute(productId);
         return success(response);
     }
 
-    @PutMapping("{productId}")
+    @GetMapping("by-sku/{sku}")
+    public ResponseWrapper<ProductDto> getProductBySku(
+            @PathVariable final String sku) {
+        ProductDto response = getProduct.executeBySku(sku);
+        return success(response);
+    }
+
+    @PutMapping("/{businessId}/{productId}")
     public ResponseWrapper<ProductDto> updateProduct(
             @PathVariable final String businessId,
             @PathVariable final String productId,
@@ -69,7 +75,7 @@ public class ProductController {
         return success(response);
     }
 
-    @DeleteMapping("{productId}")
+    @DeleteMapping("/{businessId}/{productId}")
     public ResponseWrapper<String> deleteProduct(
             @PathVariable final String businessId,
             @PathVariable final String productId) {

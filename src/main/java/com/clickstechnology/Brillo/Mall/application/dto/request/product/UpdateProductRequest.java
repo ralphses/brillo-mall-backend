@@ -22,7 +22,5 @@ public class UpdateProductRequest {
     @Positive(message = "Discounted price must be positive.")
     private BigDecimal discountedPrice;
 
-    private String sku;
-
     private Integer quantity;
 }
