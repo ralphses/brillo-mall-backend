@@ -1,6 +1,6 @@
 package com.clickstechnology.Brillo.Mall.application.dto.projections;
 
-import com.clickstechnology.Brillo.Mall.application.enums.UserStatus;
+import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
 import java.util.List;
@@ -11,6 +11,6 @@ public interface AuthUser {
     String getEmail();
     String getUsername();
     String getPassword();
-    UserStatus getStatus();
+    EntityStatus getStatus();
     List<String> getRoles();
 }

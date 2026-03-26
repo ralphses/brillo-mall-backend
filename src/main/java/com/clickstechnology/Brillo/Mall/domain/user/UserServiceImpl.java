@@ -7,7 +7,7 @@ import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.dto.projections.AuthUser;
 import com.clickstechnology.Brillo.Mall.application.dto.request.RegisterRequest;
 import com.clickstechnology.Brillo.Mall.application.enums.MessageMedium;
-import com.clickstechnology.Brillo.Mall.application.enums.UserStatus;
+import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
 import com.clickstechnology.Brillo.Mall.application.exception.ResourceNotFoundException;
 import com.clickstechnology.Brillo.Mall.application.utils.AppUtils;
@@ -95,7 +95,7 @@ class UserServiceImpl implements UserService {
                 .email(medium == MessageMedium.EMAIL ? username : null)
                 .phoneNumber(medium == MessageMedium.PHONE ? username : null)
                 .invitedBy(invitedBy != null ? invitedBy.getInviteCode() : null)
-                .status(UserStatus.PENDING)
+                .status(EntityStatus.PENDING)
                 .roles(Collections.singletonList(UserRole.USER))
                 .build();
 
@@ -125,7 +125,7 @@ class UserServiceImpl implements UserService {
     @Override
     public Optional<UserDto> getIncompleteUserByUser(String username) {
         return userRepository.findByUsernameIgnoreCaseAndStatus(
-                username, UserStatus.PENDING
+                username, EntityStatus.PENDING
         ).map(User::dto);
     }
 
@@ -149,7 +149,7 @@ class UserServiceImpl implements UserService {
     public void completeUserRegistration(UserDto user) {
         getByUsername(user.getUsername())
                 .ifPresentOrElse(thisUser -> {
-                            thisUser.setStatus(UserStatus.ACTIVE);
+                            thisUser.setStatus(EntityStatus.ACTIVE);
                             userRepository.save(thisUser);
                         },
                         () -> {

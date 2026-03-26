@@ -1,7 +1,10 @@
 package com.clickstechnology.Brillo.Mall.application.utils;
 
+import com.clickstechnology.Brillo.Mall.application.enums.BusinessCategory;
 import com.clickstechnology.Brillo.Mall.application.enums.MessageMedium;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 public final class AppUtils {
     private AppUtils() {}
@@ -33,5 +36,20 @@ public final class AppUtils {
         if (!password.equals(confirmPassword)) {
             throw new BusinessException("New password must match confirm password.");
         }
+    }
+
+    public static BusinessCategory validateBusinessCategory(String businessCategory) {
+        try {
+            if (businessCategory == null || businessCategory.isBlank()) {
+                throw new BusinessException("Business category cannot be null or empty");
+            }
+            return BusinessCategory.valueOf(businessCategory.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException("Invalid business category");
+        }
+    }
+
+    public static Pageable getPageable(Integer page, Integer pageSize) {
+        return PageRequest.of(Math.min(0, page - 1), pageSize);
     }
 }

@@ -24,8 +24,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
-import static com.clickstechnology.Brillo.Mall.infrastructure.authentication.JwtProvider.extractToken;
-
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -51,10 +49,11 @@ public class DefaultAuthenticationUtil implements AuthenticationUtil {
     public String getAuthenticatedUsername(HttpServletRequest httpServletRequest) {
         SecurityContext securityContext = SecurityContextHolder.getContext();
         Authentication authentication = securityContext.getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
+        if (!authentication.isAuthenticated()) {
             throw new UnauthorizedUserException();
         }
-        return authentication.getName();
+        String authenticationName = authentication.getName();
+        return "anonymousUser".equals(authenticationName) ? null : authenticationName;
     }
 
 

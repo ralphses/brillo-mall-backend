@@ -1,7 +1,9 @@
 package com.clickstechnology.Brillo.Mall.application.features.auth;
 
 import com.clickstechnology.Brillo.Mall.application.api.contracts.AuthenticationUtil;
+import com.clickstechnology.Brillo.Mall.application.api.contracts.DashboardService;
 import com.clickstechnology.Brillo.Mall.application.dto.request.LoginRequest;
+import com.clickstechnology.Brillo.Mall.application.dto.response.DashboardData;
 import com.clickstechnology.Brillo.Mall.application.dto.response.LoginResponse;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
 import com.clickstechnology.Brillo.Mall.infrastructure.authentication.JwtProvider;
@@ -36,6 +38,7 @@ public class AuthenticateUser {
     private final AuthenticationUtil authenticationUtil;
     private final JwtEncoder jwtEncoder;
     private final JwtDecoder jwtDecoder;
+    private final DashboardService dashboardService;
 
     @LoggableRequest
     public LoginResponse login(LoginRequest request, HttpServletRequest httpServletRequest) {
@@ -58,12 +61,16 @@ public class AuthenticateUser {
             long expiryMinutes = appPropertiesConfig.getJwt().getExpiryTime();
             Instant expiresAt = now.plus(expiryMinutes, ChronoUnit.MINUTES);
 
-            JwtEncoderParameters jwtEncoderParameters = authenticationUtil.generateAccessToken(username, roles, now, expiresAt);
+            JwtEncoderParameters jwtEncoderParameters
+                    = authenticationUtil.generateAccessToken(username, roles, now, expiresAt);
+
             String token = jwtEncoder.encode(jwtEncoderParameters).getTokenValue();
 
             long expiresIn = Duration.between(now, expiresAt).getSeconds();
 
-            return new LoginResponse(token, expiresIn);
+            // Fetch dashboard data
+            DashboardData dashboardData = dashboardService.getDashboardData(authentication);
+            return new LoginResponse(token, expiresIn, dashboardData);
         } catch (BadCredentialsException e) {
             throw new BusinessException("Invalid username or password");
         }

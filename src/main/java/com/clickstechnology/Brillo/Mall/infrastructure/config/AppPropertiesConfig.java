@@ -13,6 +13,7 @@ public class AppPropertiesConfig {
 
     private Jwt jwt = new Jwt();
     private Long otpDuration;
+    private String defaultBusinessLogoUrl;
 
     @Data
     @AllArgsConstructor

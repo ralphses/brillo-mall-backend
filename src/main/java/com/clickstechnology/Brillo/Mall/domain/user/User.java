@@ -1,7 +1,7 @@
 package com.clickstechnology.Brillo.Mall.domain.user;
 
 import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
-import com.clickstechnology.Brillo.Mall.application.enums.UserStatus;
+import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;
 import com.clickstechnology.Brillo.Mall.infrastructure.persistence.JpaAuditor;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
@@ -84,7 +84,7 @@ class User extends JpaAuditor implements Serializable {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 50)
-    private UserStatus status;
+    private EntityStatus status;
 
     public UserDto dto() {
         return UserDto.builder()

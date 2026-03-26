@@ -1,5 +1,6 @@
 package com.clickstechnology.Brillo.Mall.infrastructure.config;
 
+import com.clickstechnology.Brillo.Mall.infrastructure.authentication.CustomAuthenticationEntryPoint;
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -34,6 +35,8 @@ public class WebSecurityConfig {
 
     private final UserDetailsService userDetailsService;
     private final AppPropertiesConfig appPropertiesConfig;
+    private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
+    private final CustomAccessDeniedHandler customAccessDeniedHandler;
 
     @Bean
     public SecurityFilterChain securityFilterChain(final HttpSecurity http) throws Exception {
@@ -44,6 +47,10 @@ public class WebSecurityConfig {
                         .anyRequest().authenticated())
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(e -> e
+                        .authenticationEntryPoint(customAuthenticationEntryPoint)
+                        .accessDeniedHandler(customAccessDeniedHandler)
+                )
                 .oauth2ResourceServer(oauth -> oauth
                         .jwt(Customizer.withDefaults()))
                 .build();
@@ -58,8 +65,7 @@ public class WebSecurityConfig {
 
     @Bean
     public JwtDecoder jwtDecoder() {
-        byte[] bytes = appPropertiesConfig.getJwt().getJwtSecrete().getBytes();
-        SecretKeySpec key = new SecretKeySpec(bytes, 0, bytes.length, "RSA");
+        SecretKeySpec key = new SecretKeySpec(appPropertiesConfig.getJwt().getJwtSecrete().getBytes(), "HmacSHA512");
         return NimbusJwtDecoder.withSecretKey(key).macAlgorithm(MacAlgorithm.HS512).build();
     }
 
