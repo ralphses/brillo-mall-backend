@@ -5,6 +5,10 @@ import com.clickstechnology.Brillo.Mall.application.dto.request.product.AddProdu
 import com.clickstechnology.Brillo.Mall.application.dto.request.product.UpdateProductRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.response.PaginatedResponse;
 
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 public interface ProductService {
     void ensureProductNameDoesNotExist(String businessId, String name);
     void ensureProductSkuDoesNotExist(String businessId, String sku);
@@ -19,4 +23,10 @@ public interface ProductService {
     void deleteProduct(String productId);
 
     ProductDto updateProduct(String productId, UpdateProductRequest request);
+
+    List<ProductDto> findProductsByIds(List<String> productIds);
+
+    List<ProductDto> findAllByProductIds(Set<String> productIds);
+
+    void checkInStock(Map<String, Integer> mappedProductQuantityMap);
 }

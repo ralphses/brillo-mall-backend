@@ -10,6 +10,7 @@ public final class CacheNames {
     public static final String REQUEST_LOG_QUEUE = "_request_log_";
     public static final String BUSINESS_REFERENCE = "_business_reference_";
     public static final String BUSINESS_SLUG = "_business_slug_";
+    public static final String ORDER_ID = "_order_id_";
 
     private CacheNames() {}
 }

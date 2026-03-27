@@ -5,6 +5,7 @@ import com.clickstechnology.Brillo.Mall.application.api.contracts.BusinessServic
 import com.clickstechnology.Brillo.Mall.application.api.contracts.MediaAssetService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.UserService;
 import com.clickstechnology.Brillo.Mall.application.dto.BusinessDto;
+import com.clickstechnology.Brillo.Mall.application.dto.CustomerDto;
 import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.dto.request.business.OnboardBusinessRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.request.business.UpdateBusinessRequest;

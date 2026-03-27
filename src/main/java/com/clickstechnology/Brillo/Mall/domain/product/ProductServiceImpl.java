@@ -16,7 +16,8 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -141,5 +142,32 @@ class ProductServiceImpl implements ProductService {
 
 
         return productRepository.save(product).dto();
+    }
+
+    @Override
+    public List<ProductDto> findProductsByIds(List<String> productIds) {
+        return productRepository.findAllByReferenceIn(productIds).stream()
+                .map(Product::dto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<ProductDto> findAllByProductIds(Set<String> productIds) {
+        return productRepository.findAllByReferenceIn(List.copyOf(productIds)).stream()
+                .map(Product::dto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public void checkInStock(Map<String, Integer> mappedProductQuantityMap) {
+        Set<String> productIds = mappedProductQuantityMap.keySet();
+        List<ProductDto> productDtos = findAllByProductIds(productIds);
+
+        for (ProductDto productDto : productDtos) {
+            if (productDto.getQuantity() < mappedProductQuantityMap.get(productDto.getId())) {
+                throw new BusinessException("Insufficient stock for product : " + productDto.getName());
+            }
+        }
+
     }
 }

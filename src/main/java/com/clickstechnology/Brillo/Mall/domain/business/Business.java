@@ -6,7 +6,11 @@ import com.clickstechnology.Brillo.Mall.application.enums.BusinessCategory;
 import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;
 import com.clickstechnology.Brillo.Mall.application.enums.WhatsappType;
 import com.clickstechnology.Brillo.Mall.infrastructure.persistence.JpaAuditor;
+import com.clickstechnology.Brillo.Mall.infrastructure.persistence.StringListConverter;
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -21,6 +25,10 @@ import lombok.Setter;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 @Entity
 @Getter
@@ -50,6 +58,10 @@ class Business extends JpaAuditor implements Serializable {
 
     @Column(name = "name", length = 100, nullable = false)
     private String name;
+
+    @Convert(converter = StringListConverter.class)
+    @Column(name = "customers", columnDefinition = "json")
+    private Set<String> customers;
 
     @Column(name = "slug", length = 120, nullable = false, unique = true)
     private String slug;
@@ -107,6 +119,22 @@ class Business extends JpaAuditor implements Serializable {
     @Column(name = "setup_completed")
     @Builder.Default
     private Boolean setupCompleted = false;
+
+    public void addCustomer(String customerId) {
+        if (customers == null) {
+            customers = new HashSet<>();
+        }
+        customers.add(customerId);
+    }
+
+    public void addCustomers(Set<String> customerIds) {
+        if (customers == null) {
+            customers = new HashSet<>();
+        }
+        if (customerIds != null && !customerIds.isEmpty()) {
+            customers.addAll(customerIds);
+        }
+    }
 
     public BusinessDto dto() {
         return BusinessDto.builder()

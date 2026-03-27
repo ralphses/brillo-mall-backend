@@ -2,6 +2,7 @@ package com.clickstechnology.Brillo.Mall.domain.business;
 
 import com.clickstechnology.Brillo.Mall.application.api.contracts.BusinessService;
 import com.clickstechnology.Brillo.Mall.application.dto.BusinessDto;
+import com.clickstechnology.Brillo.Mall.application.dto.CustomerDto;
 import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.dto.request.business.OnboardBusinessRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.request.business.UpdateBusinessRequest;
@@ -20,9 +21,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Set;
 
 @Slf4j
 @Service
@@ -170,5 +173,30 @@ class BusinessServiceImpl implements BusinessService {
                 .hasPrevious(businessPage.hasPrevious())
                 .items(items)
                 .build();
+    }
+
+    @Override
+    public void validateBusinessIsActive(Set<String> allProductOwners) {
+        List<Business> businessList = businessRepository.findAllByReferenceIn(allProductOwners);
+        for (Business business : businessList) {
+            if (!business.getIsActive()) {
+                throw new BusinessException("This business is not active");
+            }
+        }
+    }
+
+    @Override
+    @Transactional
+    public void addCustomer(CustomerDto customer, Set<String> businessIds) {
+        List<Business> alBusinesses = businessRepository.findAllByReferenceIn(businessIds);
+        for (Business business : alBusinesses) {
+            business.addCustomer(customer.getId());
+        }
+        businessRepository.saveAll(alBusinesses);
+    }
+
+    @Override
+    public Set<String> findBusinessCustomers(String businessId) {
+        return getBusinessByReference(businessId).getCustomers();
     }
 }

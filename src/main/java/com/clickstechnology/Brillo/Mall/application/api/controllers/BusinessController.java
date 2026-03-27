@@ -1,11 +1,13 @@
 package com.clickstechnology.Brillo.Mall.application.api.controllers;
 
 import com.clickstechnology.Brillo.Mall.application.dto.BusinessDto;
+import com.clickstechnology.Brillo.Mall.application.dto.CustomerDto;
 import com.clickstechnology.Brillo.Mall.application.dto.request.business.OnboardBusinessRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.request.business.UpdateBusinessRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.response.PaginatedResponse;
 import com.clickstechnology.Brillo.Mall.application.dto.response.ResponseWrapper;
 import com.clickstechnology.Brillo.Mall.application.dto.response.business.OnboardBusinessResponse;
+import com.clickstechnology.Brillo.Mall.application.features.business.GetBusinessCustomers;
 import com.clickstechnology.Brillo.Mall.application.features.business.OnboardUserBusiness;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -31,6 +33,7 @@ import static com.clickstechnology.Brillo.Mall.application.dto.response.Response
 public class BusinessController {
 
     private final OnboardUserBusiness onboardUserBusiness;
+    private final GetBusinessCustomers  getBusinessCustomers;
 
     @PostMapping("onboard")
     public ResponseWrapper<OnboardBusinessResponse> onboard(
@@ -82,5 +85,16 @@ public class BusinessController {
     public ResponseWrapper<BusinessDto> getBusinessBySlug(@PathVariable final String businessSlug) {
         BusinessDto response = onboardUserBusiness.getBusinessBySlug(businessSlug);
         return success(response);
+    }
+
+    @GetMapping("{businessId}/customers")
+    public ResponseWrapper<PaginatedResponse<CustomerDto>> getCustomers(@PathVariable final String businessId,
+        @RequestParam(value = "page", defaultValue = "1") final Integer page,
+        @RequestParam(value = "pageSize", defaultValue = "20")  final Integer pageSize,
+        final HttpServletRequest httpServletRequest) {
+        PaginatedResponse<CustomerDto> response = getBusinessCustomers.execute(
+                businessId,
+                    page, pageSize, httpServletRequest);
+            return success(response);
     }
 }
