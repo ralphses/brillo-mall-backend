@@ -2,6 +2,7 @@ package com.clickstechnology.Brillo.Mall.application.dto.order;
 
 import com.clickstechnology.Brillo.Mall.application.dto.CustomerDto;
 import com.clickstechnology.Brillo.Mall.application.enums.PaymentMethod;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -23,8 +24,9 @@ public class PlaceOrderRequest {
     @NotNull(message = "Payment method cannot be null")
     private PaymentMethod paymentMethod;
 
-
-    @NotNull
+    @NotNull(message = "Customer cannot be null")
+    @Valid
     private CustomerDto customer;
+
     private String orderId;
 }

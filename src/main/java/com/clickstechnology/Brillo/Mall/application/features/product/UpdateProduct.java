@@ -38,7 +38,6 @@ public class UpdateProduct {
             log.warn(":::Failed to update product: Business {} is not active.", businessId);
             throw new BusinessException("Business is not active. Kindly verify or contact admin for support.");
         }
-        // Implementation to be added
         return productService.updateProduct(productId, request);
     }
 }

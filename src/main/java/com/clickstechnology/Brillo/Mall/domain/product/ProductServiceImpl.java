@@ -161,11 +161,11 @@ class ProductServiceImpl implements ProductService {
     @Override
     public void checkInStock(Map<String, Integer> mappedProductQuantityMap) {
         Set<String> productIds = mappedProductQuantityMap.keySet();
-        List<ProductDto> productDtos = findAllByProductIds(productIds);
+        List<ProductDto> products = findAllByProductIds(productIds);
 
-        for (ProductDto productDto : productDtos) {
-            if (productDto.getQuantity() < mappedProductQuantityMap.get(productDto.getId())) {
-                throw new BusinessException("Insufficient stock for product : " + productDto.getName());
+        for (ProductDto product : products) {
+            if (product.getQuantity() < mappedProductQuantityMap.get(product.getId())) {
+                throw new BusinessException("Insufficient stock for product : " + product.getName());
             }
         }
 
