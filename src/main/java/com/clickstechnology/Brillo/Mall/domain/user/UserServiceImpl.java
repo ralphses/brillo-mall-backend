@@ -8,6 +8,7 @@ import com.clickstechnology.Brillo.Mall.application.dto.projections.AuthUser;
 import com.clickstechnology.Brillo.Mall.application.dto.request.RegisterRequest;
 import com.clickstechnology.Brillo.Mall.application.enums.MessageMedium;
 import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;
+import com.clickstechnology.Brillo.Mall.application.enums.UserRole;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
 import com.clickstechnology.Brillo.Mall.application.exception.ResourceNotFoundException;
 import com.clickstechnology.Brillo.Mall.application.utils.AppUtils;

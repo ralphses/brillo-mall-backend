@@ -11,7 +11,7 @@ public class ProductSpecification {
             if (businessId != null && !businessId.trim().isEmpty()) {
                 return criteriaBuilder.equal(root.get("businessId"), businessId);
             } else {
-                return criteriaBuilder.conjunction(); // No-op predicate
+                return criteriaBuilder.conjunction();
             }
         };
     }

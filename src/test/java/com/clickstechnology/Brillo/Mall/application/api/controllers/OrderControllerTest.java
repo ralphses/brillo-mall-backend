@@ -58,6 +58,9 @@ class OrderControllerTest {
 
         CustomerDto customer = new CustomerDto();
         customer.setId("customer1");
+        customer.setCustomerName("Test Customer");
+        customer.setCustomerPhoneNumber("1234567890");
+        customer.setAddress("123 Test Street");
 
         validRequest.setCustomer(customer);
 

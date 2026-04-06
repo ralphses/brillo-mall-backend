@@ -16,4 +16,5 @@ interface BusinessRepository extends JpaRepository<Business, Long> {
     boolean existsByReference(String businessId);
     Page<Business> findAllByOwnerId(String ownerId, Pageable pageable);
     List<Business> findAllByReferenceIn(Set<String> businessIds);
+    List<Business> findAllByOwnerId(String ownerId);
 }

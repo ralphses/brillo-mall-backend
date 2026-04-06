@@ -199,4 +199,18 @@ class BusinessServiceImpl implements BusinessService {
     public Set<String> findBusinessCustomers(String businessId) {
         return getBusinessByReference(businessId).getCustomers();
     }
+
+    @Override
+    public List<BusinessDto> findAllByOwnerId(String userId) {
+        return businessRepository.findAllByOwnerId(userId)
+                .stream().map(Business::dto)
+                .toList();
+    }
+
+    @Override
+    public List<BusinessDto> findAllByBusinessIds(Set<String> businessIds) {
+        return businessRepository.findAllByReferenceIn(businessIds)
+                .stream().map(Business::dto)
+                .toList();
+    }
 }

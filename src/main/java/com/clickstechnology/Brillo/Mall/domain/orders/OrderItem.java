@@ -43,6 +43,9 @@ class OrderItem extends JpaAuditor implements Serializable {
     public OrderItemDto dto() {
         return OrderItemDto.builder()
                 .id(this.getReference())
+                .product(ProductDto.builder()
+                        .id(this.getProductId())
+                        .build())
                 .quantity(this.quantity)
                 .priceAtPurchase(this.priceAtPurchase)
                 .build();

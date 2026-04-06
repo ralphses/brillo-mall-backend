@@ -4,6 +4,7 @@ import com.clickstechnology.Brillo.Mall.application.dto.product.ProductDto;
 import com.clickstechnology.Brillo.Mall.application.dto.request.product.AddProductRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.request.product.UpdateProductRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.response.PaginatedResponse;
+import jakarta.validation.constraints.NotBlank;
 
 import java.util.List;
 import java.util.Map;
@@ -29,4 +30,6 @@ public interface ProductService {
     List<ProductDto> findAllByProductIds(Set<String> productIds);
 
     void checkInStock(Map<String, Integer> mappedProductQuantityMap);
+
+    void reduceStock(Map<String, Integer> mappedProductQuantityMap);
 }

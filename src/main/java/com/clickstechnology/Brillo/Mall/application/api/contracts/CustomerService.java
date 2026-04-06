@@ -10,4 +10,5 @@ public interface CustomerService {
 
     PaginatedResponse<CustomerDto> findAllByRefs(Set<String> customerRefs, int page, int pageSize);
 
+    CustomerDto findByPhoneOrEmail(String ownerId);
 }

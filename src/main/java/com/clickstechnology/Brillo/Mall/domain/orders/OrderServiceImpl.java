@@ -34,6 +34,20 @@ class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    public OrderDto findOrderByIdAndCustomerId(String orderId, String customerId) {
+        return orderRepository.findOrderDetailsByOrderIdAndCustomerId(orderId, customerId)
+                .map(Order::dto)
+                .orElseThrow(() -> new BusinessException("Order not found or does not belong to the customer"));
+    }
+
+    @Override
+    public OrderDto findOrderDetailsForCustomer(String orderId, String customerId) {
+        return orderRepository.findOrderDetailsByOrderIdAndCustomerId(orderId, customerId)
+                .map(Order::dto)
+                .orElseThrow(() -> new BusinessException("Order not found or does not belong to the customer."));
+    }
+
+    @Override
     @Transactional
     public OrderDto addItemsToOrder(String existingOrderId, PlaceOrderRequest request) {
 
@@ -82,6 +96,20 @@ class OrderServiceImpl implements OrderService {
         String timestamp = String.valueOf(Instant.now().toEpochMilli());
         String randomPart = String.format("%04d", new SecureRandom().nextInt(10000));
         return "ORD" + timestamp + randomPart;
+    }
+
+    @Override
+    public OrderDto findOrderForBusinessAdmin(String orderId, List<String> businessIds) {
+        return orderRepository.findOrderForBusinessAdmin(orderId, businessIds)
+                .map(Order::dto)
+                .orElseThrow(() -> new BusinessException("Order not found or you do not have permission to view it."));
+    }
+
+    @Override
+    public OrderDto findByOrderIdWithAnyBusinessId(String orderId) {
+        return orderRepository.findAnyByOrderId(orderId)
+                .map(Order::dto)
+                .orElseThrow(() -> new BusinessException("Order not found or does not belong to any of the provided business IDs"));
     }
 
     private Order getOrder(String orderId) {

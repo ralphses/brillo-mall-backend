@@ -9,6 +9,7 @@ import com.clickstechnology.Brillo.Mall.application.dto.response.PaginatedRespon
 import com.clickstechnology.Brillo.Mall.application.enums.BusinessCategory;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
 import com.clickstechnology.Brillo.Mall.application.exception.UnauthorizedUserException;
+import com.clickstechnology.Brillo.Mall.infrastructure.caching.CacheNames;
 import com.clickstechnology.Brillo.Mall.infrastructure.caching.CacheUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -229,6 +230,147 @@ class BusinessServiceImplTest {
                     .isInstanceOf(BusinessException.class)
                     .hasMessage("This business is not active");
         }
+    }
+
+    @Nested
+    @DisplayName("findByBusinessSlug tests")
+    class FindByBusinessSlugTests {
+
+        @Test
+        @DisplayName("Should return business from cache when slug exists")
+        void findByBusinessSlug_shouldReturnFromCache_whenExists() {
+            // Given
+            String slug = "test-business";
+            when(cacheUtil.get(CacheNames.BUSINESS_SLUG + slug, Business.class)).thenReturn(business);
+
+            // When
+            BusinessDto result = businessService.findByBusinessSlug(slug);
+
+            // Then
+            assertThat(result).isNotNull();
+            assertThat(result.getName()).isEqualTo("Test Business");
+            verify(businessRepository, never()).findBySlug(anyString());
+        }
+
+        @Test
+        @DisplayName("Should return business from repository when slug not in cache")
+        void findByBusinessSlug_shouldReturnFromRepository_whenNotInCache() {
+            // Given
+            String slug = "test-business";
+            when(cacheUtil.get(CacheNames.BUSINESS_SLUG + slug, Business.class)).thenReturn(null);
+            when(businessRepository.findBySlug(slug)).thenReturn(Optional.of(business));
+
+            // When
+            BusinessDto result = businessService.findByBusinessSlug(slug);
+
+            // Then
+            assertThat(result).isNotNull();
+            assertThat(result.getName()).isEqualTo("Test Business");
+            verify(businessRepository).findBySlug(slug);
+            verify(cacheUtil).set(anyString(), any(Business.class), any());
+        }
+
+        @Test
+        @DisplayName("Should throw BusinessException when slug does not exist")
+        void findByBusinessSlug_shouldThrowException_whenNotFound() {
+            // Given
+            String slug = "non-existent-slug";
+            when(cacheUtil.get(CacheNames.BUSINESS_SLUG + slug, Business.class)).thenReturn(null);
+            when(businessRepository.findBySlug(slug)).thenReturn(Optional.empty());
+
+            // When & Then
+            assertThatThrownBy(() -> businessService.findByBusinessSlug(slug))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessage("Business not found");
+        }
+    }
+
+    @Nested
+    @DisplayName("existsByBusinessId tests")
+    class ExistsByBusinessIdTests {
+
+        @Test
+        @DisplayName("Should return false when business exists")
+        void existsByBusinessId_shouldReturnFalse_whenExists() {
+            // Given
+            when(businessRepository.existsByReference("biz1")).thenReturn(true);
+
+            // When
+            boolean exists = businessService.existsByBusinessId("biz1");
+
+            // Then
+            assertThat(exists).isFalse();
+        }
+
+        @Test
+        @DisplayName("Should return true when business does not exist")
+        void existsByBusinessId_shouldReturnTrue_whenNotExists() {
+            // Given
+            when(businessRepository.existsByReference("biz2")).thenReturn(false);
+
+            // When
+            boolean exists = businessService.existsByBusinessId("biz2");
+
+            // Then
+            assertThat(exists).isTrue();
+        }
+    }
+
+    @Test
+    @DisplayName("addLogo should update the business logo URL")
+    void addLogo_shouldUpdateLogoUrl() {
+        // Given
+        String logoUrl = "http://example.com/logo.png";
+        when(cacheUtil.get(anyString(), eq(Business.class))).thenReturn(business);
+
+        // When
+        businessService.addLogo("biz1", logoUrl);
+
+        // Then
+        verify(businessRepository).save(business);
+        assertThat(business.getLogoUrl()).isEqualTo(logoUrl);
+    }
+
+    @Test
+    @DisplayName("findBusinessCustomers should return a set of customer IDs")
+    void findBusinessCustomers_shouldReturnCustomerIds() {
+        // Given
+        business.setCustomers(Set.of("cust1", "cust2"));
+        when(cacheUtil.get(anyString(), eq(Business.class))).thenReturn(business);
+
+        // When
+        Set<String> customers = businessService.findBusinessCustomers("biz1");
+
+        // Then
+        assertThat(customers).containsExactlyInAnyOrder("cust1", "cust2");
+    }
+
+    @Test
+    @DisplayName("findAllByOwnerId (non-paginated) should return a list of businesses")
+    void findAllByOwnerId_nonPaginated_shouldReturnListOfBusinesses() {
+        // Given
+        when(businessRepository.findAllByOwnerId("user1")).thenReturn(List.of(business));
+
+        // When
+        List<BusinessDto> result = businessService.findAllByOwnerId("user1");
+
+        // Then
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getId()).isEqualTo("biz1");
+    }
+
+    @Test
+    @DisplayName("findAllByBusinessIds should return a list of businesses")
+    void findAllByBusinessIds_shouldReturnListOfBusinesses() {
+        // Given
+        when(businessRepository.findAllByReferenceIn(Set.of("biz1"))).thenReturn(List.of(business));
+
+        // When
+        List<BusinessDto> result = businessService.findAllByBusinessIds(Set.of("biz1"));
+
+        // Then
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getId()).isEqualTo("biz1");
     }
 
     @Test

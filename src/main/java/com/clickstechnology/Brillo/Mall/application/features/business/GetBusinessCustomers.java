@@ -3,9 +3,7 @@ package com.clickstechnology.Brillo.Mall.application.features.business;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.AuthenticationUtil;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.BusinessService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.CustomerService;
-import com.clickstechnology.Brillo.Mall.application.api.contracts.ProductService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.UserService;
-import com.clickstechnology.Brillo.Mall.application.dto.BusinessDto;
 import com.clickstechnology.Brillo.Mall.application.dto.CustomerDto;
 import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.dto.response.PaginatedResponse;
@@ -22,7 +20,6 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class GetBusinessCustomers {
     private final CustomerService customerService;
-    private final ProductService productService;
     private final AuthenticationUtil authenticationUtil;
     private final UserService userService;
     private final BusinessService businessService;

@@ -170,4 +170,26 @@ class ProductServiceImpl implements ProductService {
         }
 
     }
+
+    @Override
+    public void reduceStock(Map<String, Integer> mappedProductQuantityMap) {
+        Set<String> productIds = mappedProductQuantityMap.keySet();
+        List<Product> products = productRepository.findAllByReferenceIn(List.copyOf(productIds));
+
+        if (products.size() != productIds.size()) {
+            throw new BusinessException("One or more products could not be found.");
+        }
+
+        for (Product product : products) {
+            int requestedQuantity = mappedProductQuantityMap.get(product.getReference());
+            int newQuantity = product.getQuantity() - requestedQuantity;
+
+            if (newQuantity < 0) {
+                throw new BusinessException("Insufficient stock for product: " + product.getName());
+            }
+            product.setQuantity(newQuantity);
+        }
+
+        productRepository.saveAll(products);
+    }
 }

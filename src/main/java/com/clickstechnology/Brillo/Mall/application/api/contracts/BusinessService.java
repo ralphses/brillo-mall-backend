@@ -34,4 +34,9 @@ public interface BusinessService {
     void addCustomer(CustomerDto customer, Set<String> businessIds);
 
     Set<String> findBusinessCustomers(String businessId);
+
+    List<BusinessDto> findAllByOwnerId(String userId);
+
+    List<BusinessDto> findAllByBusinessIds(Set<String> businessIds);
+
 }

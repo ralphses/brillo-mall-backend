@@ -93,6 +93,7 @@ public class GlobalExceptionHandler {
     /** Catch all other exceptions */
     @ExceptionHandler({Exception.class, ApplicationException.class})
     public ResponseEntity<ResponseWrapper<String>> handleGeneralException(Exception ex) {
+        ex.printStackTrace();
        log.error(ex.getMessage(), ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ResponseBuilder.error("", "An unexpected error occurred", HttpStatus.INTERNAL_SERVER_ERROR.value()));

@@ -188,6 +188,144 @@ class OrderServiceImplTest {
     }
 
     @Nested
+    @DisplayName("findOrderByIdAndCustomerId tests")
+    class FindOrderByIdAndCustomerIdTests {
+
+        @Test
+        @DisplayName("Should return order when found for customer")
+        void findOrderByIdAndCustomerId_shouldReturnOrder_whenFound() {
+            // Given
+            String orderId = "order1";
+            String customerId = customerDto.getId();
+            when(orderRepository.findOrderDetailsByOrderIdAndCustomerId(orderId, customerId)).thenReturn(Optional.of(order));
+
+            // When
+            OrderDto result = orderServiceImpl.findOrderByIdAndCustomerId(orderId, customerId);
+
+            // Then
+            assertThat(result).isNotNull();
+            assertThat(result.getId()).isEqualTo(orderId);
+        }
+
+        @Test
+        @DisplayName("Should throw BusinessException when order not found for customer")
+        void findOrderByIdAndCustomerId_shouldThrowException_whenNotFound() {
+            // Given
+            String orderId = "order1";
+            String customerId = "wrongCustomer";
+            when(orderRepository.findOrderDetailsByOrderIdAndCustomerId(orderId, customerId)).thenReturn(Optional.empty());
+
+            // When & Then
+            assertThatThrownBy(() -> orderServiceImpl.findOrderByIdAndCustomerId(orderId, customerId))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessage("Order not found or does not belong to the customer");
+        }
+    }
+
+    @Nested
+    @DisplayName("findOrderDetailsForCustomer tests")
+    class FindOrderDetailsForCustomerTests {
+
+        @Test
+        @DisplayName("Should return order details when found for customer")
+        void findOrderDetailsForCustomer_shouldReturnOrder_whenFound() {
+            // Given
+            String orderId = "order1";
+            String customerId = customerDto.getId();
+            when(orderRepository.findOrderDetailsByOrderIdAndCustomerId(orderId, customerId)).thenReturn(Optional.of(order));
+
+            // When
+            OrderDto result = orderServiceImpl.findOrderDetailsForCustomer(orderId, customerId);
+
+            // Then
+            assertThat(result).isNotNull();
+            assertThat(result.getId()).isEqualTo(orderId);
+        }
+
+        @Test
+        @DisplayName("Should throw BusinessException when order details not found for customer")
+        void findOrderDetailsForCustomer_shouldThrowException_whenNotFound() {
+            // Given
+            String orderId = "order1";
+            String customerId = "wrongCustomer";
+            when(orderRepository.findOrderDetailsByOrderIdAndCustomerId(orderId, customerId)).thenReturn(Optional.empty());
+
+            // When & Then
+            assertThatThrownBy(() -> orderServiceImpl.findOrderDetailsForCustomer(orderId, customerId))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessage("Order not found or does not belong to the customer.");
+        }
+    }
+
+    @Nested
+    @DisplayName("findOrderForBusinessAdmin tests")
+    class FindOrderForBusinessAdminTests {
+
+        @Test
+        @DisplayName("Should return order when admin has permission")
+        void findOrderForBusinessAdmin_shouldReturnOrder_whenAdminHasPermission() {
+            // Given
+            String orderId = "order1";
+            List<String> businessIds = List.of("biz1");
+            when(orderRepository.findOrderForBusinessAdmin(orderId, businessIds)).thenReturn(Optional.of(order));
+
+            // When
+            OrderDto result = orderServiceImpl.findOrderForBusinessAdmin(orderId, businessIds);
+
+            // Then
+            assertThat(result).isNotNull();
+            assertThat(result.getId()).isEqualTo(orderId);
+        }
+
+        @Test
+        @DisplayName("Should throw BusinessException when admin does not have permission")
+        void findOrderForBusinessAdmin_shouldThrowException_whenAdminLacksPermission() {
+            // Given
+            String orderId = "order1";
+            List<String> businessIds = List.of("biz2");
+            when(orderRepository.findOrderForBusinessAdmin(orderId, businessIds)).thenReturn(Optional.empty());
+
+            // When & Then
+            assertThatThrownBy(() -> orderServiceImpl.findOrderForBusinessAdmin(orderId, businessIds))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessage("Order not found or you do not have permission to view it.");
+        }
+    }
+
+    @Nested
+    @DisplayName("findByOrderIdWithAnyBusinessId tests")
+    class FindByOrderIdWithAnyBusinessIdTests {
+
+        @Test
+        @DisplayName("Should return order when associated with any business ID")
+        void findByOrderIdWithAnyBusinessId_shouldReturnOrder_whenAssociated() {
+            // Given
+            String orderId = "order1";
+            when(orderRepository.findAnyByOrderId(orderId)).thenReturn(Optional.of(order));
+
+            // When
+            OrderDto result = orderServiceImpl.findByOrderIdWithAnyBusinessId(orderId);
+
+            // Then
+            assertThat(result).isNotNull();
+            assertThat(result.getId()).isEqualTo(orderId);
+        }
+
+        @Test
+        @DisplayName("Should throw BusinessException when not associated with any business ID")
+        void findByOrderIdWithAnyBusinessId_shouldThrowException_whenNotAssociated() {
+            // Given
+            String orderId = "order1";
+            when(orderRepository.findAnyByOrderId(orderId)).thenReturn(Optional.empty());
+
+            // When & Then
+            assertThatThrownBy(() -> orderServiceImpl.findByOrderIdWithAnyBusinessId(orderId))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessage("Order not found or does not belong to any of the provided business IDs");
+        }
+    }
+
+    @Nested
     @DisplayName("generateOrderId tests")
     class GenerateOrderIdTests {
 

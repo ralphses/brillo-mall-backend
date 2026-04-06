@@ -3,6 +3,7 @@ package com.clickstechnology.Brillo.Mall.domain.customer;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.CustomerService;
 import com.clickstechnology.Brillo.Mall.application.dto.CustomerDto;
 import com.clickstechnology.Brillo.Mall.application.dto.response.PaginatedResponse;
+import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -51,5 +52,13 @@ class CustomerServiceImpl implements CustomerService {
                 .hasPrevious(customerPage.hasPrevious())
                 .items(items)
                 .build();
+    }
+
+    @Override
+    public CustomerDto findByPhoneOrEmail(String ownerId) {
+        return customerRepository.findByPhone(ownerId)
+                .or(() -> customerRepository.findByEmail(ownerId))
+                .map(Customer::dto)
+                .orElseThrow(() -> new BusinessException("Customer not found"));
     }
 }

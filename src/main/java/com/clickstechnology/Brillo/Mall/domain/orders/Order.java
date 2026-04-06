@@ -63,8 +63,10 @@ class Order extends JpaAuditor implements Serializable {
         if (items == null) {
             items = new ArrayList<>();
         }
-        items.add(item);
-        item.setOrder(this);
+       if (item != null) {
+           items.add(item);
+           item.setOrder(this);
+       }
     }
 
     public void addOrderItems(List<OrderItem> orderItems) {

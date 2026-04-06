@@ -2,6 +2,7 @@ package com.clickstechnology.Brillo.Mall.domain.product;
 
 import com.clickstechnology.Brillo.Mall.application.dto.product.ProductDto;
 import com.clickstechnology.Brillo.Mall.application.dto.request.product.AddProductRequest;
+import com.clickstechnology.Brillo.Mall.application.dto.request.product.UpdateProductRequest;
 import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
 import org.junit.jupiter.api.BeforeEach;
@@ -12,8 +13,17 @@ import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -21,6 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -37,6 +48,9 @@ class ProductServiceImplTest {
 
     @Captor
     private ArgumentCaptor<Product> productCaptor;
+
+    @Captor
+    private ArgumentCaptor<List<Product>> productListCaptor;
 
     private String businessId;
     private AddProductRequest addProductRequest;
@@ -131,5 +145,213 @@ class ProductServiceImplTest {
         assertEquals(businessId, capturedProduct.getBusinessId());
         assertEquals("Test Product", capturedProduct.getName());
         assertEquals(EntityStatus.ACTIVE, capturedProduct.getStatus());
+    }
+
+    // ... existing tests ...
+
+    @Mock
+    private ProductSpecification productSpecification;
+
+    // ... other mocks and injections ...
+
+    @Test
+    void getProducts_Success() {
+
+        // Given
+        Specification<Product> mockSpec =
+                (root, query, criteriaBuilder) -> null;
+
+        when(productSpecification.getProducts(businessId))
+                .thenReturn(mockSpec);
+
+        Page<Product> productPage =
+                new PageImpl<>(List.of(new Product()));
+
+        when(productRepository.findAll(eq(mockSpec), any(Pageable.class)))
+                .thenReturn(productPage);
+
+        // When
+        var result = productService.getProducts(businessId, 1, 10);
+
+        // Then
+        assertNotNull(result);
+        assertEquals(1, result.getItems().size());
+
+        verify(productSpecification).getProducts(businessId);
+
+        verify(productRepository)
+                .findAll(eq(mockSpec), any(Pageable.class));
+    }
+
+    @Test
+    void findProductByProductId_Success() {
+        // Given
+        Product product = new Product();
+        product.setReference("prod-123");
+        when(productRepository.findByReference("prod-123")).thenReturn(Optional.of(product));
+
+        // When
+        ProductDto result = productService.findProductByProductId("prod-123");
+
+        // Then
+        assertNotNull(result);
+        assertEquals("prod-123", result.getId());
+    }
+
+    @Test
+    void findProductByProductId_ThrowsException_WhenNotFound() {
+        // Given
+        when(productRepository.findByReference("prod-123")).thenReturn(Optional.empty());
+
+        // When & Then
+        assertThrows(BusinessException.class, () -> productService.findProductByProductId("prod-123"));
+    }
+
+    @Test
+    void findProductBySku_Success() {
+        // Given
+        Product product = new Product();
+        product.setSku("SKU-123");
+        when(productRepository.findBySku("SKU-123")).thenReturn(Optional.of(product));
+
+        // When
+        ProductDto result = productService.findProductBySku("SKU-123");
+
+        // Then
+        assertNotNull(result);
+        assertEquals("SKU-123", result.getSku());
+    }
+
+    @Test
+    void findProductBySku_ThrowsException_WhenNotFound() {
+        // Given
+        when(productRepository.findBySku("SKU-123")).thenReturn(Optional.empty());
+
+        // When & Then
+        assertThrows(BusinessException.class, () -> productService.findProductBySku("SKU-123"));
+    }
+
+    @Test
+    void deleteProduct_Success() {
+        // Given
+        Product product = new Product();
+        product.setStatus(EntityStatus.ACTIVE);
+        when(productRepository.findByReference("prod-123")).thenReturn(Optional.of(product));
+
+        // When
+        productService.deleteProduct("prod-123");
+
+        // Then
+        verify(productRepository).save(productCaptor.capture());
+        assertEquals(EntityStatus.DELETED, productCaptor.getValue().getStatus());
+    }
+
+    @Test
+    void updateProduct_Success() {
+        // Given
+        Product product = new Product();
+        product.setName("Old Name");
+        when(productRepository.findByReference("prod-123")).thenReturn(Optional.of(product));
+        when(productRepository.save(any(Product.class))).thenReturn(product);
+
+        UpdateProductRequest request = new UpdateProductRequest();
+        request.setName("New Name");
+
+        // When
+        ProductDto result = productService.updateProduct("prod-123", request);
+
+        // Then
+        assertNotNull(result);
+        assertEquals("New Name", result.getName());
+    }
+
+    @Test
+    void findProductsByIds_Success() {
+        // Given
+        List<String> productIds = List.of("prod-123");
+        when(productRepository.findAllByReferenceIn(productIds)).thenReturn(List.of(new Product()));
+
+        // When
+        productService.findProductsByIds(productIds);
+
+        // Then
+        verify(productRepository).findAllByReferenceIn(productIds);
+    }
+
+    @Test
+    void findAllByProductIds_Success() {
+        // Given
+        when(productRepository.findAllByReferenceIn(List.of("prod-123"))).thenReturn(List.of(new Product()));
+
+        // When
+        var result = productService.findAllByProductIds(Set.of("prod-123"));
+
+        // Then
+        assertNotNull(result);
+        assertEquals(1, result.size());
+    }
+
+    @Test
+    void checkInStock_Success() {
+        // Given
+        Product product = new Product();
+        product.setReference("prod-123");
+        product.setQuantity(10);
+        when(productRepository.findAllByReferenceIn(List.of("prod-123"))).thenReturn(List.of(product));
+
+        // When & Then
+        assertDoesNotThrow(() -> productService.checkInStock(Map.of("prod-123", 5)));
+    }
+
+    @Test
+    void checkInStock_ThrowsException_WhenInsufficientStock() {
+        // Given
+        Product product = new Product();
+        product.setReference("prod-123");
+        product.setQuantity(10);
+        product.setName("Test Product");
+        when(productRepository.findAllByReferenceIn(List.of("prod-123"))).thenReturn(List.of(product));
+
+        // When & Then
+        assertThrows(BusinessException.class, () -> productService.checkInStock(Map.of("prod-123", 15)));
+    }
+
+    @Test
+    void reduceStock_Success() {
+        // Given
+        Product product = new Product();
+        product.setReference("prod-123");
+        product.setQuantity(10);
+        when(productRepository.findAllByReferenceIn(List.of("prod-123"))).thenReturn(List.of(product));
+
+        // When
+        productService.reduceStock(Map.of("prod-123", 5));
+
+        // Then
+        verify(productRepository).saveAll(productListCaptor.capture());
+        List<Product> capturedProducts = productListCaptor.getValue();
+        assertEquals(1, capturedProducts.size());
+        assertEquals(5, capturedProducts.get(0).getQuantity());
+    }
+
+    @Test
+    void reduceStock_ThrowsException_WhenProductNotFound() {
+        // Given
+        when(productRepository.findAllByReferenceIn(List.of("prod-123"))).thenReturn(List.of());
+
+        // When & Then
+        assertThrows(BusinessException.class, () -> productService.reduceStock(Map.of("prod-123", 5)));
+    }
+
+    @Test
+    void reduceStock_ThrowsException_WhenInsufficientStock() {
+        // Given
+        Product product = new Product();
+        product.setReference("prod-123");
+        product.setQuantity(10);
+        when(productRepository.findAllByReferenceIn(List.of("prod-123"))).thenReturn(List.of(product));
+
+        // When & Then
+        assertThrows(BusinessException.class, () -> productService.reduceStock(Map.of("prod-123", 15)));
     }
 }

@@ -2,6 +2,7 @@ package com.clickstechnology.Brillo.Mall.domain.user;
 
 import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;
+import com.clickstechnology.Brillo.Mall.application.enums.UserRole;
 import com.clickstechnology.Brillo.Mall.infrastructure.persistence.JpaAuditor;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
