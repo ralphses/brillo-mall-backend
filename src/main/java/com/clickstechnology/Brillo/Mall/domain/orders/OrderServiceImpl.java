@@ -1,22 +1,34 @@
 package com.clickstechnology.Brillo.Mall.domain.orders;
 
+import com.clickstechnology.Brillo.Mall.application.api.contracts.BusinessService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.OrderService;
+import com.clickstechnology.Brillo.Mall.application.api.contracts.ProductService;
+import com.clickstechnology.Brillo.Mall.application.dto.BusinessDto;
+import com.clickstechnology.Brillo.Mall.application.dto.CustomerDto;
 import com.clickstechnology.Brillo.Mall.application.dto.order.OrderDto;
 import com.clickstechnology.Brillo.Mall.application.dto.order.PlaceOrderRequest;
+import com.clickstechnology.Brillo.Mall.application.dto.product.ProductDto;
+import com.clickstechnology.Brillo.Mall.application.dto.response.PaginatedResponse;
 import com.clickstechnology.Brillo.Mall.application.enums.OrderStatus;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
 import com.clickstechnology.Brillo.Mall.infrastructure.caching.CacheNames;
 import com.clickstechnology.Brillo.Mall.infrastructure.caching.CacheUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.security.SecureRandom;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -27,6 +39,8 @@ class OrderServiceImpl implements OrderService {
     private final OrderItemRepository orderItemRepository;
     private final OrderRepository orderRepository;
     private final CacheUtil cacheUtil;
+    private final ProductService productService;
+    private final BusinessService businessService;
 
     @Override
     public OrderDto findOrderById(String orderId) {
@@ -88,7 +102,7 @@ class OrderServiceImpl implements OrderService {
 
         newOrder.addOrderItems(orderItems);
 
-        return orderRepository.save(newOrder).dto();
+        return orderRepository.saveAndFlush(newOrder).dto();
     }
 
     @Override
@@ -112,6 +126,78 @@ class OrderServiceImpl implements OrderService {
                 .orElseThrow(() -> new BusinessException("Order not found or does not belong to any of the provided business IDs"));
     }
 
+    @Override
+    public PaginatedResponse<OrderDto> findAllByCustomerId(String customerId, Integer page, Integer pageSize) {
+        Pageable pageable = PageRequest.of(page - 1, pageSize);
+        Page<Order> orderPage = orderRepository.findAllByCustomerId(customerId, pageable);
+        return getOrderPaginatedResponse(orderPage);
+    }
+
+    @Override
+    public PaginatedResponse<OrderDto> findAllByBusinessId(String businessId, Integer page, Integer pageSize) {
+        Pageable pageable = PageRequest.of(page - 1, pageSize);
+        Page<Order> orderPage = orderRepository.findAllByBusinessId(businessId, pageable);
+        return getOrderPaginatedResponse(orderPage);
+    }
+
+    @Override
+    public PaginatedResponse<OrderDto> findAllByBusinessIds(List<String> businessIds, Integer page, Integer pageSize) {
+        Pageable pageable = PageRequest.of(page - 1, pageSize);
+        Page<Order> orderPage = orderRepository.findAllByBusinessIds(businessIds, pageable);
+        return getOrderPaginatedResponse(orderPage);
+    }
+
+    private PaginatedResponse<OrderDto> getOrderPaginatedResponse(Page<Order> orderPage) {
+        List<OrderDto> orderDtos = orderPage.getContent().stream().map(Order::dto).collect(Collectors.toList());
+
+        // Collect all product IDs from the current page of orders
+        List<String> productIds = orderDtos.stream()
+                .flatMap(orderDto -> orderDto.getItems().stream())
+                .map(item -> item.getProduct().getId())
+                .distinct()
+                .toList();
+
+        // Fetch all products and businesses in batch
+        List<ProductDto> products = productService.findProductsByIds(productIds);
+        Map<String, ProductDto> productMap = products.stream()
+                .collect(Collectors.toMap(ProductDto::getId, product -> product));
+
+        Map<String, String> orderCustomerMap = orderPage.getContent().stream()
+                .collect(Collectors.toMap(Order::getOrderId, Order::getCustomerId));
+
+        Set<String> businessIds = products.stream()
+                .map(ProductDto::getBusinessId)
+                .collect(Collectors.toSet());
+        List<BusinessDto> businesses = businessService.findAllByBusinessIds(businessIds);
+        Map<String, BusinessDto> businessMap = businesses.stream()
+                .collect(Collectors.toMap(BusinessDto::getId, business -> business));
+
+        // Enrich the order DTOs
+        orderDtos.forEach(orderDto -> orderDto.getItems().forEach(item -> {
+            ProductDto fullProduct = productMap.get(item.getProduct().getId());
+            if (fullProduct != null) {
+                item.setProduct(fullProduct);
+                item.setBusiness(businessMap.get(fullProduct.getBusinessId()));
+            }
+
+            CustomerDto customerDto = CustomerDto.builder()
+                    .id(orderCustomerMap.get(orderDto.getId()))
+                    .build();
+
+            orderDto.setCustomer(customerDto);
+        }));
+
+        return PaginatedResponse.<OrderDto>builder()
+                .items(orderDtos)
+                .page(orderPage.getNumber() + 1)
+                .perPage(orderPage.getSize())
+                .total(orderPage.getTotalElements())
+                .totalPages(orderPage.getTotalPages())
+                .hasNext(orderPage.hasNext())
+                .hasPrevious(orderPage.hasPrevious())
+                .build();
+    }
+
     private Order getOrder(String orderId) {
         String cacheKey = CacheNames.ORDER_ID + orderId;
         return Optional.ofNullable(cacheUtil.get(cacheKey, Order.class))
@@ -129,5 +215,4 @@ class OrderServiceImpl implements OrderService {
                         .build())
                 .collect(Collectors.toList());
     }
-
 }

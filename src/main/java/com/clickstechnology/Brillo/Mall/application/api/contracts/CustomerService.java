@@ -6,9 +6,13 @@ import com.clickstechnology.Brillo.Mall.application.dto.response.PaginatedRespon
 import java.util.Set;
 
 public interface CustomerService {
-    CustomerDto resolveCustomer(CustomerDto customer);
+    CustomerDto resolveCustomer(CustomerDto customer, String userId);
 
     PaginatedResponse<CustomerDto> findAllByRefs(Set<String> customerRefs, int page, int pageSize);
 
     CustomerDto findByPhoneOrEmail(String ownerId);
+
+    CustomerDto findByUserId(String userId);
+
+    Set<CustomerDto> findAllByRefs(Set<String> customerIds);
 }

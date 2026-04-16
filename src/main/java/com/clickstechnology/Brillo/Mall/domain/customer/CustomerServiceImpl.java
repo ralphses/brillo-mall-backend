@@ -23,12 +23,13 @@ class CustomerServiceImpl implements CustomerService {
     private final CustomerRepository customerRepository;
 
     @Override
-    public CustomerDto resolveCustomer(CustomerDto customer) {
+    public CustomerDto resolveCustomer(CustomerDto customer, String userId) {
 
         return customerRepository.findByPhone(customer.getCustomerPhoneNumber())
                 .orElseGet(() -> {
                     Customer newCustomer = new Customer();
                     newCustomer.setAddress(customer.getAddress());
+                    newCustomer.setUserId(userId);
                     newCustomer.setName(customer.getCustomerName());
                     newCustomer.setEmail(customer.getCustomerEmail());
                     newCustomer.setPhone(customer.getCustomerPhoneNumber());
@@ -56,9 +57,25 @@ class CustomerServiceImpl implements CustomerService {
 
     @Override
     public CustomerDto findByPhoneOrEmail(String ownerId) {
+        log.debug("Finding Customer by Phone or Email: {}", ownerId);
         return customerRepository.findByPhone(ownerId)
                 .or(() -> customerRepository.findByEmail(ownerId))
                 .map(Customer::dto)
                 .orElseThrow(() -> new BusinessException("Customer not found"));
+    }
+
+    @Override
+    public CustomerDto findByUserId(String userId) {
+        return customerRepository.findByUserId(userId)
+                .map(Customer::dto)
+                .orElseThrow(() -> new BusinessException("Customer not found"));
+    }
+
+    @Override
+    public Set<CustomerDto> findAllByRefs(Set<String> customerIds) {
+        return customerRepository.findAllByReferenceIn(customerIds)
+                .stream()
+                .map(Customer::dto)
+                .collect(Collectors.toSet());
     }
 }

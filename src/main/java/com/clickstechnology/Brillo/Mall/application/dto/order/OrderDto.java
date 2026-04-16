@@ -1,6 +1,7 @@
 package com.clickstechnology.Brillo.Mall.application.dto.order;
 
 import com.clickstechnology.Brillo.Mall.application.dto.BusinessDto;
+import com.clickstechnology.Brillo.Mall.application.dto.CustomerDto;
 import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.enums.OrderStatus;
 import com.clickstechnology.Brillo.Mall.application.enums.PaymentMethod;
@@ -20,7 +21,7 @@ import java.util.List;
 public class OrderDto {
     private String id;
     private BusinessDto business;
-    private UserDto customer;
+    private CustomerDto customer;
     private OrderStatus status;
     private PaymentMethod paymentMethod;
     private BigDecimal totalAmount;

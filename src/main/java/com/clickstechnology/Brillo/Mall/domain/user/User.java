@@ -52,7 +52,7 @@ class User extends JpaAuditor implements Serializable {
     @Column(name = "phone_number", length = 20)
     private String phoneNumber;
 
-    @Column(name = "username", length = 20, nullable = false, unique = true)
+    @Column(name = "username", length = 100, nullable = false, unique = true)
     private String username;
 
     @Column(name = "password", nullable = false)

@@ -15,6 +15,7 @@ import com.clickstechnology.Brillo.Mall.application.dto.request.business.Onboard
 import com.clickstechnology.Brillo.Mall.application.dto.request.product.AddProductRequest;
 import com.clickstechnology.Brillo.Mall.application.enums.BusinessCategory;
 import com.clickstechnology.Brillo.Mall.application.enums.PaymentMethod;
+import com.clickstechnology.Brillo.Mall.application.enums.UserRole;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -100,7 +101,7 @@ class OrderControllerIntegrationTest {
         customerDto.setCustomerEmail(testUser.getEmail());
 
 
-        testCustomer = customerService.resolveCustomer(customerDto);
+        testCustomer = customerService.resolveCustomer(customerDto, testUser.getId());
         System.out.println("testCustomer = " + testCustomer);
     }
 
@@ -203,5 +204,159 @@ class OrderControllerIntegrationTest {
                 .andExpect(jsonPath("$.data.id").value(orderId))
                 .andExpect(jsonPath("$.data.totalAmount").value(19.99))
                 .andExpect(jsonPath("$.data.items[0].product.name").value("Test Product"));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/orders - Should Fetch All Orders for a Customer")
+    void getAllOrders_shouldSucceed_forAuthenticatedCustomer() throws Exception {
+        // --- GIVEN: Two separate orders placed by the same customer ---
+        PlaceOrderRequest firstOrderRequest = new PlaceOrderRequest();
+        firstOrderRequest.setCustomer(testCustomer);
+        firstOrderRequest.setItems(List.of(new OrderItemRequest(product.getId(), 1, product.getPrice())));
+        firstOrderRequest.setPaymentMethod(PaymentMethod.PAY_ON_DELIVERY);
+
+        mockMvc.perform(post("/api/v1/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(firstOrderRequest)))
+                .andExpect(status().isOk());
+
+        PlaceOrderRequest secondOrderRequest = new PlaceOrderRequest();
+        secondOrderRequest.setCustomer(testCustomer);
+        secondOrderRequest.setItems(List.of(new OrderItemRequest(product.getId(), 2, product.getPrice())));
+        secondOrderRequest.setPaymentMethod(PaymentMethod.ONLINE);
+
+        mockMvc.perform(post("/api/v1/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(secondOrderRequest)))
+                .andExpect(status().isOk());
+
+        // --- WHEN & THEN: Fetch all orders for the customer ---
+        mockMvc.perform(get("/api/v1/orders")
+                        .param("page", "1")
+                        .param("pageSize", "10")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.data.total").value(2))
+                .andExpect(jsonPath("$.data.items.length()").value(2))
+                .andExpect(jsonPath("$.data.items[0].totalAmount").value(19.99))
+                .andExpect(jsonPath("$.data.items[1].totalAmount").value(39.98));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/orders - Admin Should Fetch Orders by BusinessId")
+    @WithMockUser(username = "admin@test.com", authorities = {"ROLE_ADMIN"})
+    void getAllOrders_shouldSucceed_forAdminWithBusinessId() throws Exception {
+        // GIVEN: An admin user is registered and granted the ADMIN role
+        RegisterRequest adminRegisterRequest = new RegisterRequest("Admin User", "admin@test.com", "Password123", "admin@test.com");
+        userService.registerNewUser(adminRegisterRequest, null, false);
+        userService.addRoleToUser("admin@test.com", UserRole.ADMIN);
+
+        // --- GIVEN: A second business and product owned by another user ---
+        RegisterRequest otherUserRequest = new RegisterRequest("Other User", "08012345678", "Password123", null);
+        userService.registerNewUser(otherUserRequest, null, false);
+        UserDto otherUser = userService.findByUsername("08012345678");
+
+        OnboardBusinessRequest otherBusinessRequest = new OnboardBusinessRequest();
+        otherBusinessRequest.setBusinessName("Other Mart");
+        businessService.createNew(otherBusinessRequest, otherUser, "logo2.png", BusinessCategory.PRODUCTS);
+        BusinessDto otherBusiness = businessService.findByBusinessSlug("other-mart");
+
+        AddProductRequest otherProductRequest = new AddProductRequest();
+        otherProductRequest.setName("Other Product");
+        otherProductRequest.setPrice(BigDecimal.valueOf(50.00));
+        otherProductRequest.setQuantity(5);
+        ProductDto otherProduct = productService.createProduct(otherBusiness.getId(), otherProductRequest, "logo2.png");
+
+        // Place an order for the first business's product
+        OrderItemRequest firstItemRequest = new OrderItemRequest();
+        firstItemRequest.setProductId(product.getId());
+        firstItemRequest.setQuantity(1);
+        firstItemRequest.setPrice(product.getPrice());
+
+        PlaceOrderRequest firstOrderRequest = new PlaceOrderRequest();
+        firstOrderRequest.setCustomer(testCustomer);
+        firstOrderRequest.setItems(List.of(firstItemRequest));
+        firstOrderRequest.setPaymentMethod(PaymentMethod.ONLINE);
+        mockMvc.perform(post("/api/v1/orders").contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(firstOrderRequest))).andExpect(status().isOk());
+
+        // Place an order for the second business's product
+        OrderItemRequest secondItemRequest = new OrderItemRequest();
+        secondItemRequest.setProductId(otherProduct.getId());
+        secondItemRequest.setQuantity(1);
+        secondItemRequest.setPrice(otherProduct.getPrice());
+
+        PlaceOrderRequest secondOrderRequest = new PlaceOrderRequest();
+        secondOrderRequest.setCustomer(testCustomer);
+        secondOrderRequest.setItems(List.of(secondItemRequest));
+        secondOrderRequest.setPaymentMethod(PaymentMethod.ONLINE);
+        mockMvc.perform(post("/api/v1/orders").contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(secondOrderRequest))).andExpect(status().isOk());
+
+        // --- WHEN & THEN: Admin fetches orders for the first business only ---
+        mockMvc.perform(get("/api/v1/orders")
+                        .param("businessId", product.getBusinessId())
+                        .param("page", "1")
+                        .param("pageSize", "10")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.data.total").value(1))
+                .andExpect(jsonPath("$.data.items.length()").value(1))
+                .andExpect(jsonPath("$.data.items[0].items[0].product.name").value("Test Product"));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/orders - Admin Should Fetch Orders for Their Own Businesses if no businessId is provided")
+    @WithMockUser(username = "07035002025", authorities = {"ROLE_ADMIN"})
+    void getAllOrders_shouldSucceed_forAdminWithoutBusinessId() throws Exception {
+        // GIVEN: Grant ADMIN role to the primary test user for this test
+        userService.addRoleToUser(testUser.getPhoneNumber(), UserRole.ADMIN);
+
+        // --- GIVEN: A second business and product owned by another user ---
+        RegisterRequest otherUserRequest = new RegisterRequest("Other User", "08012345678", "Password123", null);
+        userService.registerNewUser(otherUserRequest, null, false);
+        UserDto otherUser = userService.findByUsername("08012345678");
+
+        OnboardBusinessRequest otherBusinessRequest = new OnboardBusinessRequest();
+        otherBusinessRequest.setBusinessName("Other Mart");
+        businessService.createNew(otherBusinessRequest, otherUser, "logo2.png", BusinessCategory.PRODUCTS);
+        BusinessDto otherBusiness = businessService.findByBusinessSlug("other-mart");
+
+        AddProductRequest otherProductRequest = new AddProductRequest();
+        otherProductRequest.setName("Other Product");
+        otherProductRequest.setPrice(BigDecimal.valueOf(50.00));
+        otherProductRequest.setQuantity(5);
+        ProductDto otherProduct = productService.createProduct(otherBusiness.getId(), otherProductRequest, "logo2.png");
+
+        // Place an order for the admin's own business's product
+        PlaceOrderRequest firstOrderRequest = PlaceOrderRequest.builder()
+                .customer(testCustomer)
+                .items(List.of(new OrderItemRequest(product.getId(), 1, product.getPrice())))
+                .paymentMethod(PaymentMethod.ONLINE)
+                .build();
+
+        mockMvc.perform(post("/api/v1/orders").contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(firstOrderRequest))).andExpect(status().isOk());
+
+        // Place an order for the second, unrelated business's product
+        PlaceOrderRequest secondOrderRequest = PlaceOrderRequest
+                .builder()
+                .paymentMethod(PaymentMethod.ONLINE)
+                .customer(testCustomer)
+                .items(List.of(new OrderItemRequest(otherProduct.getId(), 1, otherProduct.getPrice())))
+                .build();
+
+        mockMvc.perform(post("/api/v1/orders").contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(secondOrderRequest))).andExpect(status().isOk());
+
+        // --- WHEN & THEN: Admin (testUser) fetches orders without a businessId ---
+        // Should only return orders from businesses owned by testUser ("Test Mart")
+        mockMvc.perform(get("/api/v1/orders")
+                        .param("page", "1")
+                        .param("pageSize", "10")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.data.total").value(2))
+                .andExpect(jsonPath("$.data.items.length()").value(2))
+                .andExpect(jsonPath("$.data.items[0].items[0].product.name").value("Test Product"));
     }
 }

@@ -1,14 +1,20 @@
 package com.clickstechnology.Brillo.Mall.domain.orders;
 
+import com.clickstechnology.Brillo.Mall.application.api.contracts.BusinessService;
+import com.clickstechnology.Brillo.Mall.application.api.contracts.ProductService;
 import com.clickstechnology.Brillo.Mall.application.dto.CustomerDto;
 import com.clickstechnology.Brillo.Mall.application.dto.order.OrderDto;
 import com.clickstechnology.Brillo.Mall.application.dto.order.OrderItemRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.order.PlaceOrderRequest;
+import com.clickstechnology.Brillo.Mall.application.dto.response.PaginatedResponse;
 import com.clickstechnology.Brillo.Mall.application.enums.PaymentMethod;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
 import com.clickstechnology.Brillo.Mall.infrastructure.caching.CacheNames;
 import com.clickstechnology.Brillo.Mall.infrastructure.caching.CacheUtil;
 import org.junit.jupiter.api.BeforeEach;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -39,6 +45,12 @@ class OrderServiceImplTest {
 
     @Mock
     private CacheUtil cacheUtil;
+
+    @Mock
+    private ProductService productService;
+
+    @Mock
+    private BusinessService businessService;
 
     @InjectMocks
     private OrderServiceImpl orderServiceImpl;
@@ -170,7 +182,7 @@ class OrderServiceImplTest {
         void createNewOrder_shouldCreateNewOrderSuccessfully() {
             // Given
             String newOrderId = "newOrder1";
-            when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
+            when(orderRepository.saveAndFlush(any(Order.class))).thenAnswer(invocation -> {
                 Order savedOrder = invocation.getArgument(0);
                 savedOrder.setId(1L); // Simulate saving and getting an ID
                 return savedOrder;
@@ -183,7 +195,7 @@ class OrderServiceImplTest {
             assertThat(result).isNotNull();
             assertThat(result.getId()).isEqualTo(newOrderId);
             assertThat(result.getTotalAmount()).isEqualTo(BigDecimal.valueOf(100));
-            verify(orderRepository).save(any(Order.class));
+            verify(orderRepository).saveAndFlush(any(Order.class));
         }
     }
 
@@ -326,6 +338,29 @@ class OrderServiceImplTest {
     }
 
     @Nested
+    @DisplayName("findAllByBusinessIds tests")
+    class FindAllByBusinessIdsTests {
+
+        @Test
+        @DisplayName("findAllByBusinessIds should return paginated orders for multiple businesses")
+        void findAllByBusinessIds_shouldReturnPaginatedOrders() {
+            // Given
+            List<String> businessIds = List.of("biz1", "biz2");
+            Page<Order> orderPage = new PageImpl<>(List.of(order));
+            when(orderRepository.findAllByBusinessIds(eq(businessIds), any(Pageable.class))).thenReturn(orderPage);
+
+            // When
+            PaginatedResponse<OrderDto> result = orderServiceImpl.findAllByBusinessIds(businessIds, 1, 10);
+
+            // Then
+            assertThat(result).isNotNull();
+            assertThat(result.getItems()).hasSize(1);
+            assertThat(result.getItems().get(0).getId()).isEqualTo(order.getOrderId());
+            assertThat(result.getTotal()).isEqualTo(1);
+        }
+    }
+
+    @Nested
     @DisplayName("generateOrderId tests")
     class GenerateOrderIdTests {
 
@@ -339,6 +374,29 @@ class OrderServiceImplTest {
             assertThat(orderId).isNotNull();
             assertThat(orderId).startsWith("ORD");
             assertThat(orderId.length()).isGreaterThan(10);
+        }
+    }
+
+    @Nested
+    @DisplayName("findAllByBusinessId tests")
+    class FindAllByBusinessIdTests {
+
+        @Test
+        @DisplayName("findAllByBusinessId should return paginated orders for a business")
+        void findAllByBusinessId_shouldReturnPaginatedOrders() {
+            // Given
+            String businessId = "biz1";
+            Page<Order> orderPage = new PageImpl<>(List.of(order));
+            when(orderRepository.findAllByBusinessId(eq(businessId), any(Pageable.class))).thenReturn(orderPage);
+
+            // When
+            PaginatedResponse<OrderDto> result = orderServiceImpl.findAllByBusinessId(businessId, 1, 10);
+
+            // Then
+            assertThat(result).isNotNull();
+            assertThat(result.getItems()).hasSize(1);
+            assertThat(result.getItems().getFirst().getId()).isEqualTo(order.getOrderId());
+            assertThat(result.getTotal()).isEqualTo(1);
         }
     }
 }

@@ -3,6 +3,7 @@ package com.clickstechnology.Brillo.Mall.application.api.controllers;
 import com.clickstechnology.Brillo.Mall.application.dto.order.OrderDto;
 import com.clickstechnology.Brillo.Mall.application.dto.order.OrderPlacedResponse;
 import com.clickstechnology.Brillo.Mall.application.dto.order.PlaceOrderRequest;
+import com.clickstechnology.Brillo.Mall.application.dto.response.PaginatedResponse;
 import com.clickstechnology.Brillo.Mall.application.dto.response.ResponseWrapper;
 import com.clickstechnology.Brillo.Mall.application.enums.RequestSource;
 import com.clickstechnology.Brillo.Mall.application.features.orders.ManageOrder;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import static com.clickstechnology.Brillo.Mall.application.dto.response.ResponseBuilder.success;
@@ -41,5 +43,16 @@ public class OrderController {
             final HttpServletRequest httpServletRequest) {
         OrderDto order = manageOrder.findOrderById(orderId, RequestSource.API, httpServletRequest, null);
         return success(order);
+    }
+
+    @GetMapping
+    public ResponseWrapper<PaginatedResponse<OrderDto>> getAllOrders(
+            final HttpServletRequest httpServletRequest,
+            @RequestParam(value = "page", defaultValue = "1") final Integer page,
+            @RequestParam(value = "pageSize", defaultValue = "20")  final Integer pageSize,
+            @RequestParam(value = "businessId", required = false) final String businessId,
+            @RequestParam(value = "ownerId", required = false) final String ownerId
+            ) {
+        return success(manageOrder.findAllOrders(RequestSource.API, httpServletRequest, page, pageSize, ownerId, businessId));
     }
 }

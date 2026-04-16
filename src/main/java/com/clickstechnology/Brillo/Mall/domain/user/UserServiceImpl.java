@@ -180,4 +180,20 @@ class UserServiceImpl implements UserService {
                 .map(Enum::name)
                 .toList();
     }
+
+    @Transactional
+    @Override
+    public void addRoleToUser(String username, UserRole roleToAdd) {
+        User user = getByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with username: " + username));
+
+        List<UserRole> currentRoles = user.getRoles();
+        List<UserRole> newRoles = (currentRoles == null) ? new java.util.ArrayList<>() : new java.util.ArrayList<>(currentRoles);
+
+        if (!newRoles.contains(roleToAdd)) {
+            newRoles.add(roleToAdd);
+            user.setRoles(newRoles);
+            userRepository.save(user);
+        }
+    }
 }

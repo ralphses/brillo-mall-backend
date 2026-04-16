@@ -1,11 +1,15 @@
 package com.clickstechnology.Brillo.Mall.application.features.orders;
 
+import com.clickstechnology.Brillo.Mall.application.api.contracts.AuthenticationUtil;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.BusinessService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.CustomerService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.OrderService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.ProductService;
+import com.clickstechnology.Brillo.Mall.application.api.contracts.UserService;
 import com.clickstechnology.Brillo.Mall.application.dto.CustomerDto;
+import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.dto.order.OrderDto;
+import com.clickstechnology.Brillo.Mall.application.dto.order.OrderItemDto;
 import com.clickstechnology.Brillo.Mall.application.dto.order.OrderPlacedResponse;
 import com.clickstechnology.Brillo.Mall.application.dto.product.ProductDto;
 import com.clickstechnology.Brillo.Mall.application.dto.order.OrderItemRequest;
@@ -13,13 +17,18 @@ import com.clickstechnology.Brillo.Mall.application.dto.order.PlaceOrderRequest;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
 import com.clickstechnology.Brillo.Mall.infrastructure.logging.LoggableRequest;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -30,11 +39,15 @@ public class PlaceOrder {
     private final BusinessService businessService;
     private final ProductService productService;
     private final CustomerService customerService;
+    private final AuthenticationUtil authenticationUtil;
+    private final UserService userService;
 
     @LoggableRequest
     public OrderPlacedResponse execute(PlaceOrderRequest request, HttpServletRequest httpServletRequest) {
 
-        CustomerDto customer = customerService.resolveCustomer(request.getCustomer());
+        String userId = resolveUserId(httpServletRequest, request.getCustomer());
+
+        CustomerDto customer = resolveCustomer(request, userId);
 
         List<ProductDto> products = loadProducts(request);
 
@@ -46,7 +59,58 @@ public class PlaceOrder {
 
         attachCustomerToBusinesses(customer, products);
 
+        enrichOrderDto(order);
+
         return new OrderPlacedResponse("New order placed successfully", order);
+    }
+
+    private CustomerDto resolveCustomer(PlaceOrderRequest request, String userId) {
+        CustomerDto thisCustomer = customerService.resolveCustomer(request.getCustomer(), userId);
+        request.setCustomer(thisCustomer);
+        return thisCustomer;
+    }
+
+    private String resolveUserId(final HttpServletRequest httpServletRequest, final CustomerDto customer) {
+        String authenticatedUsername = authenticationUtil.getAuthenticatedUsername(httpServletRequest);
+        UserDto userDto = userService.findByUsername(authenticatedUsername);
+
+        return Optional.ofNullable(userDto).map(UserDto::getId).orElse(customer.getCustomerPhoneNumber());
+    }
+
+    private void enrichOrderDto(final OrderDto order) {
+
+        if (order == null || order.getItems() == null || order.getItems().isEmpty()) {
+            return;
+        }
+
+        // Collect product IDs
+        Set<String> productIds = order.getItems().stream()
+                .map(OrderItemDto::getProduct)
+                .filter(Objects::nonNull)
+                .map(ProductDto::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        if (productIds.isEmpty()) {
+            return;
+        }
+
+        Map<String, ProductDto> productMap =
+                productService.findAllByProductIds(productIds).stream()
+                        .collect(Collectors.toMap(
+                                ProductDto::getId,
+                                Function.identity()
+                        ));
+
+        order.getItems().forEach(item -> {
+            ProductDto product = item.getProduct();
+            if (product != null) {
+                ProductDto enriched = productMap.get(product.getId());
+                if (enriched != null) {
+                    item.setProduct(enriched);
+                }
+            }
+        });
     }
 
     private List<ProductDto> loadProducts(PlaceOrderRequest request) {

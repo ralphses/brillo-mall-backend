@@ -1,5 +1,6 @@
 package com.clickstechnology.Brillo.Mall.application.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
@@ -14,7 +15,11 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class CustomerDto {
 
+    @JsonIgnore
     private String id;
+
+    @JsonIgnore
+    private String userId;
 
     @NotBlank(message = "Customer address cannot be blank")
     private String address;

@@ -1,6 +1,7 @@
 package com.clickstechnology.Brillo.Mall.domain.orders;
 
 import com.clickstechnology.Brillo.Mall.application.dto.BusinessDto;
+import com.clickstechnology.Brillo.Mall.application.dto.CustomerDto;
 import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.dto.order.OrderDto;
 import com.clickstechnology.Brillo.Mall.application.enums.OrderStatus;
@@ -24,6 +25,9 @@ import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Entity
 @Getter
@@ -70,18 +74,42 @@ class Order extends JpaAuditor implements Serializable {
     }
 
     public void addOrderItems(List<OrderItem> orderItems) {
+
+        if (orderItems == null || orderItems.isEmpty()) {
+            return;
+        }
+
         if (items == null) {
             items = new ArrayList<>();
         }
 
-        if (orderItems != null && !orderItems.isEmpty()) {
-            orderItems.forEach(item -> item.setOrder(this));
-            items.addAll(orderItems);
-        }
+        Map<String, OrderItem> existingItems = items.stream()
+                .collect(Collectors.toMap(
+                        OrderItem::getProductId,
+                        Function.identity(),
+                        (existing, duplicate) -> existing
+                ));
 
+        for (OrderItem newItem : orderItems) {
+
+            newItem.setOrder(this);
+
+            String productId = newItem.getProductId();
+
+            OrderItem existing = existingItems.get(productId);
+
+            if (existing != null) {
+                // Increase quantity
+                existing.setQuantity(existing.getQuantity() + newItem.getQuantity());
+            } else {
+                // Add new item
+                items.add(newItem);
+                existingItems.put(productId, newItem);
+            }
+        }
     }
 
-    public OrderDto dto(UserDto customerDto, BusinessDto businessDto) {
+    public OrderDto dto(CustomerDto customerDto, BusinessDto businessDto) {
         return OrderDto.builder()
                 .id(this.getOrderId())
                 .business(businessDto)

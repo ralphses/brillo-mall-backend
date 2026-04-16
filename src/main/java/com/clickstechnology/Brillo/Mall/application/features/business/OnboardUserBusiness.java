@@ -13,6 +13,7 @@ import com.clickstechnology.Brillo.Mall.application.dto.response.PaginatedRespon
 import com.clickstechnology.Brillo.Mall.application.dto.response.business.OnboardBusinessResponse;
 import com.clickstechnology.Brillo.Mall.application.enums.BusinessCategory;
 import com.clickstechnology.Brillo.Mall.application.enums.FileType;
+import com.clickstechnology.Brillo.Mall.application.enums.UserRole;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
 import com.clickstechnology.Brillo.Mall.application.utils.AppUtils;
 import com.clickstechnology.Brillo.Mall.infrastructure.config.AppPropertiesConfig;
@@ -49,6 +50,10 @@ public class OnboardUserBusiness {
 
         // Create new business
         businessService.createNew(request, user, appPropertiesConfig.getDefaultBusinessLogoUrl(), businessCategory);
+
+        // Add admin role to user
+        userService.addRoleToUser(user.getUsername(), UserRole.ADMIN);
+
         return new OnboardBusinessResponse("Your business has been created and is currently active.");
     }
 

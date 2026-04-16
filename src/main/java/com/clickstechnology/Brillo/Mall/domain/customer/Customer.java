@@ -21,7 +21,9 @@ import java.io.Serializable;
 @AllArgsConstructor
 @Table(name = "BRILLO_CUSTOMER")
 class Customer extends JpaAuditor implements Serializable {
+
     private String name;
+    private String userId;
     private String email;
     private String phone;
     private String address;
@@ -29,6 +31,7 @@ class Customer extends JpaAuditor implements Serializable {
     public CustomerDto dto() {
         return CustomerDto.builder()
                 .id(reference)
+                .userId(userId)
                 .customerName(name)
                 .customerEmail(email)
                 .customerPhoneNumber(phone)

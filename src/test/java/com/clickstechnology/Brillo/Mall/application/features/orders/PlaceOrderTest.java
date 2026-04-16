@@ -1,10 +1,13 @@
 package com.clickstechnology.Brillo.Mall.application.features.orders;
 
+import com.clickstechnology.Brillo.Mall.application.api.contracts.AuthenticationUtil;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.BusinessService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.CustomerService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.OrderService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.ProductService;
+import com.clickstechnology.Brillo.Mall.application.api.contracts.UserService;
 import com.clickstechnology.Brillo.Mall.application.dto.CustomerDto;
+import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.dto.order.OrderDto;
 import com.clickstechnology.Brillo.Mall.application.dto.order.OrderItemRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.order.OrderPlacedResponse;
@@ -56,6 +59,12 @@ class PlaceOrderTest {
     @Mock
     private HttpServletRequest httpServletRequest;
 
+    @Mock
+    private AuthenticationUtil authenticationUtil;
+
+    @Mock
+    private UserService userService;
+
     @InjectMocks
     private PlaceOrder placeOrder;
 
@@ -63,12 +72,18 @@ class PlaceOrderTest {
     private CustomerDto customerDto;
     private ProductDto productDto;
     private OrderDto orderDto;
+    private UserDto userDto;
 
     @BeforeEach
     void setUp() {
         customerDto = new CustomerDto();
         String customerId = UUID.randomUUID().toString();
         customerDto.setId(customerId);
+
+        userDto = UserDto.builder()
+                .id(UUID.randomUUID().toString())
+                .username("testUser")
+                .build();
 
         productDto = new ProductDto();
         productDto.setId("prod1");
@@ -89,7 +104,9 @@ class PlaceOrderTest {
 
     @Test
     void execute_Success_NewOrder() {
-        when(customerService.resolveCustomer(any(CustomerDto.class))).thenReturn(customerDto);
+        when(authenticationUtil.getAuthenticatedUsername(httpServletRequest)).thenReturn("testUser");
+        when(userService.findByUsername(anyString())).thenReturn(userDto);
+        when(customerService.resolveCustomer(any(CustomerDto.class), anyString())).thenReturn(customerDto);
         when(productService.findProductsByIds(anyList())).thenReturn(List.of(productDto));
         when(productService.findAllByProductIds(anySet())).thenReturn(List.of(productDto));
         when(orderService.generateOrderId()).thenReturn("newOrderId");
@@ -101,7 +118,7 @@ class PlaceOrderTest {
         assertEquals("New order placed successfully", response.getMessage());
         assertEquals(orderDto, response.getOrder());
 
-        verify(customerService).resolveCustomer(placeOrderRequest.getCustomer());
+        verify(customerService).resolveCustomer(placeOrderRequest.getCustomer(), userDto.getId());
         verify(productService).findProductsByIds(List.of("prod1"));
         verify(businessService).validateBusinessIsActive(Set.of("biz1"));
         verify(productService).checkInStock(Map.of("prod1", 1));
@@ -114,7 +131,9 @@ class PlaceOrderTest {
     void execute_Success_UpdateOrder() {
         placeOrderRequest.setOrderId("existingOrderId");
 
-        when(customerService.resolveCustomer(any(CustomerDto.class))).thenReturn(customerDto);
+        when(authenticationUtil.getAuthenticatedUsername(httpServletRequest)).thenReturn("testUser");
+        when(userService.findByUsername(anyString())).thenReturn(userDto);
+        when(customerService.resolveCustomer(any(CustomerDto.class), anyString())).thenReturn(customerDto);
         when(productService.findProductsByIds(anyList())).thenReturn(List.of(productDto));
         when(productService.findAllByProductIds(anySet())).thenReturn(List.of(productDto));
         when(orderService.findOrderById("existingOrderId")).thenReturn(orderDto);
@@ -132,7 +151,9 @@ class PlaceOrderTest {
 
     @Test
     void execute_Failure_NoProductsFound() {
-        when(customerService.resolveCustomer(any(CustomerDto.class))).thenReturn(customerDto);
+        when(authenticationUtil.getAuthenticatedUsername(httpServletRequest)).thenReturn("testUser");
+        when(userService.findByUsername(anyString())).thenReturn(userDto);
+        when(customerService.resolveCustomer(any(CustomerDto.class), anyString())).thenReturn(customerDto);
         when(productService.findProductsByIds(anyList())).thenReturn(Collections.emptyList());
 
         BusinessException exception = assertThrows(BusinessException.class, () -> {
@@ -144,7 +165,9 @@ class PlaceOrderTest {
 
     @Test
     void execute_Failure_InactiveBusiness() {
-        when(customerService.resolveCustomer(any(CustomerDto.class))).thenReturn(customerDto);
+        when(authenticationUtil.getAuthenticatedUsername(httpServletRequest)).thenReturn("testUser");
+        when(userService.findByUsername(anyString())).thenReturn(userDto);
+        when(customerService.resolveCustomer(any(CustomerDto.class), anyString())).thenReturn(customerDto);
         when(productService.findProductsByIds(anyList())).thenReturn(List.of(productDto));
         when(productService.findAllByProductIds(anySet())).thenReturn(List.of(productDto));
         doThrow(new BusinessException("Business is inactive")).when(businessService).validateBusinessIsActive(anySet());
@@ -158,7 +181,9 @@ class PlaceOrderTest {
 
     @Test
     void execute_Failure_OutOfStock() {
-        when(customerService.resolveCustomer(any(CustomerDto.class))).thenReturn(customerDto);
+        when(authenticationUtil.getAuthenticatedUsername(httpServletRequest)).thenReturn("testUser");
+        when(userService.findByUsername(anyString())).thenReturn(userDto);
+        when(customerService.resolveCustomer(any(CustomerDto.class), anyString())).thenReturn(customerDto);
         when(productService.findProductsByIds(anyList())).thenReturn(List.of(productDto));
         when(productService.findAllByProductIds(anySet())).thenReturn(List.of(productDto));
         doThrow(new BusinessException("Out of stock")).when(productService).checkInStock(anyMap());
