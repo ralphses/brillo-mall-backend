@@ -2,6 +2,8 @@ package com.clickstechnology.Brillo.Mall.infrastructure.persistence;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.EntityListeners;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -16,39 +18,50 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.io.Serializable;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 @Getter
 @Setter
 @MappedSuperclass
 @EntityListeners(AuditingEntityListener.class)
-public class JpaAuditor implements Serializable {
-    private static final Long serialVersionUID = 1L;
+public abstract class JpaAuditor implements Serializable {
 
     @Id
+    @Column(name = "id", nullable = false, updatable = false)
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id")
     protected Long id;
 
-    @CreatedBy
-    protected String createdBy;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "record_status", nullable = false, length = 20)
+    protected RecordStatus recordStatus = RecordStatus.ACTIVE;
 
     @CreatedDate
-    protected LocalDateTime createdDate;
-
-    @LastModifiedBy
-    protected String lastModifiedBy;
+    @Column(name = "created_at", nullable = false, updatable = false)
+    protected Instant createdAt;
 
     @LastModifiedDate
-    protected LocalDateTime lastModifiedDate;
+    @Column(name = "updated_at", nullable = false)
+    protected Instant updatedAt;
 
+    @CreatedBy
+    @Column(name = "created_by", updatable = false)
+    protected String createdBy;
+
+    @LastModifiedBy
+    @Column(name = "updated_by")
+    protected String updatedBy;
+
+    @Column(name = "reference")
     protected String reference;
 
     @PrePersist
-    public void prePersist() {
-        if (reference == null) {
-            reference = UUID.randomUUID().toString();
-        }
+    protected void prePersist() {
+        if (this.reference == null) this.reference = UUID.randomUUID().toString();
+        if (this.recordStatus == null) this.recordStatus = RecordStatus.ACTIVE;
+    }
+
+    public enum RecordStatus {
+        ACTIVE, INACTIVE, DELETED
     }
 }

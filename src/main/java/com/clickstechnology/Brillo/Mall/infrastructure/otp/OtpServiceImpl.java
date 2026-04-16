@@ -47,6 +47,7 @@ public class OtpServiceImpl implements OtpService {
 
         // Generate 6-digit OTP
         String otp = generateOtp();
+        log.info("::Generated OTP: {}", otp);
 
         // Store OTP per recipient
         for (String recipient :   request.getRecipients()) {
@@ -90,14 +91,14 @@ public class OtpServiceImpl implements OtpService {
             OtpData otpData = cacheUtil.get(cacheKey, OtpData.class);
 
             if (otpData == null) {
-                throw new BusinessException("OTP expired or not found");
+                throw new BusinessException("OTP expired or not valid");
             }
 
             if (!otpData.isValid()) {
                 throw new BusinessException("OTP already used or invalid");
             }
 
-            // Validate OTP (123456)
+            // Validate OTP
             if (!otpData.getOtp().equals(request.getOtp())) {
                 throw new BusinessException("Invalid OTP");
             }
@@ -120,7 +121,7 @@ public class OtpServiceImpl implements OtpService {
                     .message("OTP verified successfully")
                     .build();
 
-        } catch (ApplicationException ex) {
+        } catch (ApplicationException | BusinessException ex) {
             throw ex;
         } catch (Exception ex) {
             log.error(":::Error verifying OTP", ex);

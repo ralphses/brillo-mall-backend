@@ -33,7 +33,7 @@ public class AuthenticationController {
     })
     @PostMapping("register")
     @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<RegisterResponse> register(
+    public ResponseWrapper<RegisterResponse> register(
             @Valid @RequestBody RegisterRequest request,
             HttpServletRequest httpServletRequest) {
 
@@ -43,7 +43,7 @@ public class AuthenticationController {
 
     @Operation(summary = "Resend registration OTP", description = "Resends OTP for registration")
     @PostMapping("register/resend-otp")
-    public ApiResponse<OtpSentResponse> registerResendOtp(
+    public ResponseWrapper<OtpSentResponse> registerResendOtp(
             @Valid @RequestBody ResendOtpRequest request,
             HttpServletRequest httpServletRequest) {
 
@@ -53,7 +53,7 @@ public class AuthenticationController {
 
     @Operation(summary = "Verify registration OTP", description = "Verifies user registration OTP")
     @PostMapping("register/verify")
-    public ApiResponse<VerifyOtpResponse> registerVerifyOtp(
+    public ResponseWrapper<VerifyOtpResponse> registerVerifyOtp(
             @Valid @RequestBody VerifyOtpRequest request,
             HttpServletRequest httpServletRequest) {
 
@@ -63,7 +63,7 @@ public class AuthenticationController {
 
     @Operation(summary = "Initiate password reset", description = "Sends OTP for password reset")
     @PostMapping("reset-password")
-    public ApiResponse<OtpSentResponse> resetPassword(
+    public ResponseWrapper<OtpSentResponse> resetPassword(
             @Valid @RequestBody ResetPasswordRequest request,
             HttpServletRequest httpServletRequest) {
 
@@ -73,7 +73,7 @@ public class AuthenticationController {
 
     @Operation(summary = "Resend reset OTP", description = "Resends OTP for password reset")
     @PostMapping("reset-password/resend-otp")
-    public ApiResponse<OtpSentResponse> resetResendOtp(
+    public ResponseWrapper<OtpSentResponse> resetResendOtp(
             @Valid @RequestBody ResendOtpRequest request,
             HttpServletRequest httpServletRequest) {
 
@@ -83,7 +83,7 @@ public class AuthenticationController {
 
     @Operation(summary = "Verify reset OTP", description = "Verifies OTP for password reset")
     @PostMapping("reset-password/verify")
-    public ApiResponse<VerifyOtpResponse> resetPasswordVerifyOtp(
+    public ResponseWrapper<VerifyOtpResponse> resetPasswordVerifyOtp(
             @Valid @RequestBody VerifyOtpRequest request,
             HttpServletRequest httpServletRequest) {
 
@@ -93,7 +93,7 @@ public class AuthenticationController {
 
     @Operation(summary = "Set new password", description = "Sets a new password after OTP verification")
     @PostMapping("new-password")
-    public ApiResponse<NewPasswordResponse> newPassword(
+    public ResponseWrapper<NewPasswordResponse> newPassword(
             @Valid @RequestBody NewPasswordRequest request,
             HttpServletRequest httpServletRequest) {
 
@@ -103,7 +103,7 @@ public class AuthenticationController {
 
     @Operation(summary = "Change password", description = "Changes password for authenticated user")
     @PostMapping("change-password")
-    public ApiResponse<NewPasswordResponse> changePassword(
+    public ResponseWrapper<NewPasswordResponse> changePassword(
             @Valid @RequestBody ChangePasswordRequest request,
             HttpServletRequest httpServletRequest) {
 
@@ -113,7 +113,7 @@ public class AuthenticationController {
 
     @Operation(summary = "Login", description = "Authenticates user and returns access token")
     @PostMapping("login")
-    public ApiResponse<LoginResponse> login(
+    public ResponseWrapper<LoginResponse> login(
             @Valid @RequestBody LoginRequest request,
             HttpServletRequest httpServletRequest) {
 
@@ -123,7 +123,7 @@ public class AuthenticationController {
 
     @Operation(summary = "Logout", description = "Invalidates user session/token")
     @PostMapping("logout")
-    public ApiResponse<String> logout(HttpServletRequest httpServletRequest) {
+    public ResponseWrapper<String> logout(HttpServletRequest httpServletRequest) {
 
         authenticateUser.logout(httpServletRequest);
         return success();

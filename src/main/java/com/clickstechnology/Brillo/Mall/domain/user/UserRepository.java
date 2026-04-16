@@ -1,7 +1,7 @@
 package com.clickstechnology.Brillo.Mall.domain.user;
 
 import com.clickstechnology.Brillo.Mall.application.dto.projections.AuthUser;
-import com.clickstechnology.Brillo.Mall.application.enums.UserStatus;
+import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -15,13 +15,13 @@ interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByUsername(String username);
 
-    Optional<User> findByUsernameIgnoreCaseAndStatus(String username, UserStatus status);
+    Optional<User> findByUsernameIgnoreCaseAndStatus(String username, EntityStatus status);
 
     @Query("""
                 SELECT CASE WHEN COUNT(u) > 0 THEN true ELSE false END
                 FROM User u
                 WHERE LOWER(u.username) = :username
-                  AND u.status = com.clickstechnology.Brillo.Mall.application.enums.UserStatus.ACTIVE
+                  AND u.status = com.clickstechnology.Brillo.Mall.application.enums.EntityStatus.ACTIVE
             """)
     boolean existsByUserName(@Param("username") String username);
 

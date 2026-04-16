@@ -1,6 +1,6 @@
 package com.clickstechnology.Brillo.Mall.application.dto;
 
-import com.clickstechnology.Brillo.Mall.application.enums.UserStatus;
+import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -18,9 +18,8 @@ public class UserDto {
     private String username;
     private String phoneNumber;
     private String fullName;
-    private String lastName;
     private List<String> roles;
     private String referredBy;
     private boolean oauth2User = false;
-    private UserStatus status;
+    private EntityStatus status;
 }

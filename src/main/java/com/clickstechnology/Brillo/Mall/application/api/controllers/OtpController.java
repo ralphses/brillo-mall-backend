@@ -2,7 +2,7 @@ package com.clickstechnology.Brillo.Mall.application.api.controllers;
 
 import com.clickstechnology.Brillo.Mall.application.dto.request.CreateOtpRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.request.VerifyOtpRequest;
-import com.clickstechnology.Brillo.Mall.application.dto.response.ApiResponse;
+import com.clickstechnology.Brillo.Mall.application.dto.response.ResponseWrapper;
 import com.clickstechnology.Brillo.Mall.application.dto.response.ResponseBuilder;
 import com.clickstechnology.Brillo.Mall.application.dto.response.VerifyOtpResponse;
 import com.clickstechnology.Brillo.Mall.infrastructure.otp.OtpService;
@@ -30,7 +30,7 @@ public class OtpController {
     })
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<String> createOtp(
+    public ResponseWrapper<String> createOtp(
             @Valid @RequestBody CreateOtpRequest request,
             HttpServletRequest httpServletRequest) {
 
@@ -44,7 +44,7 @@ public class OtpController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid or expired OTP")
     })
     @PostMapping("verify")
-    public ApiResponse<VerifyOtpResponse> verifyOtp(
+    public ResponseWrapper<VerifyOtpResponse> verifyOtp(
             @Valid @RequestBody VerifyOtpRequest request,
             HttpServletRequest httpServletRequest) {
 

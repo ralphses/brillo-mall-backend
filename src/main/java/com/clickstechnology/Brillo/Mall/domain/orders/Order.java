@@ -1,0 +1,141 @@
+package com.clickstechnology.Brillo.Mall.domain.orders;
+
+import com.clickstechnology.Brillo.Mall.application.dto.BusinessDto;
+import com.clickstechnology.Brillo.Mall.application.dto.CustomerDto;
+import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
+import com.clickstechnology.Brillo.Mall.application.dto.order.OrderDto;
+import com.clickstechnology.Brillo.Mall.application.enums.OrderStatus;
+import com.clickstechnology.Brillo.Mall.application.enums.PaymentMethod;
+import com.clickstechnology.Brillo.Mall.infrastructure.persistence.JpaAuditor;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.io.Serializable;
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+@Entity
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Table(name = "BRILLO_ORDER")
+class Order extends JpaAuditor implements Serializable {
+
+    @Column(name = "customer_id", nullable = false)
+    private String customerId;
+
+    @Column(name = "order_id", nullable = false)
+    private String orderId;
+
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
+    private OrderStatus status = OrderStatus.PENDING;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_method", nullable = false)
+    private PaymentMethod paymentMethod;
+
+    @Column(name = "total_amount", precision = 10, scale = 2, nullable = false)
+    private BigDecimal totalAmount;
+
+    @Column(name = "shipping_address", columnDefinition = "TEXT")
+    private String shippingAddress;
+
+    @Builder.Default
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    private List<OrderItem> items = new ArrayList<>();
+
+    public void addOrderItem(OrderItem item) {
+        if (items == null) {
+            items = new ArrayList<>();
+        }
+       if (item != null) {
+           items.add(item);
+           item.setOrder(this);
+       }
+    }
+
+    public void addOrderItems(List<OrderItem> orderItems) {
+
+        if (orderItems == null || orderItems.isEmpty()) {
+            return;
+        }
+
+        if (items == null) {
+            items = new ArrayList<>();
+        }
+
+        Map<String, OrderItem> existingItems = items.stream()
+                .collect(Collectors.toMap(
+                        OrderItem::getProductId,
+                        Function.identity(),
+                        (existing, duplicate) -> existing
+                ));
+
+        for (OrderItem newItem : orderItems) {
+
+            newItem.setOrder(this);
+
+            String productId = newItem.getProductId();
+
+            OrderItem existing = existingItems.get(productId);
+
+            if (existing != null) {
+                // Increase quantity
+                existing.setQuantity(existing.getQuantity() + newItem.getQuantity());
+            } else {
+                // Add new item
+                items.add(newItem);
+                existingItems.put(productId, newItem);
+            }
+        }
+    }
+
+    public OrderDto dto(CustomerDto customerDto, BusinessDto businessDto) {
+        return OrderDto.builder()
+                .id(this.getOrderId())
+                .business(businessDto)
+                .customer(customerDto)
+                .status(this.status)
+                .paymentMethod(this.paymentMethod)
+                .totalAmount(this.totalAmount)
+                .shippingAddress(this.shippingAddress)
+                .items(this.items.stream().map(OrderItem::dto).toList())
+                .createdAt(this.getCreatedAt())
+                .updatedAt(this.getUpdatedAt())
+                .build();
+    }
+
+    public OrderDto dto() {
+        return OrderDto.builder()
+                .id(this.getOrderId())
+                .status(this.status)
+                .paymentMethod(this.paymentMethod)
+                .totalAmount(this.totalAmount)
+                .shippingAddress(this.shippingAddress)
+                .items(this.items.stream().map(OrderItem::dto).toList())
+                .createdAt(this.getCreatedAt())
+                .updatedAt(this.getUpdatedAt())
+                .build();
+    }
+
+
+}

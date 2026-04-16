@@ -1,6 +1,6 @@
 package com.clickstechnology.Brillo.Mall.application.dto.projections;
 
-import com.clickstechnology.Brillo.Mall.application.enums.UserStatus;
+import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;
 import lombok.Setter;
 
 import java.util.List;
@@ -12,7 +12,7 @@ public class CachedAuthUser implements AuthUser {
     private String email;
     private String username;
     private String password;
-    private UserStatus status;
+    private EntityStatus status;
     private List<String> roles;
 
     @Override
@@ -36,7 +36,7 @@ public class CachedAuthUser implements AuthUser {
     }
 
     @Override
-    public UserStatus getStatus() {
+    public EntityStatus getStatus() {
         return status;
     }
 

@@ -1,7 +1,7 @@
 package com.clickstechnology.Brillo.Mall.infrastructure.authentication;
 
 import com.clickstechnology.Brillo.Mall.application.dto.projections.AuthUser;
-import com.clickstechnology.Brillo.Mall.application.enums.UserStatus;
+import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -31,6 +31,6 @@ record CustomUserDetail(AuthUser user, List<String> roles) implements UserDetail
 
     @Override
     public boolean isEnabled() {
-        return UserStatus.ACTIVE.equals(user.getStatus());
+        return EntityStatus.ACTIVE.equals(user.getStatus());
     }
 }

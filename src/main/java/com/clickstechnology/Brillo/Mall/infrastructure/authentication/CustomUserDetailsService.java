@@ -27,6 +27,7 @@ class CustomUserDetailsService implements UserDetailsService {
                 List<String> roles = userService.getUserRoles(user.getUsername());
                 return new CustomUserDetail(user, roles);
             } catch (ResourceNotFoundException ex) {
+
                 log.info(":::Error finding user by username: {}", username, ex);
                 throw new UsernameNotFoundException(ex.getMessage());
             }

@@ -4,6 +4,8 @@ import com.clickstechnology.Brillo.Mall.application.dto.InvitationDto;
 import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.dto.projections.AuthUser;
 import com.clickstechnology.Brillo.Mall.application.dto.request.RegisterRequest;
+import com.clickstechnology.Brillo.Mall.application.enums.UserRole;
+import jakarta.transaction.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -34,4 +36,6 @@ public interface UserService {
     void changePassword(String username, String currentPassword, String newPassword);
 
     List<String> getUserRoles(String username);
+
+    void addRoleToUser(String username, UserRole role);
 }
