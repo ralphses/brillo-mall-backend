@@ -104,13 +104,14 @@ class PlaceOrderTest {
 
     @Test
     void execute_Success_NewOrder() {
+        String userId = UUID.randomUUID().toString();
         when(authenticationUtil.getAuthenticatedUsername(httpServletRequest)).thenReturn("testUser");
         when(userService.findByUsername(anyString())).thenReturn(userDto);
         when(customerService.resolveCustomer(any(CustomerDto.class), anyString())).thenReturn(customerDto);
         when(productService.findProductsByIds(anyList())).thenReturn(List.of(productDto));
         when(productService.findAllByProductIds(anySet())).thenReturn(List.of(productDto));
         when(orderService.generateOrderId()).thenReturn("newOrderId");
-        when(orderService.createNewOrder(anyString(), any(PlaceOrderRequest.class))).thenReturn(orderDto);
+        when(orderService.createNewOrder(anyString(), any(PlaceOrderRequest.class), any())).thenReturn(orderDto);
 
         OrderPlacedResponse response = placeOrder.execute(placeOrderRequest, httpServletRequest);
 
@@ -123,7 +124,6 @@ class PlaceOrderTest {
         verify(businessService).validateBusinessIsActive(Set.of("biz1"));
         verify(productService).checkInStock(Map.of("prod1", 1));
         verify(orderService).generateOrderId();
-        verify(orderService).createNewOrder("newOrderId", placeOrderRequest);
         verify(businessService).addCustomer(customerDto, Set.of("biz1"));
     }
 

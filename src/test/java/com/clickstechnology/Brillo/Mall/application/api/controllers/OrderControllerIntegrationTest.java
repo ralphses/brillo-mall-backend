@@ -13,12 +13,15 @@ import com.clickstechnology.Brillo.Mall.application.dto.product.ProductDto;
 import com.clickstechnology.Brillo.Mall.application.dto.request.RegisterRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.request.business.OnboardBusinessRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.request.product.AddProductRequest;
+import com.clickstechnology.Brillo.Mall.application.dto.order.UpdateOrderStatusRequest;
 import com.clickstechnology.Brillo.Mall.application.enums.BusinessCategory;
+import com.clickstechnology.Brillo.Mall.application.enums.OrderStatus;
 import com.clickstechnology.Brillo.Mall.application.enums.PaymentMethod;
 import com.clickstechnology.Brillo.Mall.application.enums.UserRole;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -34,6 +37,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -102,7 +106,6 @@ class OrderControllerIntegrationTest {
 
 
         testCustomer = customerService.resolveCustomer(customerDto, testUser.getId());
-        System.out.println("testCustomer = " + testCustomer);
     }
 
     @Test
@@ -358,5 +361,110 @@ class OrderControllerIntegrationTest {
                 .andExpect(jsonPath("$.data.total").value(2))
                 .andExpect(jsonPath("$.data.items.length()").value(2))
                 .andExpect(jsonPath("$.data.items[0].items[0].product.name").value("Test Product"));
+    }
+
+    @Nested
+    @DisplayName("PUT /api/v1/orders/{orderId}/status")
+    class UpdateOrderStatusTests {
+
+        private String orderId;
+
+        @BeforeEach
+        void setUp() throws Exception {
+            // GIVEN: An existing order
+            PlaceOrderRequest placeOrderRequest = new PlaceOrderRequest();
+            placeOrderRequest.setCustomer(testCustomer);
+            placeOrderRequest.setItems(List.of(new OrderItemRequest(product.getId(), 1, product.getPrice())));
+            placeOrderRequest.setPaymentMethod(PaymentMethod.PAY_ON_DELIVERY);
+
+            String responseString = mockMvc.perform(post("/api/v1/orders")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(placeOrderRequest)))
+                    .andExpect(status().isOk())
+                    .andReturn().getResponse().getContentAsString();
+
+            orderId = objectMapper.readTree(responseString).at("/data/order/id").asText();
+        }
+
+        @Test
+        @DisplayName("Should Update Order Status Successfully for Business Owner")
+        @WithMockUser(username = "07035002025", authorities = {"ROLE_ADMIN"})
+        void updateOrderStatus_shouldSucceed_forBusinessOwner() throws Exception {
+            // GIVEN: The user is an admin
+            userService.addRoleToUser(testUser.getPhoneNumber(), UserRole.ADMIN);
+
+            UpdateOrderStatusRequest updateRequest = new UpdateOrderStatusRequest();
+            updateRequest.setStatus(OrderStatus.SHIPPED.name());
+
+            // WHEN & THEN
+            mockMvc.perform(put("/api/v1/orders/{orderId}/status", orderId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(updateRequest)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.status").value(200))
+                    .andExpect(jsonPath("$.data.status").value("SHIPPED"));
+        }
+
+        @Test
+        @DisplayName("Should Fail to Update Order Status for Non-Admin User")
+        @WithMockUser(username = "anotheruser@test.com", authorities = {"ROLE_USER"})
+        void updateOrderStatus_shouldFail_forNonAdminUser() throws Exception {
+            // GIVEN: A non-admin user
+            RegisterRequest anotherUserRequest = new RegisterRequest("Another User", "anotheruser@test.com", "Password123", "anotheruser@test.com");
+            userService.registerNewUser(anotherUserRequest, null, false);
+
+            UpdateOrderStatusRequest updateRequest = new UpdateOrderStatusRequest();
+            updateRequest.setStatus(OrderStatus.SHIPPED.name());
+
+            // WHEN & THEN
+            mockMvc.perform(put("/api/v1/orders/{orderId}/status", orderId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(updateRequest)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message").value("User is not associated with any business."));
+        }
+
+        @Test
+        @DisplayName("Should Fail to Update Order Status with Invalid Status")
+        @WithMockUser(username = "07035002025", authorities = {"ROLE_ADMIN"})
+        void updateOrderStatus_shouldFail_withInvalidStatus() throws Exception {
+            // GIVEN: The user is an admin
+            userService.addRoleToUser(testUser.getPhoneNumber(), UserRole.ADMIN);
+
+            UpdateOrderStatusRequest updateRequest = new UpdateOrderStatusRequest();
+            updateRequest.setStatus("INVALID_STATUS");
+
+            // WHEN & THEN
+            mockMvc.perform(put("/api/v1/orders/{orderId}/status", orderId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(updateRequest)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.data.status").value("Invalid order status"));
+        }
+
+        @Test
+        @DisplayName("Should Fail to Update Order Status for Order Not Belonging to Business")
+        @WithMockUser(username = "anotheradmin@test.com", authorities = {"ROLE_ADMIN"})
+        void updateOrderStatus_shouldFail_forOrderNotBelongingToBusiness() throws Exception {
+            // GIVEN: Another admin with their own business
+            RegisterRequest anotherAdminRequest = new RegisterRequest("Another Admin", "anotheradmin@test.com", "Password123", "anotheradmin@test.com");
+            userService.registerNewUser(anotherAdminRequest, null, false);
+            UserDto anotherAdmin = userService.findByUsername("anotheradmin@test.com");
+            userService.addRoleToUser(anotherAdmin.getUsername(), UserRole.ADMIN);
+
+            OnboardBusinessRequest anotherBusinessRequest = new OnboardBusinessRequest();
+            anotherBusinessRequest.setBusinessName("Another Mart");
+            businessService.createNew(anotherBusinessRequest, anotherAdmin, "logo3.png", BusinessCategory.PRODUCTS);
+
+            UpdateOrderStatusRequest updateRequest = new UpdateOrderStatusRequest();
+            updateRequest.setStatus(OrderStatus.DELIVERED.name());
+
+            // WHEN & THEN
+            mockMvc.perform(put("/api/v1/orders/{orderId}/status", orderId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(updateRequest)))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.message").value("Order not found or user does not have permission to update it."));
+        }
     }
 }

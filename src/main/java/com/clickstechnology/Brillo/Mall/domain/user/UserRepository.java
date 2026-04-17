@@ -37,7 +37,7 @@ interface UserRepository extends JpaRepository<User, Long> {
     Optional<AuthUser> findAuthUserByEmailOrPhone(@Param("username") String username);
 
     @Query("""
-                SELECT u.email AS email,
+                SELECT DISTINCT u.email AS email,
                        u.phoneNumber AS phoneNumber,
                        u.username AS username,
                        u.password AS password,
@@ -49,10 +49,10 @@ interface UserRepository extends JpaRepository<User, Long> {
     Optional<AuthUser> findAuthUserByUsername(@Param("username") String username);
 
     @Query("""
-                SELECT u
+                SELECT DISTINCT u
                 FROM User u
                 LEFT JOIN FETCH u.roles
-                WHERE LOWER(u.username) = :username
+                WHERE LOWER(u.username) = LOWER(:username)
             """)
     Optional<User> fetchAllByUsername(String username);
 }

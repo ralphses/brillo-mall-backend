@@ -10,8 +10,10 @@ import com.clickstechnology.Brillo.Mall.application.dto.BusinessDto;
 import com.clickstechnology.Brillo.Mall.application.dto.CustomerDto;
 import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.dto.order.OrderDto;
+import com.clickstechnology.Brillo.Mall.application.dto.order.UpdateOrderStatusRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.product.ProductDto;
 import com.clickstechnology.Brillo.Mall.application.dto.response.PaginatedResponse;
+import com.clickstechnology.Brillo.Mall.application.enums.OrderStatus;
 import com.clickstechnology.Brillo.Mall.application.enums.RequestSource;
 import com.clickstechnology.Brillo.Mall.application.enums.UserRole;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
@@ -99,11 +101,9 @@ public class ManageOrder {
 
 
     private OrderDto findOrderForCustomer(String ownerIdentifier, String orderId) {
-        // 1. Resolve the customer
-        CustomerDto customer = customerService.findByPhoneOrEmail(ownerIdentifier);
 
         // 2. Fetch the order details
-        OrderDto order = orderService.findOrderDetailsForCustomer(orderId, customer.getId());
+        OrderDto order = orderService.findOrderById(orderId);
 
         // 3. Enrich order items with full Product details
         enrichOrderProducts(order);
@@ -133,8 +133,9 @@ public class ManageOrder {
             final Integer page,
             final Integer pageSize,
             final String ownerId,
-            final String businessId
-    ) {
+            final String businessId,
+            boolean isBusiness) {
+
         // Handle WhatsApp requests
         if (source == RequestSource.WHATSAPP && ownerId != null) {
             CustomerDto customer = customerService.findByPhoneOrEmail(ownerId);
@@ -152,7 +153,7 @@ public class ManageOrder {
         log.info(":::Logged in user: {}", user.getRoles());
 
         // Route based on user role
-        if (user.getRoles().contains(UserRole.ADMIN.name())) {
+        if (user.getRoles().contains(UserRole.ADMIN.name()) && (isBusiness || businessId != null)) {
             if (businessId != null) {
                 return orderService.findAllByBusinessId(businessId, page, pageSize);
             } else {
@@ -162,20 +163,15 @@ public class ManageOrder {
                     return new PaginatedResponse<>(page, pageSize, 0, 0, false, false, Collections.emptyList());
                 }
                 List<String> businessIds = businesses.stream().map(BusinessDto::getId).toList();
-
                 PaginatedResponse<OrderDto> businessOrders = orderService.findAllByBusinessIds(businessIds, page, pageSize);
                 enrichCustomerDetail(businessOrders.getItems());
                 return businessOrders;
             }
         }
 
-        log.info(":::User is a USER or CUSTOMER");
-        if (user.getRoles().contains(UserRole.CUSTOMER.name()) || user.getRoles().contains(UserRole.USER.name())) {
-            CustomerDto customer = customerService.findByUserId(user.getId());
-            if (customer == null) {
-                throw new BusinessException("Customer could not be found for user: " + user.getPhoneNumber());
-            }
-            return orderService.findAllByCustomerId(customer.getId(), page, pageSize);
+        // Fetch user orders
+        if (user.getRoles().contains(UserRole.USER.name())) {
+            return orderService.findAllByUserId(user.getId(), page, pageSize);
         }
 
         // Default case if no role matches
@@ -190,5 +186,41 @@ public class ManageOrder {
         Set<CustomerDto> customers = customerService.findAllByRefs(customerIds);
         Map<String, CustomerDto> customerMap = customers.stream().collect(Collectors.toMap(CustomerDto::getId, Function.identity()));
         items.forEach(item -> item.setCustomer(customerMap.get(item.getCustomer().getId())));
+    }
+
+    public OrderDto updateOrder(String orderId, UpdateOrderStatusRequest request, HttpServletRequest httpServletRequest) {
+        String authenticatedUsername = authenticationUtil.getAuthenticatedUsername(httpServletRequest);
+        UserDto user = userService.findByUsername(authenticatedUsername);
+
+        List<String> businessIds = businessService.findAllByOwnerId(user.getId())
+                .stream()
+                .map(BusinessDto::getId)
+                .toList();
+
+        if (businessIds.isEmpty()) {
+            throw new BusinessException("User is not associated with any business.");
+        }
+
+        OrderDto order = orderService.findOrderForBusinessAdmin(orderId, businessIds);
+
+        if (order == null) {
+            throw new BusinessException("Order not found or user does not have permission to update it.");
+        }
+
+        OrderStatus newStatus = OrderStatus.valueOf(request.getStatus().toUpperCase());
+        return orderService.updateOrderStatus(orderId, newStatus);
+    }
+
+    public OrderDto cancelOrder(String orderId, HttpServletRequest httpServletRequest) {
+        String authenticatedUsername = authenticationUtil.getAuthenticatedUsername(httpServletRequest);
+        UserDto user = userService.findByUsername(authenticatedUsername);
+
+        OrderDto order = orderService.findOrderById(orderId);
+
+        if (!order.getUserId().equals(user.getId())) {
+            throw new BusinessException("You are not allowed to cancel this order.");
+        }
+
+        return orderService.updateOrderStatus(orderId, OrderStatus.CANCELLED);
     }
 }

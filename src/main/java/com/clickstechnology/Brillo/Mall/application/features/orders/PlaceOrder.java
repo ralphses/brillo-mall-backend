@@ -17,8 +17,6 @@ import com.clickstechnology.Brillo.Mall.application.dto.order.PlaceOrderRequest;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
 import com.clickstechnology.Brillo.Mall.infrastructure.logging.LoggableRequest;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -55,7 +53,7 @@ public class PlaceOrder {
 
         validateInventory(request.getItems());
 
-        OrderDto order = createOrUpdateOrder(request);
+        OrderDto order = createOrUpdateOrder(request, userId);
 
         attachCustomerToBusinesses(customer, products);
 
@@ -74,7 +72,8 @@ public class PlaceOrder {
         String authenticatedUsername = authenticationUtil.getAuthenticatedUsername(httpServletRequest);
         UserDto userDto = userService.findByUsername(authenticatedUsername);
 
-        return Optional.ofNullable(userDto).map(UserDto::getId).orElse(customer.getCustomerPhoneNumber());
+        return Optional.ofNullable(userDto).map(UserDto::getId)
+                .orElse(customer.getCustomerPhoneNumber());
     }
 
     private void enrichOrderDto(final OrderDto order) {
@@ -134,7 +133,7 @@ public class PlaceOrder {
         productService.checkInStock(productQuantityMap);
     }
 
-    private OrderDto createOrUpdateOrder(PlaceOrderRequest request) {
+    private OrderDto createOrUpdateOrder(PlaceOrderRequest request, String userId) {
 
         if (request.getOrderId() != null) {
             OrderDto existingOrder =
@@ -148,7 +147,7 @@ public class PlaceOrder {
 
         String orderId = orderService.generateOrderId();
 
-        return orderService.createNewOrder(orderId, request);
+        return orderService.createNewOrder(orderId, request, userId);
     }
 
     private void attachCustomerToBusinesses(

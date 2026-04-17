@@ -11,6 +11,7 @@ import com.clickstechnology.Brillo.Mall.application.dto.product.ProductDto;
 import com.clickstechnology.Brillo.Mall.application.dto.response.PaginatedResponse;
 import com.clickstechnology.Brillo.Mall.application.enums.OrderStatus;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
+import com.clickstechnology.Brillo.Mall.application.exception.ResourceNotFoundException;
 import com.clickstechnology.Brillo.Mall.infrastructure.caching.CacheNames;
 import com.clickstechnology.Brillo.Mall.infrastructure.caching.CacheUtil;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +25,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.security.SecureRandom;
 import java.time.Instant;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -62,10 +62,21 @@ class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    public PaginatedResponse<OrderDto> findAllByUserId(String userId, Integer page, Integer pageSize) {
+        Pageable pageable = PageRequest.of(page - 1, pageSize);
+        Page<Order> orderPage = orderRepository.findAllByUserId(userId, pageable);
+        return getOrderPaginatedResponse(orderPage);
+    }
+
+    @Override
     @Transactional
     public OrderDto addItemsToOrder(String existingOrderId, PlaceOrderRequest request) {
 
         Order order = getOrder(existingOrderId);
+
+        if (order.getStatus() != OrderStatus.PENDING) {
+            throw new BusinessException("Order not valid or cancelled");
+        }
 
         List<OrderItem> orderItems = createOrderItems(request);
 
@@ -84,7 +95,7 @@ class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    public OrderDto createNewOrder(String newOrderId, PlaceOrderRequest request) {
+    public OrderDto createNewOrder(String newOrderId, PlaceOrderRequest request, String userId) {
 
         List<OrderItem> orderItems = createOrderItems(request);
 
@@ -94,6 +105,7 @@ class OrderServiceImpl implements OrderService {
 
         Order newOrder = Order.builder()
                 .orderId(newOrderId)
+                .userId(userId)
                 .customerId(request.getCustomer().getId())
                 .paymentMethod(request.getPaymentMethod())
                 .shippingAddress(request.getCustomer().getAddress())
@@ -145,6 +157,21 @@ class OrderServiceImpl implements OrderService {
         Pageable pageable = PageRequest.of(page - 1, pageSize);
         Page<Order> orderPage = orderRepository.findAllByBusinessIds(businessIds, pageable);
         return getOrderPaginatedResponse(orderPage);
+    }
+
+    @Override
+    @Transactional
+    public OrderDto updateOrderStatus(String orderId, OrderStatus newStatus) {
+        Order order = orderRepository.findByOrderId(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found with ID: " + orderId));
+
+        if (newStatus == OrderStatus.CANCELLED && order.getStatus() != OrderStatus.PENDING) {
+                throw new BusinessException("Order not valid or cancelled");
+        }
+
+        order.setStatus(newStatus);
+        Order updatedOrder = orderRepository.save(order);
+        return updatedOrder.dto();
     }
 
     private PaginatedResponse<OrderDto> getOrderPaginatedResponse(Page<Order> orderPage) {
