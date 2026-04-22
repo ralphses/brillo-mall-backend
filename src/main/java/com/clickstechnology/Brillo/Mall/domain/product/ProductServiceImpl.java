@@ -153,7 +153,6 @@ class ProductServiceImpl implements ProductService {
 
     @Override
     public List<ProductDto> findAllByProductIds(Set<String> productIds) {
-        System.out.println("productIds = " + productIds);
         return productRepository.findAllByReferenceIn(List.copyOf(productIds)).stream()
                 .map(Product::dto)
                 .collect(Collectors.toList());

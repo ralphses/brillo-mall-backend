@@ -3,11 +3,19 @@ package com.clickstechnology.Brillo.Mall.application.utils;
 import com.clickstechnology.Brillo.Mall.application.enums.BusinessCategory;
 import com.clickstechnology.Brillo.Mall.application.enums.MessageMedium;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
+import jakarta.validation.constraints.NotBlank;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
+import java.text.Normalizer;
+import java.util.Locale;
+import java.util.regex.Pattern;
+
 public final class AppUtils {
     private AppUtils() {}
+
+    private static final Pattern NONLATIN = Pattern.compile("[^\\w-]");
+    private static final Pattern WHITESPACE = Pattern.compile("[\\s]");
 
 
     public static MessageMedium resolveMessageMedium(String username) {
@@ -50,6 +58,13 @@ public final class AppUtils {
     }
 
     public static Pageable getPageable(Integer page, Integer pageSize) {
-        return PageRequest.of(Math.min(0, page - 1), pageSize);
+        return PageRequest.of(Math.max(0, page - 1), pageSize);
+    }
+
+    public static String generateSlug(@NotBlank String name) {
+        String noWhitespace = WHITESPACE.matcher(name).replaceAll("-");
+        String normalized = Normalizer.normalize(noWhitespace, Normalizer.Form.NFD);
+        String slug = NONLATIN.matcher(normalized).replaceAll("");
+        return slug.toLowerCase(Locale.ENGLISH);
     }
 }

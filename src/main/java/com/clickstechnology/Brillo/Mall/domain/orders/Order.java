@@ -44,6 +44,9 @@ class Order extends JpaAuditor implements Serializable {
     @Column(name = "order_id", nullable = false)
     private String orderId;
 
+    @Column(name = "user_id")
+    private String userId;
+
     @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
@@ -128,6 +131,7 @@ class Order extends JpaAuditor implements Serializable {
         return OrderDto.builder()
                 .id(this.getOrderId())
                 .status(this.status)
+                .userId(this.userId)
                 .paymentMethod(this.paymentMethod)
                 .totalAmount(this.totalAmount)
                 .shippingAddress(this.shippingAddress)

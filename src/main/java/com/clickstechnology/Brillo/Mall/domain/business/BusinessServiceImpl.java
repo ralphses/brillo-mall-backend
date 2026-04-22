@@ -13,8 +13,6 @@ import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
 import com.clickstechnology.Brillo.Mall.application.exception.UnauthorizedUserException;
 import com.clickstechnology.Brillo.Mall.application.utils.AppUtils;
 import com.clickstechnology.Brillo.Mall.infrastructure.caching.CacheNames;
-import com.clickstechnology.Brillo.Mall.infrastructure.caching.CacheNames;
-import com.clickstechnology.Brillo.Mall.infrastructure.caching.CacheNames;
 import com.clickstechnology.Brillo.Mall.infrastructure.caching.CacheUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -54,7 +52,7 @@ class BusinessServiceImpl implements BusinessService {
     @Override
     public void createNew(OnboardBusinessRequest request, UserDto user, String logoUrl, BusinessCategory businessCategory) {
 
-        String slug = request.getBusinessName().toLowerCase().replace(" ", "-");
+        String slug = AppUtils.generateSlug(request.getBusinessName());
 
         Business business = Business.builder()
                 .category(businessCategory)
@@ -62,8 +60,6 @@ class BusinessServiceImpl implements BusinessService {
                 .slug(slug)
                 .ownerId(user.getId())
                 .logoUrl(logoUrl)
-                .isActive(true)
-                .storefrontActive(true)
                 .storefrontName(request.getBusinessName())
                 .whatsappType(WhatsappType.SHARED)
                 .build();

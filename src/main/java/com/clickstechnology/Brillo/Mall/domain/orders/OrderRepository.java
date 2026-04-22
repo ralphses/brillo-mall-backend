@@ -57,7 +57,9 @@ interface OrderRepository extends JpaRepository<Order, Long> {
             "WHERE o.orderId = :orderId ")
     Optional<Order> findAnyByOrderId(@Param("orderId") String orderId);
 
-    @Query("SELECT o FROM Order o WHERE o.id IN " +
+    @Query("SELECT o FROM Order o " +
+            "LEFT JOIN FETCH o.items items " +
+            "WHERE o.id IN " +
             "(SELECT oi.order.id FROM OrderItem oi WHERE oi.productId IN " +
             "(SELECT p.reference FROM Product p WHERE p.businessId = :businessId))")
     Page<Order> findAllByBusinessId(
@@ -71,5 +73,12 @@ interface OrderRepository extends JpaRepository<Order, Long> {
             "(SELECT p.reference FROM Product p WHERE p.businessId IN :businessIds))")
     Page<Order> findAllByBusinessIds(
             @Param("businessIds") List<String> businessIds,
+            Pageable pageable);
+
+    @Query("SELECT o FROM Order o " +
+            "LEFT JOIN FETCH o.items items " +
+            "WHERE o.userId = :userId")
+    Page<Order> findAllByUserId(
+            @Param("userId") String userId,
             Pageable pageable);
 }

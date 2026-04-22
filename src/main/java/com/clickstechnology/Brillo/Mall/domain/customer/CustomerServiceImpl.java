@@ -4,11 +4,13 @@ import com.clickstechnology.Brillo.Mall.application.api.contracts.CustomerServic
 import com.clickstechnology.Brillo.Mall.application.dto.CustomerDto;
 import com.clickstechnology.Brillo.Mall.application.dto.response.PaginatedResponse;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -23,7 +25,7 @@ class CustomerServiceImpl implements CustomerService {
     private final CustomerRepository customerRepository;
 
     @Override
-    public CustomerDto resolveCustomer(CustomerDto customer, String userId) {
+    public CustomerDto resolveCustomer(CustomerDto customer, String userId, Set<String> businessIds) {
 
         return customerRepository.findByPhone(customer.getCustomerPhoneNumber())
                 .orElseGet(() -> {
@@ -77,5 +79,36 @@ class CustomerServiceImpl implements CustomerService {
                 .stream()
                 .map(Customer::dto)
                 .collect(Collectors.toSet());
+    }
+
+    @Async
+    @Override
+    @Transactional
+    public void updateCustomer(String customerId, CustomerDto customerDto) {
+        Customer customer = customerRepository.findByReference(customerId)
+                .orElseThrow(() -> new BusinessException("Invalid Customer Id"));
+
+        if (customerDto.getCustomerEmail() != null) {
+            customer.setEmail(customerDto.getCustomerEmail());
+        }
+
+        if (customerDto.getCustomerPhoneNumber() != null) {
+            customer.setPhone(customerDto.getCustomerPhoneNumber());
+        }
+
+        if (customerDto.getCustomerName() != null) {
+            customer.setName(customerDto.getCustomerName());
+        }
+
+        if (customerDto.getAddress() != null) {
+            customer.setAddress(customerDto.getAddress());
+        }
+
+        customerRepository.save(customer);
+    }
+
+    @Override
+    public PaginatedResponse<CustomerDto> findAllByBusinessId(String businessId, Pageable pageable) {
+        return null;
     }
 }

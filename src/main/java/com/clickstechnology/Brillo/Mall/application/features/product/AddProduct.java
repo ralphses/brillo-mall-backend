@@ -8,6 +8,7 @@ import com.clickstechnology.Brillo.Mall.application.dto.BusinessDto;
 import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.dto.product.ProductDto;
 import com.clickstechnology.Brillo.Mall.application.dto.request.product.AddProductRequest;
+import com.clickstechnology.Brillo.Mall.application.enums.BusinessCategory;
 import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
 import com.clickstechnology.Brillo.Mall.infrastructure.config.AppPropertiesConfig;
@@ -66,10 +67,16 @@ public class AddProduct {
             throw new BusinessException("Business is not active. Kindly verify or contact admin for support.");
         }
 
-        // 3. Ensure product name uniqueness
+        // 3. Validate Business State
+        if (business.getCategory() != BusinessCategory.PRODUCTS) {
+            log.warn(":::Failed to add product: Category is not PRODUCTS.");
+            throw new BusinessException("This business can only accept PRODUCTS. Kindly verify or contact admin.");
+        }
+
+        // 4. Ensure product name uniqueness
         productService.ensureProductNameDoesNotExist(businessId, request.getName());
 
-        // 4. Handle SKU logic (Generate if missing, validate if present)
+        // 5. Handle SKU logic (Generate if missing, validate if present)
         String sku = request.getSku();
         if (sku == null || sku.isBlank()) {
             sku = generateUniqueSku(businessId);
@@ -79,7 +86,7 @@ public class AddProduct {
             productService.ensureProductSkuDoesNotExist(businessId, sku);
         }
 
-        // 5. Create product and return dto
+        // 6. Create product and return dto
         ProductDto createdProduct = productService.createProduct(businessId, request, appPropertiesConfig.getDefaultProductImageUrl());
         log.info(":::Successfully added product '{}' with SKU: {} for businessId: {}", createdProduct.getName(), createdProduct.getSku(), businessId);
 

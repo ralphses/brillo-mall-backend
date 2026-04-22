@@ -20,10 +20,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -194,6 +198,19 @@ class UserServiceImpl implements UserService {
             newRoles.add(roleToAdd);
             user.setRoles(newRoles);
             userRepository.save(user);
+
+            cacheUtil.evict(CacheNames.USER_USER + username);
+        }
+
+    }
+
+    @Override
+    public void ensureUserHasRoles(UserDto userDto, Set<UserRole> roles) {
+        if (userDto.getRoles() == null
+                || roles == null
+                || roles.isEmpty()
+                || !new HashSet<>(userDto.getRoles()).containsAll(roles.stream().map(Enum::name).collect(Collectors.toSet()))) {
+            throw new ResourceNotFoundException("User does not have authorized roles");
         }
     }
 }

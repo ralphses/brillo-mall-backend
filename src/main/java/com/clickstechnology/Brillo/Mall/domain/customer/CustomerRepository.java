@@ -22,4 +22,5 @@ interface CustomerRepository extends JpaRepository<Customer, Long> {
 
     Page<Customer> findAllByReferenceIn(Set<String> customerRefs, Pageable pageable);
     List<Customer> findAllByReferenceIn(Set<String> customerRefs);
+    Optional<Customer> findByReference(String reference);
 }

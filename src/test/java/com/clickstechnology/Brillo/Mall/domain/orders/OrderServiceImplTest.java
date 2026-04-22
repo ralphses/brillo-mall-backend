@@ -182,6 +182,7 @@ class OrderServiceImplTest {
         void createNewOrder_shouldCreateNewOrderSuccessfully() {
             // Given
             String newOrderId = "newOrder1";
+            String userId = UUID.randomUUID().toString();
             when(orderRepository.saveAndFlush(any(Order.class))).thenAnswer(invocation -> {
                 Order savedOrder = invocation.getArgument(0);
                 savedOrder.setId(1L); // Simulate saving and getting an ID
@@ -189,7 +190,7 @@ class OrderServiceImplTest {
             });
 
             // When
-            OrderDto result = orderServiceImpl.createNewOrder(newOrderId, placeOrderRequest);
+            OrderDto result = orderServiceImpl.createNewOrder(newOrderId, placeOrderRequest, userId);
 
             // Then
             assertThat(result).isNotNull();
