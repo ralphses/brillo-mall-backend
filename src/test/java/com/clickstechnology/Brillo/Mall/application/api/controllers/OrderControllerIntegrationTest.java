@@ -33,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -105,7 +106,7 @@ class OrderControllerIntegrationTest {
         customerDto.setCustomerEmail(testUser.getEmail());
 
 
-        testCustomer = customerService.resolveCustomer(customerDto, testUser.getId());
+        testCustomer = customerService.resolveCustomer(customerDto, testUser.getId(), Set.of(business.getId()));
     }
 
     @Test

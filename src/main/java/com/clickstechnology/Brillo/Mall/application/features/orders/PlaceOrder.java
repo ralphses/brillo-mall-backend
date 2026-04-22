@@ -45,9 +45,11 @@ public class PlaceOrder {
 
         String userId = resolveUserId(httpServletRequest, request.getCustomer());
 
-        CustomerDto customer = resolveCustomer(request, userId);
-
         List<ProductDto> products = loadProducts(request);
+        Set<String> businessIds = products.stream()
+                .map(ProductDto::getBusinessId).collect(Collectors.toSet());
+
+        CustomerDto customer = resolveCustomer(request, userId, businessIds);
 
         validateProductsAndGetBusinessId(products);
 
@@ -62,8 +64,8 @@ public class PlaceOrder {
         return new OrderPlacedResponse("New order placed successfully", order);
     }
 
-    private CustomerDto resolveCustomer(PlaceOrderRequest request, String userId) {
-        CustomerDto thisCustomer = customerService.resolveCustomer(request.getCustomer(), userId);
+    private CustomerDto resolveCustomer(PlaceOrderRequest request, String userId, Set<String> businessIds) {
+        CustomerDto thisCustomer = customerService.resolveCustomer(request.getCustomer(), userId, businessIds);
         request.setCustomer(thisCustomer);
         return thisCustomer;
     }
