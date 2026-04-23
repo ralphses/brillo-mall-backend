@@ -1,0 +1,68 @@
+package com.clickstechnology.Brillo.Mall.domain.payments;
+
+import com.clickstechnology.Brillo.Mall.application.dto.payments.PaymentLogDto;
+import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;
+import com.clickstechnology.Brillo.Mall.application.enums.PayableType;
+import com.clickstechnology.Brillo.Mall.infrastructure.persistence.JpaAuditor;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Index;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.math.BigDecimal;
+
+@Entity
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Table(name = "BRILLO_PAYMENT_LOG", indexes = {
+        @Index(name = "idx_brillo_payment_log_reference", columnList = "reference")
+})
+class PaymentLog extends JpaAuditor {
+
+    @Column(name = "user_id", unique = true, nullable = false)
+    private String userId;
+
+    @Column(name = "business_id", unique = true, nullable = false)
+    private String businessId;
+
+    @Column(name = "payment_reference", unique = true, nullable = false)
+    private String paymentReference;
+
+    @Column(name = "email", unique = true, nullable = false)
+    private String email;
+
+    @Column(name = "amount", nullable = false)
+    private BigDecimal amount;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
+    private EntityStatus status;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payable_type", nullable = false)
+    private PayableType payableType;
+
+    @Column(name = "payable_id", nullable = false)
+    private String payableId;
+
+    public PaymentLogDto dto() {
+        return PaymentLogDto.builder()
+                .id(reference)
+                .paymentReference(paymentReference)
+                .amount(amount)
+                .status(status)
+                .payableType(payableType)
+                .payableId(payableId)
+                .build();
+    }
+}

@@ -69,6 +69,13 @@ class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    public void ensureOrderBelongsToUser(OrderDto order, String userId) {
+        if (!order.getUserId().equals(userId)) {
+            throw new BusinessException("Order does not belong to the user.");
+        }
+    }
+
+    @Override
     @Transactional
     public OrderDto addItemsToOrder(String existingOrderId, PlaceOrderRequest request) {
 

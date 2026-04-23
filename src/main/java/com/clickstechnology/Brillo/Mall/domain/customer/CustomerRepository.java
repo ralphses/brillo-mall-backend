@@ -14,7 +14,12 @@ interface CustomerRepository extends JpaRepository<Customer, Long> {
 
     Optional<Customer> findByName(String name);
     Optional<Customer> findByEmail(String email);
+
+    @Query("SELECT customer FROM Customer customer " +
+            "LEFT JOIN FETCH customer.relatedBusinessIds " +
+            "WHERE customer.phone = ?1")
     Optional<Customer> findByPhone(String phoneNumber);
+    
     Optional<Customer> findByUserId(String userId);
 
     @Query("SELECT c FROM Customer c WHERE c.email = :value OR c.phone = :value")
@@ -23,4 +28,6 @@ interface CustomerRepository extends JpaRepository<Customer, Long> {
     Page<Customer> findAllByReferenceIn(Set<String> customerRefs, Pageable pageable);
     List<Customer> findAllByReferenceIn(Set<String> customerRefs);
     Optional<Customer> findByReference(String reference);
+
+    Page<Customer> findAllByRelatedBusinessIdsContaining(String businessId, Pageable pageable);
 }

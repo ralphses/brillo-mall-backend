@@ -33,4 +33,6 @@ public interface OrderService {
     OrderDto findOrderDetailsForCustomer(String orderId, String id);
 
     PaginatedResponse<OrderDto> findAllByUserId(String id, Integer page, Integer pageSize);
+
+    void ensureOrderBelongsToUser(OrderDto order, String userId);
 }
