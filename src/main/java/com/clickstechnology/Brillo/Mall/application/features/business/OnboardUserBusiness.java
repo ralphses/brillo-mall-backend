@@ -4,8 +4,7 @@ import com.clickstechnology.Brillo.Mall.application.api.contracts.Authentication
 import com.clickstechnology.Brillo.Mall.application.api.contracts.BusinessService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.MediaAssetService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.UserService;
-import com.clickstechnology.Brillo.Mall.application.dto.BusinessDto;
-import com.clickstechnology.Brillo.Mall.application.dto.CustomerDto;
+import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessDto;
 import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.dto.request.business.OnboardBusinessRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.request.business.UpdateBusinessRequest;
@@ -23,8 +22,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.util.List;
 
 @Slf4j
 @Service

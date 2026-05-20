@@ -25,7 +25,6 @@ import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
 import com.clickstechnology.Brillo.Mall.application.utils.AppUtils;
 import com.clickstechnology.Brillo.Mall.infrastructure.logging.LoggableRequest;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -70,6 +69,7 @@ public class ManagePayments {
                 orderService.ensureOrderBelongsToUser(order, user.getId());
             }
             amount = order.getTotalAmount();
+
         } else if (initializationRequest.getPayableType() == PayableType.BOOKING) {
             BookedServiceDto booking = bookedBusinessServiceService.findById(initializationRequest.getPayableId());
            if (initializationRequest.isBusiness() && userRoles.contains(UserRole.ADMIN.name())) {

@@ -6,7 +6,7 @@ import com.clickstechnology.Brillo.Mall.application.api.contracts.CustomerServic
 import com.clickstechnology.Brillo.Mall.application.api.contracts.OrderService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.ProductService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.UserService;
-import com.clickstechnology.Brillo.Mall.application.dto.BusinessDto;
+import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessDto;
 import com.clickstechnology.Brillo.Mall.application.dto.CustomerDto;
 import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.dto.order.OrderDto;
@@ -152,7 +152,7 @@ public class ManageOrder {
         UserDto user = userService.findByUsername(username);
         log.info(":::Logged in user: {}", user.getRoles());
 
-        // Route based on user role
+        // Route based on a user role
         if (user.getRoles().contains(UserRole.ADMIN.name()) && (isBusiness || businessId != null)) {
             if (businessId != null) {
                 return orderService.findAllByBusinessId(businessId, page, pageSize);

@@ -1,6 +1,5 @@
 package com.clickstechnology.Brillo.Mall.application.dto.business;
 
-import com.clickstechnology.Brillo.Mall.application.dto.BusinessDto;
 import com.clickstechnology.Brillo.Mall.application.dto.CustomerDto;
 import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;

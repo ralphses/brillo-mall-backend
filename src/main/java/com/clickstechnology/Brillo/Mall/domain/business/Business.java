@@ -1,16 +1,14 @@
 package com.clickstechnology.Brillo.Mall.domain.business;
 
 
-import com.clickstechnology.Brillo.Mall.application.dto.BusinessDto;
+import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessDto;
 import com.clickstechnology.Brillo.Mall.application.enums.BusinessCategory;
 import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;
 import com.clickstechnology.Brillo.Mall.application.enums.WhatsappType;
 import com.clickstechnology.Brillo.Mall.infrastructure.persistence.JpaAuditor;
 import com.clickstechnology.Brillo.Mall.infrastructure.persistence.StringListConverter;
-import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
-import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -25,9 +23,7 @@ import lombok.Setter;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 @Entity

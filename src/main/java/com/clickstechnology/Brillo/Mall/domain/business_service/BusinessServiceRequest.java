@@ -1,6 +1,6 @@
 package com.clickstechnology.Brillo.Mall.domain.business_service;
 
-import com.clickstechnology.Brillo.Mall.application.dto.BusinessDto;
+import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessDto;
 import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessServiceDto;
 import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessServiceRequestDto;

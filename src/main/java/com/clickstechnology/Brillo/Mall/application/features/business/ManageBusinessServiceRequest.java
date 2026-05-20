@@ -5,7 +5,7 @@ import com.clickstechnology.Brillo.Mall.application.api.contracts.BusinessServic
 import com.clickstechnology.Brillo.Mall.application.api.contracts.BusinessServiceRequestService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.BusinessServiceService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.UserService;
-import com.clickstechnology.Brillo.Mall.application.dto.BusinessDto;
+import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessDto;
 import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessServiceDto;
 import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessServiceRequestDto;

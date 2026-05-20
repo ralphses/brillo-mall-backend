@@ -3,7 +3,7 @@ package com.clickstechnology.Brillo.Mall.domain.orders;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.BusinessService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.OrderService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.ProductService;
-import com.clickstechnology.Brillo.Mall.application.dto.BusinessDto;
+import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessDto;
 import com.clickstechnology.Brillo.Mall.application.dto.CustomerDto;
 import com.clickstechnology.Brillo.Mall.application.dto.order.OrderDto;
 import com.clickstechnology.Brillo.Mall.application.dto.order.PlaceOrderRequest;

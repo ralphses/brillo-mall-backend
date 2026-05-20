@@ -1,6 +1,6 @@
 package com.clickstechnology.Brillo.Mall.application.api.controllers;
 
-import com.clickstechnology.Brillo.Mall.application.dto.BusinessDto;
+import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessDto;
 import com.clickstechnology.Brillo.Mall.application.dto.CustomerDto;
 import com.clickstechnology.Brillo.Mall.application.dto.request.business.OnboardBusinessRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.request.business.UpdateBusinessRequest;
@@ -22,8 +22,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.util.List;
 
 import static com.clickstechnology.Brillo.Mall.application.dto.response.ResponseBuilder.success;
 
@@ -93,8 +91,7 @@ public class BusinessController {
         @RequestParam(value = "pageSize", defaultValue = "20")  final Integer pageSize,
         final HttpServletRequest httpServletRequest) {
         PaginatedResponse<CustomerDto> response = getBusinessCustomers.execute(
-                businessId,
-                    page, pageSize, httpServletRequest);
+                businessId, page, pageSize, httpServletRequest);
             return success(response);
     }
 }

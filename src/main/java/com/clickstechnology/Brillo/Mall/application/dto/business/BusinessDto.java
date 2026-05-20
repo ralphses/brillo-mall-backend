@@ -1,4 +1,4 @@
-package com.clickstechnology.Brillo.Mall.application.dto;
+package com.clickstechnology.Brillo.Mall.application.dto.business;
 
 import com.clickstechnology.Brillo.Mall.application.enums.BusinessCategory;
 import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;

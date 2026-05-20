@@ -16,7 +16,7 @@ public final class AppUtils {
     private AppUtils() {}
 
     private static final Pattern NONLATIN = Pattern.compile("[^\\w-]");
-    private static final Pattern WHITESPACE = Pattern.compile("[\\s]");
+    private static final Pattern WHITESPACE = Pattern.compile("\\s");
 
 
     public static MessageMedium resolveMessageMedium(String username) {

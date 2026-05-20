@@ -1,6 +1,6 @@
 package com.clickstechnology.Brillo.Mall.application.api.controllers;
 
-import com.clickstechnology.Brillo.Mall.application.dto.BusinessDto;
+import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessDto;
 import com.clickstechnology.Brillo.Mall.application.dto.request.business.OnboardBusinessRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.request.business.UpdateBusinessRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.response.PaginatedResponse;

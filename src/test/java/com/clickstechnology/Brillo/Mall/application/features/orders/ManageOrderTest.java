@@ -6,7 +6,7 @@ import com.clickstechnology.Brillo.Mall.application.api.contracts.CustomerServic
 import com.clickstechnology.Brillo.Mall.application.api.contracts.OrderService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.ProductService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.UserService;
-import com.clickstechnology.Brillo.Mall.application.dto.BusinessDto;
+import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessDto;
 import com.clickstechnology.Brillo.Mall.application.dto.CustomerDto;
 import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.dto.order.OrderDto;

@@ -1,8 +1,7 @@
 package com.clickstechnology.Brillo.Mall.application.dto.order;
 
-import com.clickstechnology.Brillo.Mall.application.dto.BusinessDto;
+import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessDto;
 import com.clickstechnology.Brillo.Mall.application.dto.CustomerDto;
-import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.enums.OrderStatus;
 import com.clickstechnology.Brillo.Mall.application.enums.PaymentMethod;
 import lombok.AllArgsConstructor;

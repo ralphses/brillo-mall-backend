@@ -36,7 +36,6 @@ public class PaymentController {
         return ResponseEntity.ok().build();
     }
 
-
     @GetMapping("/verify/{reference}")
     public ResponseWrapper<VerificationResponse> verifyPayment(@PathVariable String reference) {
         return success(managePayments.verifyPayment(reference));

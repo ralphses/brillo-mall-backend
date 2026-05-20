@@ -113,7 +113,7 @@ public class PaystackPaymentProcessor implements PaymentProcessor {
         return PaymentProcessorNames.PAYSTACK.name();
     };
 
-    public void verifySignature(String signature, String payload) {
+    private void verifySignature(String signature, String payload) {
         try {
             Mac mac = Mac.getInstance("HmacSHA512");
             SecretKeySpec secretKeySpec = new SecretKeySpec(paystackSecretKey.getBytes(), "HmacSHA512");
