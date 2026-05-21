@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 public class AppPropertiesConfig {
 
     private Jwt jwt = new Jwt();
+    private Whatsapp whatsapp = new Whatsapp();
     private Long otpDuration;
     private String defaultBusinessLogoUrl;
     private String defaultProductImageUrl = "https://test.png";
@@ -23,5 +24,13 @@ public class AppPropertiesConfig {
         private String jwtSecrete;
         private String issuer = "brillo";
         private Integer expiryTime = 10;
+    }
+
+    @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class Whatsapp {
+        private String url;
+        private String token;
     }
 }
