@@ -5,5 +5,6 @@ public enum ServiceRequestStatus {
     AGREED,
     REJECTED,
     EXPIRED,
-    BOOKED
+    BOOKED,
+    CANCELLED
 }

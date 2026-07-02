@@ -1,15 +1,17 @@
 package com.clickstechnology.Brillo.Mall.domain.business_service;
 
-import com.clickstechnology.Brillo.Mall.application.dto.BusinessDto;
+import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessDto;
 import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessServiceDto;
 import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessServiceRequestDto;
 import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;
+import com.clickstechnology.Brillo.Mall.application.enums.ServiceRequestStatus;
 import com.clickstechnology.Brillo.Mall.infrastructure.persistence.JpaAuditor;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -28,16 +30,25 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @AllArgsConstructor
 @SQLRestriction("status <> 'DELETED'")
-@Table(name = "BRILLO_BUSINESS_SERVICE_REQUEST")
+@Table(
+        name = "brillo_business_service_request",
+        indexes = {
+                @Index(name = "idx_brillo_business_service_request_business", columnList = "business_id"),
+                @Index(name = "idx_brillo_business_service_request_service", columnList = "business_service_id"),
+                @Index(name = "idx_brillo_business_service_request_user", columnList = "user_id"),
+                @Index(name = "idx_brillo_business_service_request_status", columnList = "request_status"),
+                @Index(name = "idx_brillo_business_service_request_conversation", columnList = "whatsapp_conversation_id")
+        }
+)
 class BusinessServiceRequest extends JpaAuditor implements Serializable {
 
     @Column(name = "customer_id", nullable = false, length = 100)
     private String customerId;
 
-    @Column(name = "user_id", length = 100)
+    @Column(name = "user_id", length = 100, nullable = false)
     private String userId;
 
-    @Column(name = "business_id", length = 100)
+    @Column(name = "business_id", length = 100, nullable = false)
     private String businessId;
 
     @Column(name = "whatsapp_conversation_id", length = 100)
@@ -55,14 +66,20 @@ class BusinessServiceRequest extends JpaAuditor implements Serializable {
     @Column(name = "agreed_price", precision = 19, scale = 2)
     private BigDecimal agreedPrice;
 
+    @Builder.Default
     @Column(name = "negotiation_attempts")
-    private Integer negotiationAttempts = 1;
+    private Integer negotiationAttempts = 0;
 
     @Column(name = "human_takeover")
     private boolean humanTakeover = false;
 
     @Column(name = "notes", columnDefinition = "TEXT")
     private String notes;
+
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "request_status", length = 50)
+    private ServiceRequestStatus requestStatus = ServiceRequestStatus.NEGOTIATING;
 
     @Builder.Default
     @Enumerated(EnumType.STRING)
@@ -81,8 +98,11 @@ class BusinessServiceRequest extends JpaAuditor implements Serializable {
                 .negotiationAttempts(negotiationAttempts)
                 .humanTakeover(humanTakeover)
                 .notes(notes)
+                .requestStatus(requestStatus)
                 .status(status)
                 .whatsappConversationId(whatsappConversationId)
+                .createdAt(getCreatedAt())
+                .updatedAt(getUpdatedAt())
                 .user(UserDto.builder()
                         .id(userId)
                         .build())

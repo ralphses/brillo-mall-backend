@@ -1,0 +1,397 @@
+{
+  "GREETING": {
+    "description": "User says hello or starts conversation",
+    "examples": [
+      "hi",
+      "hello",
+      "hey",
+      "good morning",
+      "good afternoon",
+      "good evening",
+      "yo",
+      "sup",
+      "hello there",
+      "hey there",
+      "morning",
+      "evening boss",
+      "hi there",
+      "how far",
+      "how are you",
+      "what's up",
+      "hola"
+    ],
+    "routes_to": "SHOW_MENU"
+  },
+
+  "ACCOUNT_CREATION": {
+    "description": "User wants to create an account or signup",
+    "examples": [
+      "create account",
+      "sign me up",
+      "register me",
+      "I want to register",
+      "open account for me",
+      "help me create account",
+      "I don't have an account",
+      "how do I sign up",
+      "start registration",
+      "make account for me",
+      "I want to join",
+      "set up my profile",
+      "get me an account"
+    ],
+    "routes_to": "USER_ONBOARDING_TASK"
+  },
+
+  "BUSINESS_ONBOARDING": {
+    "description": "User wants to register a business",
+    "examples": [
+      "add my business",
+      "onboard business",
+      "register shop",
+      "I want to list my business",
+      "create business account",
+      "add store",
+      "set up my business",
+      "I want to sell here",
+      "list my service",
+      "register my company",
+      "how do I become a vendor",
+      "open seller account",
+      "add my company profile"
+    ],
+    "routes_to": "BUSINESS_ONBOARDING_TASK"
+  },
+
+  "PRODUCT_SEARCH": {
+    "description": "User is looking for products",
+    "examples": [
+      "I need bread",
+      "show phones",
+      "find shoes",
+      "looking for laptop",
+      "do you have rice",
+      "I want clothes",
+      "need a TV",
+      "any available phones?",
+      "I want to buy food",
+      "show me laptops",
+      "what products do you have",
+      "I need something to eat",
+      "looking for cheap phones",
+      "any bread available?"
+    ],
+    "routes_to": "PRODUCT_SEARCH_TASK"
+  },
+
+  "SERVICE_SEARCH": {
+    "description": "User is looking for services",
+    "examples": [
+      "I need plumber",
+      "electrician near me",
+      "cleaning service",
+      "I need a mechanic",
+      "who can fix AC",
+      "home repair service",
+      "I need a barber",
+      "makeup artist needed",
+      "washing service",
+      "repair guy needed",
+      "AC technician",
+      "someone to fix my car",
+      "laundry service near me"
+    ],
+    "routes_to": "SERVICE_SEARCH_TASK"
+  },
+
+  "PRODUCT_PURCHASE": {
+    "description": "User wants to buy a product",
+    "examples": [
+      "buy bread",
+      "I want to purchase phone",
+      "order this",
+      "I'll take it",
+      "buy it for me",
+      "I want 2 of this",
+      "checkout this item",
+      "proceed to buy",
+      "add to cart",
+      "I will pay for this",
+      "get me this product",
+      "I want to order now",
+      "buy 3 pieces",
+      "confirm purchase"
+    ],
+    "routes_to": "PRODUCT_PURCHASE_TASK"
+  },
+
+  "SERVICE_BOOKING": {
+    "description": "User wants to book a service",
+    "examples": [
+      "book plumber",
+      "schedule cleaning",
+      "hire technician",
+      "I want to book service",
+      "get someone to fix my house",
+      "I need appointment",
+      "book electrician",
+      "schedule repair",
+      "I want this service",
+      "request for service",
+      "send someone to my house",
+      "book a mechanic",
+      "I need help at home",
+      "reserve a technician"
+    ],
+    "routes_to": "SERVICE_REQUEST_TASK"
+  },
+
+  "ORDER_TRACKING": {
+    "description": "User wants to track an order",
+    "examples": [
+      "where is my order",
+      "track order",
+      "order status",
+      "has my order arrived?",
+      "is my package ready",
+      "delivery update",
+      "where is it now",
+      "my order update please",
+      "track my delivery",
+      "status of my order",
+      "did my order leave?",
+      "order still pending?",
+      "is it on the way",
+      "check my order status"
+    ],
+    "routes_to": "ORDER_TRACKING_TASK"
+  },
+
+  "ORDER_MODIFICATION": {
+    "description": "User wants to change or cancel an order",
+    "examples": [
+      "cancel order",
+      "change address",
+      "modify order",
+      "I want to cancel",
+      "update my order",
+      "change my order",
+      "wrong address",
+      "edit order details",
+      "can I change this",
+      "remove item from order",
+      "add more items",
+      "stop this order",
+      "I made a mistake",
+      "adjust my order"
+    ],
+    "routes_to": "ORDER_MODIFICATION_TASK"
+  },
+
+  "NEGOTIATION_REQUEST": {
+    "description": "User wants to negotiate price or service terms",
+    "examples": [
+      "can you reduce price",
+      "too expensive",
+      "discount?",
+      "make it cheaper",
+      "any discount available",
+      "reduce the price",
+      "that's high",
+      "can you do 2k instead",
+      "lower price please",
+      "let's negotiate",
+      "I can pay less",
+      "offer lower price",
+      "give me best price",
+      "can you adjust price"
+    ],
+    "routes_to": "NEGOTIATION_TASK"
+  },
+
+  "PAYMENT_INITIATION": {
+    "description": "User is ready to pay or proceed to checkout",
+    "examples": [
+      "pay now",
+      "checkout",
+      "I want to pay",
+      "send payment link",
+      "proceed payment",
+      "let me pay",
+      "complete payment",
+      "I'm ready to pay",
+      "how do I pay",
+      "pay for it",
+      "finish order",
+      "continue to payment",
+      "make payment",
+      "pay this now"
+    ],
+    "routes_to": "PAYMENT_TASK"
+  },
+
+  "SUPPORT_REQUEST": {
+    "description": "User needs help or escalation",
+    "examples": [
+      "help me",
+      "support",
+      "I have an issue",
+      "problem with order",
+      "I need help",
+      "something is wrong",
+      "assist me",
+      "talk to support",
+      "customer care",
+      "I need assistance",
+      "this is not working",
+      "complaint",
+      "I want to report issue",
+      "human support please"
+    ],
+    "routes_to": "SUPPORT_TASK"
+  },
+
+  "PRODUCT_MANAGEMENT": {
+    "description": "Business user managing product orders",
+    "examples": [
+      "manage orders",
+      "view sales",
+      "incoming orders",
+      "show my orders",
+      "orders dashboard",
+      "what have I sold",
+      "new orders",
+      "customer orders",
+      "track my sales",
+      "business orders",
+      "order management",
+      "pending orders",
+      "my store orders",
+      "sales overview"
+    ],
+    "routes_to": "BUSINESS_PRODUCT_ORDER_TASK"
+  },
+
+  "SERVICE_MANAGEMENT": {
+    "description": "Business user managing service requests",
+    "examples": [
+      "view requests",
+      "manage bookings",
+      "incoming jobs",
+      "service requests",
+      "new bookings",
+      "who booked me",
+      "appointments",
+      "job requests",
+      "my clients",
+      "service dashboard",
+      "pending jobs",
+      "work requests",
+      "customer bookings",
+      "service management"
+    ],
+    "routes_to": "BUSINESS_SERVICE_REQUEST_TASK"
+  },
+
+  "SEARCH_GENERIC": {
+    "description": "General search across platform",
+    "examples": [
+      "search bread",
+      "find plumber",
+      "what do you have",
+      "show me options",
+      "browse items",
+      "look for something",
+      "search for shoes",
+      "what can I buy",
+      "show services",
+      "find products",
+      "search items",
+      "I want options",
+      "help me find something",
+      "available items"
+    ],
+    "routes_to": "GLOBAL_SEARCH_TASK"
+  },
+
+  "ORDER_STATUS_QUERY": {
+    "description": "User asks about status without selecting order",
+    "examples": [
+      "is my order ready",
+      "status of delivery",
+      "my order update",
+      "has it been shipped",
+      "order status please",
+      "what's happening with my order",
+      "delivery status",
+      "any update on my order",
+      "is it processed",
+      "order progress",
+      "did it go out",
+      "where is my package",
+      "status check",
+      "order update"
+    ],
+    "routes_to": "ORDER_STATUS_QUERY_TASK"
+  },
+
+  "AUTH_REQUIRED_ACTION": {
+    "description": "Triggered when guest tries restricted action",
+    "examples": [
+      "checkout attempt",
+      "booking attempt as guest",
+      "I want to buy but no account",
+      "can I order without account",
+      "I didn't register",
+      "I don't have login",
+      "proceed without account",
+      "buy without signing up",
+      "guest checkout",
+      "skip registration",
+      "no account yet",
+      "order without login",
+      "I am not registered"
+    ],
+    "routes_to": "AUTH_GUARD_TASK"
+  },
+
+  "MENU_REQUEST": {
+    "description": "User asks what they can do",
+    "examples": [
+      "what can I do",
+      "options",
+      "menu",
+      "show me menu",
+      "help options",
+      "what do you offer",
+      "list features",
+      "available commands",
+      "what services do you have",
+      "guide me",
+      "show options",
+      "what can I buy here",
+      "how does this work"
+    ],
+    "routes_to": "SHOW_MENU"
+  },
+
+  "FREE_TEXT_FALLBACK": {
+    "description": "Unknown or unclassified message",
+    "examples": [
+      "random text",
+      "unclear intent",
+      "asdfgh",
+      "???",
+      "ok",
+      "hmm",
+      "lol",
+      "test",
+      "12345",
+      "I don't know",
+      "maybe",
+      "something",
+      "..."
+    ],
+    "routes_to": "CLARIFY_OR_SEARCH"
+  }
+}

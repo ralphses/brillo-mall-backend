@@ -24,14 +24,14 @@ import java.math.BigDecimal;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "BRILLO_ORDER_ITEM")
+@Table(name = "brillo_order_item")
 class OrderItem extends JpaAuditor implements Serializable {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id", nullable = false)
     private Order order;
 
-    @JoinColumn(name = "product_id", nullable = false)
+    @Column(name = "product_id", nullable = false)
     private String productId;
 
     @Column(name = "quantity", nullable = false)

@@ -9,6 +9,8 @@ import com.clickstechnology.Brillo.Mall.application.dto.CustomerDto;
 import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessServiceDto;
 import com.clickstechnology.Brillo.Mall.application.dto.request.business.PlaceBusinessServiceRequestPayload;
+import com.clickstechnology.Brillo.Mall.application.exception.UnauthorizedUserException;
+import com.clickstechnology.Brillo.Mall.infrastructure.logging.LoggableRequest;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,20 +29,23 @@ public class PlaceBusinessServiceRequest {
     private final AuthenticationUtil authenticationUtil;
     private final CustomerService customerService;
 
+    @LoggableRequest
     public void execute(PlaceBusinessServiceRequestPayload request, HttpServletRequest httpServletRequest) {
         String authenticatedUsername = authenticationUtil.getAuthenticatedUsername(httpServletRequest);
+        if (authenticatedUsername == null) {
+            throw new UnauthorizedUserException();
+        }
+
         UserDto user = userService.findByUsername(authenticatedUsername);
 
-        // fetch business service
         BusinessServiceDto businessService = businessServiceService.findById(request.getBusinessServiceId());
-
-        // Resolve customer
-        CustomerDto customer = customerService.resolveCustomer(request.getCustomer(), user.getId(), Set.of(businessService.getBusinessId()));
-
-        // Ensure business service is fit for requests
         businessServiceService.validateForRequests(businessService);
 
-        // ensure business service be
+        CustomerDto customer = customerService.resolveCustomer(
+                request.getCustomer(),
+                user.getId(),
+                Set.of(businessService.getBusinessId()));
+
         businessServiceRequestService.create(request, customer, businessService);
     }
 }

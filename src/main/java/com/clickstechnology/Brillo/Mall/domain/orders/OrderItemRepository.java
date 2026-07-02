@@ -10,4 +10,7 @@ interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
 
     @Query("SELECT oi FROM OrderItem oi WHERE oi.order.orderId = :orderId")
     List<OrderItem> findByOrderId(@Param("orderId") String orderId);
+
+    @Query("SELECT oi FROM OrderItem oi JOIN FETCH oi.order o WHERE o.orderId IN :orderIds")
+    List<OrderItem> findByOrderIdIn(@Param("orderIds") List<String> orderIds);
 }

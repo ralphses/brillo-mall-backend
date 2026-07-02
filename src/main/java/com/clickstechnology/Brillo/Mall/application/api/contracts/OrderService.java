@@ -12,7 +12,7 @@ public interface OrderService {
 
     OrderDto addItemsToOrder(String id, PlaceOrderRequest request);
 
-    OrderDto createNewOrder(String newOrderId, PlaceOrderRequest request, String userId);
+    OrderDto createNewOrder(String newOrderId, PlaceOrderRequest request, String userId, String businessId);
 
     String generateOrderId();
 
@@ -33,4 +33,6 @@ public interface OrderService {
     OrderDto findOrderDetailsForCustomer(String orderId, String id);
 
     PaginatedResponse<OrderDto> findAllByUserId(String id, Integer page, Integer pageSize);
+
+    void ensureOrderBelongsToUser(OrderDto order, String userId);
 }

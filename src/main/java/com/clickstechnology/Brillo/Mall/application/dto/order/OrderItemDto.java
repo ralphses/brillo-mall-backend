@@ -1,6 +1,6 @@
 package com.clickstechnology.Brillo.Mall.application.dto.order;
 
-import com.clickstechnology.Brillo.Mall.application.dto.BusinessDto;
+import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessDto;
 import com.clickstechnology.Brillo.Mall.application.dto.product.ProductDto;
 import lombok.Builder;
 import lombok.Data;

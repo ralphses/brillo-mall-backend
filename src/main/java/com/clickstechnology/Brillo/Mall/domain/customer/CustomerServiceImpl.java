@@ -27,21 +27,27 @@ class CustomerServiceImpl implements CustomerService {
     @Override
     public CustomerDto resolveCustomer(CustomerDto customer, String userId, Set<String> businessIds) {
 
-        return customerRepository.findByPhone(customer.getCustomerPhoneNumber())
+        Customer foundCustomer = customerRepository.findByPhone(customer.getCustomerPhoneNumber())
                 .orElseGet(() -> {
                     Customer newCustomer = new Customer();
                     newCustomer.setAddress(customer.getAddress());
                     newCustomer.setUserId(userId);
+                    newCustomer.setRelatedBusinessIds(businessIds);
                     newCustomer.setName(customer.getCustomerName());
                     newCustomer.setEmail(customer.getCustomerEmail());
                     newCustomer.setPhone(customer.getCustomerPhoneNumber());
                     return customerRepository.save(newCustomer);
-                }).dto();
+                });
+        Set<String> relatedBusinessIds = foundCustomer.getRelatedBusinessIds();
+        relatedBusinessIds.addAll(businessIds);
+        foundCustomer.setRelatedBusinessIds(relatedBusinessIds);
+        customerRepository.save(foundCustomer);
+        return foundCustomer.dto();
     }
 
     @Override
     public PaginatedResponse<CustomerDto> findAllByRefs(Set<String> customerRefs,  int page, int pageSize) {
-        Pageable pageable = PageRequest.of(Math.min(0, page-1), pageSize);
+        Pageable pageable = PageRequest.of(Math.max(0, page - 1), pageSize);
         Page<Customer> customerPage = customerRepository.findAllByReferenceIn(customerRefs, pageable);
 
         List<CustomerDto> items = customerPage.getContent().stream().map(Customer::dto).collect(Collectors.toList());
@@ -55,6 +61,13 @@ class CustomerServiceImpl implements CustomerService {
                 .hasPrevious(customerPage.hasPrevious())
                 .items(items)
                 .build();
+    }
+
+    @Override
+    public CustomerDto findById(String customerId) {
+        return customerRepository.findByReference(customerId)
+                .map(Customer::dto)
+                .orElseThrow(() -> new BusinessException("Customer not found"));
     }
 
     @Override
@@ -109,6 +122,36 @@ class CustomerServiceImpl implements CustomerService {
 
     @Override
     public PaginatedResponse<CustomerDto> findAllByBusinessId(String businessId, Pageable pageable) {
-        return null;
+        Page<Customer> customerPage = customerRepository.findAllByRelatedBusinessIdsContaining(businessId, pageable);
+        List<CustomerDto> items = customerPage.getContent().stream().map(Customer::dto).collect(Collectors.toList());
+        return PaginatedResponse.<CustomerDto>builder()
+                .page(pageable.getPageNumber() + 1)
+                .perPage(pageable.getPageSize())
+                .total(customerPage.getTotalElements())
+                .totalPages(customerPage.getTotalPages())
+                .hasNext(customerPage.hasNext())
+                .hasPrevious(customerPage.hasPrevious())
+                .items(items)
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public CustomerDto resolveWhatsappCustomer(String phoneNumber, String displayName, String businessId) {
+        Customer customer = customerRepository.findByPhone(phoneNumber)
+                .orElseGet(() -> customerRepository.save(Customer.builder()
+                        .name(displayName != null && !displayName.isBlank() ? displayName : phoneNumber)
+                        .phone(phoneNumber)
+                        .build()));
+
+        Set<String> relatedBusinessIds = customer.getRelatedBusinessIds();
+        relatedBusinessIds.add(businessId);
+        customer.setRelatedBusinessIds(relatedBusinessIds);
+
+        if ((customer.getName() == null || customer.getName().isBlank()) && displayName != null && !displayName.isBlank()) {
+            customer.setName(displayName);
+        }
+
+        return customerRepository.save(customer).dto();
     }
 }

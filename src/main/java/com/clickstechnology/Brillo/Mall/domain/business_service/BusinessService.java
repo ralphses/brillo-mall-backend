@@ -29,7 +29,7 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @SQLRestriction("status <> 'DELETED'")
 @Table(
-        name = "BRILLO_BUSINESS_SERVICE",
+        name = "brillo_business_service",
         indexes = {
                 @Index(name = "idx_service_business_id", columnList = "business_id"),
                 @Index(name = "idx_service_slug", columnList = "slug"),
@@ -50,7 +50,7 @@ class BusinessService extends JpaAuditor implements Serializable {
     @Column(name = "name", length = 120, nullable = false)
     private String name;
 
-    @Column(name = "slug", length = 150, nullable = false, unique = true)
+    @Column(name = "slug", length = 150, nullable = false)
     private String slug;
 
     @Column(name = "description", columnDefinition = "TEXT")

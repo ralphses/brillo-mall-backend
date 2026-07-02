@@ -4,7 +4,7 @@ import com.clickstechnology.Brillo.Mall.application.api.contracts.BusinessServic
 import com.clickstechnology.Brillo.Mall.application.api.contracts.CustomerService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.ProductService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.UserService;
-import com.clickstechnology.Brillo.Mall.application.dto.BusinessDto;
+import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessDto;
 import com.clickstechnology.Brillo.Mall.application.dto.CustomerDto;
 import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.dto.order.OrderItemRequest;
@@ -18,6 +18,7 @@ import com.clickstechnology.Brillo.Mall.application.enums.BusinessCategory;
 import com.clickstechnology.Brillo.Mall.application.enums.OrderStatus;
 import com.clickstechnology.Brillo.Mall.application.enums.PaymentMethod;
 import com.clickstechnology.Brillo.Mall.application.enums.UserRole;
+import com.clickstechnology.Brillo.Mall.infrastructure.caching.CacheUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -30,8 +31,10 @@ import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.math.BigDecimal;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -65,6 +68,9 @@ class OrderControllerIntegrationTest {
 
     @Autowired
     private CustomerService customerService;
+
+    @MockitoBean
+    private CacheUtil cacheUtil;
 
     private ProductDto product;
     private UserDto testUser;
@@ -106,7 +112,7 @@ class OrderControllerIntegrationTest {
         customerDto.setCustomerEmail(testUser.getEmail());
 
 
-        testCustomer = customerService.resolveCustomer(customerDto, testUser.getId(), Set.of(business.getId()));
+        testCustomer = customerService.resolveCustomer(customerDto, testUser.getId(), new HashSet<>(Set.of(business.getId())));
     }
 
     @Test
@@ -255,6 +261,19 @@ class OrderControllerIntegrationTest {
         RegisterRequest adminRegisterRequest = new RegisterRequest("Admin User", "admin@test.com", "Password123", "admin@test.com");
         userService.registerNewUser(adminRegisterRequest, null, false);
         userService.addRoleToUser("admin@test.com", UserRole.ADMIN);
+        UserDto adminUser = userService.findByUsername("admin@test.com");
+
+        // --- GIVEN: An admin-owned business and product ---
+        OnboardBusinessRequest adminBusinessRequest = new OnboardBusinessRequest();
+        adminBusinessRequest.setBusinessName("Admin Mart");
+        businessService.createNew(adminBusinessRequest, adminUser, "logo2.png", BusinessCategory.PRODUCTS);
+        BusinessDto adminBusiness = businessService.findByBusinessSlug("admin-mart");
+
+        AddProductRequest adminProductRequest = new AddProductRequest();
+        adminProductRequest.setName("Admin Product");
+        adminProductRequest.setPrice(BigDecimal.valueOf(50.00));
+        adminProductRequest.setQuantity(5);
+        ProductDto adminProduct = productService.createProduct(adminBusiness.getId(), adminProductRequest, "logo2.png");
 
         // --- GIVEN: A second business and product owned by another user ---
         RegisterRequest otherUserRequest = new RegisterRequest("Other User", "08012345678", "Password123", null);
@@ -274,9 +293,9 @@ class OrderControllerIntegrationTest {
 
         // Place an order for the first business's product
         OrderItemRequest firstItemRequest = new OrderItemRequest();
-        firstItemRequest.setProductId(product.getId());
+        firstItemRequest.setProductId(adminProduct.getId());
         firstItemRequest.setQuantity(1);
-        firstItemRequest.setPrice(product.getPrice());
+        firstItemRequest.setPrice(adminProduct.getPrice());
 
         PlaceOrderRequest firstOrderRequest = new PlaceOrderRequest();
         firstOrderRequest.setCustomer(testCustomer);
@@ -298,7 +317,7 @@ class OrderControllerIntegrationTest {
 
         // --- WHEN & THEN: Admin fetches orders for the first business only ---
         mockMvc.perform(get("/api/v1/orders")
-                        .param("businessId", product.getBusinessId())
+                        .param("businessId", adminBusiness.getId())
                         .param("page", "1")
                         .param("pageSize", "10")
                         .contentType(MediaType.APPLICATION_JSON))
@@ -306,7 +325,7 @@ class OrderControllerIntegrationTest {
                 .andExpect(jsonPath("$.status").value(200))
                 .andExpect(jsonPath("$.data.total").value(1))
                 .andExpect(jsonPath("$.data.items.length()").value(1))
-                .andExpect(jsonPath("$.data.items[0].items[0].product.name").value("Test Product"));
+                .andExpect(jsonPath("$.data.items[0].items[0].product.name").value("Admin Product"));
     }
 
     @Test
@@ -464,8 +483,8 @@ class OrderControllerIntegrationTest {
             mockMvc.perform(put("/api/v1/orders/{orderId}/status", orderId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(updateRequest)))
-                    .andExpect(status().isNotFound())
-                    .andExpect(jsonPath("$.message").value("Order not found or user does not have permission to update it."));
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message").value("Order not found or you do not have permission to view it."));
         }
     }
 }

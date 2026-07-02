@@ -22,14 +22,13 @@ class CustomUserDetailsService implements UserDetailsService {
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         AuthUser user;
-            try {
-                user = userService.findUserByUsername(username);
-                List<String> roles = userService.getUserRoles(user.getUsername());
-                return new CustomUserDetail(user, roles);
-            } catch (ResourceNotFoundException ex) {
-
-                log.info(":::Error finding user by username: {}", username, ex);
-                throw new UsernameNotFoundException(ex.getMessage());
-            }
+        try {
+            user = userService.findUserByUsername(username);
+            List<String> roles = userService.getUserRoles(user.getUsername());
+            return new CustomUserDetail(user, roles);
+        } catch (ResourceNotFoundException ex) {
+            log.debug("User lookup failed for username {}", username);
+            throw new UsernameNotFoundException(ex.getMessage());
+        }
     }
 }

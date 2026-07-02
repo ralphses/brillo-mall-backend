@@ -1,12 +1,14 @@
 package com.clickstechnology.Brillo.Mall.application.api.controllers;
 
-import com.clickstechnology.Brillo.Mall.application.dto.BusinessDto;
+import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessDto;
+import com.clickstechnology.Brillo.Mall.application.dto.response.DashboardData;
 import com.clickstechnology.Brillo.Mall.application.dto.request.business.OnboardBusinessRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.request.business.UpdateBusinessRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.response.PaginatedResponse;
 import com.clickstechnology.Brillo.Mall.application.dto.response.business.OnboardBusinessResponse;
 import com.clickstechnology.Brillo.Mall.application.enums.BusinessCategory;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
+import com.clickstechnology.Brillo.Mall.application.api.contracts.DashboardService;
 import com.clickstechnology.Brillo.Mall.application.features.business.OnboardUserBusiness;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -40,6 +42,9 @@ class BusinessControllerTest {
 
     @MockitoBean
     private OnboardUserBusiness onboardUserBusiness;
+
+    @MockitoBean
+    private DashboardService dashboardService;
 
     private BusinessDto businessDto;
 
@@ -150,6 +155,29 @@ class BusinessControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.slug").value("test-business"))
                 .andExpect(jsonPath("$.data.name").value("Test Business"))
+                .andExpect(jsonPath("$.status").value(200));
+    }
+
+    @Test
+    void activateStorefront_ShouldReturn200_WhenBusinessIsActivated() throws Exception {
+        OnboardBusinessResponse response = new OnboardBusinessResponse("Storefront has been activated.");
+        when(onboardUserBusiness.activateStorefront(eq("biz-123"), any())).thenReturn(response);
+
+        mockMvc.perform(post("/api/v1/businesses/{businessId}/activate-storefront", "biz-123")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.message").value("Storefront has been activated."))
+                .andExpect(jsonPath("$.status").value(200));
+    }
+
+    @Test
+    void getDashboard_ShouldReturn200_WithDashboardData() throws Exception {
+        DashboardData dashboardData = DashboardData.builder().build();
+        when(dashboardService.getDashboardData(any())).thenReturn(dashboardData);
+
+        mockMvc.perform(get("/api/v1/businesses/dashboard")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value(200));
     }
 

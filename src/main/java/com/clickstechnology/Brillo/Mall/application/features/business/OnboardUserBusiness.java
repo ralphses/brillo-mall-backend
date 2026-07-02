@@ -1,11 +1,10 @@
 package com.clickstechnology.Brillo.Mall.application.features.business;
 
-import com.clickstechnology.Brillo.Mall.application.api.contracts.AuthenticationUtil;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.BusinessService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.MediaAssetService;
+import com.clickstechnology.Brillo.Mall.application.api.contracts.TenantContextResolver;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.UserService;
-import com.clickstechnology.Brillo.Mall.application.dto.BusinessDto;
-import com.clickstechnology.Brillo.Mall.application.dto.CustomerDto;
+import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessDto;
 import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.dto.request.business.OnboardBusinessRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.request.business.UpdateBusinessRequest;
@@ -24,8 +23,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.List;
-
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -33,14 +30,13 @@ public class OnboardUserBusiness {
 
     private final UserService userService;
     private final BusinessService businessService;
-    private final AuthenticationUtil authenticationUtil;
+    private final TenantContextResolver tenantContextResolver;
     private final AppPropertiesConfig appPropertiesConfig;
     private final MediaAssetService mediaAssetService;
 
     @LoggableRequest
     public OnboardBusinessResponse execute(final OnboardBusinessRequest request, final HttpServletRequest httpServletRequest) {
-        String authenticatedUsername = authenticationUtil.getAuthenticatedUsername(httpServletRequest);
-        UserDto user = userService.findByUsername(authenticatedUsername);
+        UserDto user = tenantContextResolver.currentUser(httpServletRequest);
 
         // Validate category
         BusinessCategory businessCategory = AppUtils.validateBusinessCategory(request.getBusinessCategory());
@@ -63,6 +59,7 @@ public class OnboardUserBusiness {
             throw new BusinessException("Logo file is empty");
         }
 
+        tenantContextResolver.ensureBusinessOwnership(httpServletRequest, businessId);
         String logoUrl = mediaAssetService.uploadFile(FileType.LOGO, logoFile, businessId);
         businessService.addLogo(businessId, logoUrl);
 
@@ -75,16 +72,22 @@ public class OnboardUserBusiness {
             final UpdateBusinessRequest updateBusinessRequest,
             final HttpServletRequest httpServletRequest) {
 
+        tenantContextResolver.ensureBusinessOwnership(httpServletRequest, businessId);
         businessService.updateBusiness(businessId, updateBusinessRequest);
 
         return new OnboardBusinessResponse("Business has been successfully updated.");
     }
 
     @LoggableRequest
-    public PaginatedResponse<BusinessDto> getBusinesses(Integer page, Integer pageSize, HttpServletRequest httpServletRequest) {
+    public OnboardBusinessResponse activateStorefront(final String businessId, final HttpServletRequest httpServletRequest) {
+        tenantContextResolver.ensureBusinessOwnership(httpServletRequest, businessId);
+        businessService.activateStorefront(businessId);
+        return new OnboardBusinessResponse("Storefront has been activated.");
+    }
 
-        String authenticatedUsername = authenticationUtil.getAuthenticatedUsername(httpServletRequest);
-        UserDto userDto = userService.findByUsername(authenticatedUsername);
+    @LoggableRequest
+    public PaginatedResponse<BusinessDto> getBusinesses(Integer page, Integer pageSize, HttpServletRequest httpServletRequest) {
+        UserDto userDto = tenantContextResolver.currentUser(httpServletRequest);
         return businessService.findAllByOwnerId(userDto.getId(), page, pageSize);
     }
 

@@ -33,6 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.anyList;
 import static org.mockito.Mockito.anyMap;
 import static org.mockito.Mockito.anySet;
@@ -106,11 +107,10 @@ class PlaceOrderTest {
     void execute_Success_NewOrder() {
         when(authenticationUtil.getAuthenticatedUsername(httpServletRequest)).thenReturn("testUser");
         when(userService.findByUsername(anyString())).thenReturn(userDto);
-        when(customerService.resolveCustomer(any(CustomerDto.class), anyString(), Set.of("biz1"))).thenReturn(customerDto);
+        when(customerService.resolveCustomer(any(CustomerDto.class), anyString(), eq(Set.of("biz1")))).thenReturn(customerDto);
         when(productService.findProductsByIds(anyList())).thenReturn(List.of(productDto));
-        when(productService.findAllByProductIds(anySet())).thenReturn(List.of(productDto));
         when(orderService.generateOrderId()).thenReturn("newOrderId");
-        when(orderService.createNewOrder(anyString(), any(PlaceOrderRequest.class), any())).thenReturn(orderDto);
+        when(orderService.createNewOrder(anyString(), any(PlaceOrderRequest.class), anyString(), anyString())).thenReturn(orderDto);
 
         OrderPlacedResponse response = placeOrder.execute(placeOrderRequest, httpServletRequest);
 
@@ -123,6 +123,7 @@ class PlaceOrderTest {
         verify(businessService).validateBusinessIsActive(Set.of("biz1"));
         verify(productService).checkInStock(Map.of("prod1", 1));
         verify(orderService).generateOrderId();
+        verify(orderService).createNewOrder("newOrderId", placeOrderRequest, userDto.getId(), "biz1");
         verify(businessService).addCustomer(customerDto, Set.of("biz1"));
     }
 
@@ -132,9 +133,8 @@ class PlaceOrderTest {
 
         when(authenticationUtil.getAuthenticatedUsername(httpServletRequest)).thenReturn("testUser");
         when(userService.findByUsername(anyString())).thenReturn(userDto);
-        when(customerService.resolveCustomer(any(CustomerDto.class), anyString(), Set.of("biz1"))).thenReturn(customerDto);
+        when(customerService.resolveCustomer(any(CustomerDto.class), anyString(), eq(Set.of("biz1")))).thenReturn(customerDto);
         when(productService.findProductsByIds(anyList())).thenReturn(List.of(productDto));
-        when(productService.findAllByProductIds(anySet())).thenReturn(List.of(productDto));
         when(orderService.findOrderById("existingOrderId")).thenReturn(orderDto);
         when(orderService.addItemsToOrder(anyString(), any(PlaceOrderRequest.class))).thenReturn(orderDto);
 
@@ -152,7 +152,6 @@ class PlaceOrderTest {
     void execute_Failure_NoProductsFound() {
         when(authenticationUtil.getAuthenticatedUsername(httpServletRequest)).thenReturn("testUser");
         when(userService.findByUsername(anyString())).thenReturn(userDto);
-        when(customerService.resolveCustomer(any(CustomerDto.class), anyString(), Set.of("biz1"))).thenReturn(customerDto);
         when(productService.findProductsByIds(anyList())).thenReturn(Collections.emptyList());
 
         BusinessException exception = assertThrows(BusinessException.class, () -> placeOrder.execute(placeOrderRequest, httpServletRequest));
@@ -164,9 +163,7 @@ class PlaceOrderTest {
     void execute_Failure_InactiveBusiness() {
         when(authenticationUtil.getAuthenticatedUsername(httpServletRequest)).thenReturn("testUser");
         when(userService.findByUsername(anyString())).thenReturn(userDto);
-        when(customerService.resolveCustomer(any(CustomerDto.class), anyString(), Set.of("biz1"))).thenReturn(customerDto);
         when(productService.findProductsByIds(anyList())).thenReturn(List.of(productDto));
-        when(productService.findAllByProductIds(anySet())).thenReturn(List.of(productDto));
         doThrow(new BusinessException("Business is inactive")).when(businessService).validateBusinessIsActive(anySet());
 
         BusinessException exception = assertThrows(BusinessException.class, () -> placeOrder.execute(placeOrderRequest, httpServletRequest));
@@ -178,9 +175,8 @@ class PlaceOrderTest {
     void execute_Failure_OutOfStock() {
         when(authenticationUtil.getAuthenticatedUsername(httpServletRequest)).thenReturn("testUser");
         when(userService.findByUsername(anyString())).thenReturn(userDto);
-        when(customerService.resolveCustomer(any(CustomerDto.class), anyString(), Set.of("biz1"))).thenReturn(customerDto);
+        when(customerService.resolveCustomer(any(CustomerDto.class), anyString(), eq(Set.of("biz1")))).thenReturn(customerDto);
         when(productService.findProductsByIds(anyList())).thenReturn(List.of(productDto));
-        when(productService.findAllByProductIds(anySet())).thenReturn(List.of(productDto));
         doThrow(new BusinessException("Out of stock")).when(productService).checkInStock(anyMap());
 
         BusinessException exception = assertThrows(BusinessException.class, () -> placeOrder.execute(placeOrderRequest, httpServletRequest));

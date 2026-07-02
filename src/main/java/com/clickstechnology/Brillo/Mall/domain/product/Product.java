@@ -27,10 +27,14 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @SQLRestriction("status <> 'DELETED'")
 @Table(
-        name = "BRILLO_PRODUCT",
+        name = "brillo_product",
         indexes = {
                 @Index(name = "idx_brillo_product_business", columnList = "business_id"),
                 @Index(name = "idx_brillo_product_status", columnList = "status")
+        },
+        uniqueConstraints = {
+                @jakarta.persistence.UniqueConstraint(name = "uk_brillo_product_business_sku", columnNames = {"business_id", "sku"}),
+                @jakarta.persistence.UniqueConstraint(name = "uk_brillo_product_business_name", columnNames = {"business_id", "name"})
         }
 )
 class Product extends JpaAuditor implements Serializable {

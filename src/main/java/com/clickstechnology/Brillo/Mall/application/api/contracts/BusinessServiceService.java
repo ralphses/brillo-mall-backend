@@ -25,5 +25,7 @@ public interface BusinessServiceService {
 
     void validateForRequests(BusinessServiceDto businessService);
 
+    void validateForBooking(BusinessServiceDto businessService);
+
     void validatePriceAgreed(BusinessServiceDto businessService, BigDecimal totalPrice);
 }

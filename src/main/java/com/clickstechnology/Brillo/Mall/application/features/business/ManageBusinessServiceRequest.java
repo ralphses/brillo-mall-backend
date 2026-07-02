@@ -5,15 +5,14 @@ import com.clickstechnology.Brillo.Mall.application.api.contracts.BusinessServic
 import com.clickstechnology.Brillo.Mall.application.api.contracts.BusinessServiceRequestService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.BusinessServiceService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.UserService;
-import com.clickstechnology.Brillo.Mall.application.dto.BusinessDto;
 import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
+import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessDto;
 import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessServiceDto;
 import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessServiceRequestDto;
 import com.clickstechnology.Brillo.Mall.application.dto.request.business.PlaceBusinessServiceRequestPayload;
 import com.clickstechnology.Brillo.Mall.application.dto.response.PaginatedResponse;
-import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;
+import com.clickstechnology.Brillo.Mall.application.enums.ServiceRequestStatus;
 import com.clickstechnology.Brillo.Mall.application.enums.UserRole;
-import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
 import com.clickstechnology.Brillo.Mall.application.exception.UnauthorizedUserException;
 import com.clickstechnology.Brillo.Mall.application.utils.AppUtils;
 import com.clickstechnology.Brillo.Mall.infrastructure.logging.LoggableRequest;
@@ -24,6 +23,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -40,103 +41,90 @@ public class ManageBusinessServiceRequest {
     public BusinessServiceRequestDto update(
             final PlaceBusinessServiceRequestPayload request,
             final HttpServletRequest httpServletRequest,
-            final String requestId,
-            final boolean updateNegotiationCounter) {
+            final String requestId) {
 
-        String authenticatedUsername = authenticationUtil.getAuthenticatedUsername(httpServletRequest);
-        if (authenticatedUsername == null) {
-            throw new UnauthorizedUserException();
-        }
-
-        UserDto user = userService.findByUsername(authenticatedUsername);
+        UserDto user = getAuthenticatedUser(httpServletRequest);
         List<String> userRoles = user.getRoles();
-
-        if (userRoles == null || userRoles.isEmpty()) {
-            throw new UnauthorizedUserException();
-        }
-
         BusinessServiceRequestDto businessServiceRequest = businessServiceRequestService.findById(requestId);
 
-        if (userRoles.contains(UserRole.ADMIN.toString()) && request.isBusiness()) {
-            BusinessDto business = businessServiceRequest.getBusiness();
-            businessService.ensureBusinessBelongsToUser(business.getId(), user.getId());
-        }
+        authorizeForRequest(user, userRoles, businessServiceRequest);
 
-        if (userRoles.contains(UserRole.USER.toString())
-                && !businessServiceRequest.getUser().getId().equals(user.getId())) {
+        boolean businessActor = userRoles.contains(UserRole.ADMIN.name());
+        if (!businessActor && !userRoles.contains(UserRole.USER.name())) {
             throw new UnauthorizedUserException();
         }
 
-        List<EntityStatus> acceptedUserStatus = List.of(EntityStatus.PENDING, EntityStatus.INACTIVE);
-
-        if (!acceptedUserStatus.contains(businessServiceRequest.getStatus()) && !request.isBusiness()) {
-            throw new BusinessException("Business service request is invalid or already processed.");
-        }
-
-        // Update request
-        return businessServiceRequestService.updateRequest(requestId, request, updateNegotiationCounter);
-
+        return businessServiceRequestService.updateRequest(requestId, request, businessActor);
     }
-
 
     public PaginatedResponse<BusinessServiceRequestDto> list(
             final String businessId,
             final String businessServiceId,
+            final ServiceRequestStatus requestStatus,
             final boolean isBusiness,
             final Integer page,
             final Integer pageSize,
             final HttpServletRequest httpServletRequest) {
 
-        String authenticatedUsername = authenticationUtil.getAuthenticatedUsername(httpServletRequest);
-        UserDto user = userService.findByUsername(authenticatedUsername);
-
+        UserDto user = getAuthenticatedUser(httpServletRequest);
         List<String> userRoles = user.getRoles();
         Pageable pageable = AppUtils.getPageable(page, pageSize);
 
         if (userRoles.contains(UserRole.ADMIN.name()) && isBusiness) {
             if (businessId != null) {
                 businessService.ensureBusinessBelongsToUser(businessId, user.getId());
-                return businessServiceRequestService.listForBusiness(businessId, businessServiceId, pageable);
+                return businessServiceRequestService.listForBusiness(businessId, businessServiceId, requestStatus, pageable);
             }
             if (businessServiceId != null) {
                 BusinessServiceDto thisBusinessService = businessServiceService.getByIdOrSlug(businessServiceId);
                 businessService.ensureBusinessBelongsToUser(thisBusinessService.getBusinessId(), user.getId());
-                return businessServiceRequestService.listForBusinessService(businessServiceId, pageable);
+                return businessServiceRequestService.listForBusinessService(businessServiceId, requestStatus, pageable);
             }
+
+            List<BusinessDto> adminBusinesses = businessService.findAllByOwnerId(user.getId());
+            Set<String> businessIds = adminBusinesses.stream().map(BusinessDto::getId).collect(Collectors.toSet());
+            return businessServiceRequestService.listForBusinesses(businessIds, requestStatus, pageable);
         }
 
-        return businessServiceRequestService.listForUser(user.getId(), pageable);
+        return businessServiceRequestService.listForUser(user.getId(), requestStatus, pageable);
     }
 
     @LoggableRequest
     public void delete(HttpServletRequest httpServletRequest, String requestId) {
-        String authenticatedUsername = authenticationUtil.getAuthenticatedUsername(httpServletRequest);
-        UserDto user = userService.findByUsername(authenticatedUsername);
+        UserDto user = getAuthenticatedUser(httpServletRequest);
         List<String> userRoles = user.getRoles();
-
         BusinessServiceRequestDto request = businessServiceRequestService.findById(requestId);
 
-        if (userRoles.contains(UserRole.ADMIN.name())) {
-            businessService.ensureBusinessBelongsToUser(request.getBusiness().getId(), user.getId());
-            businessServiceRequestService.delete(request);
-        }
-
-        if (userRoles.contains(UserRole.USER.name()) && request.getUser().getId().equals(user.getId())) {
-            businessServiceRequestService.delete(request);
-        }
-
+        authorizeForRequest(user, userRoles, request);
+        businessServiceRequestService.delete(request);
     }
 
     public BusinessServiceRequestDto getRequest(String requestId, HttpServletRequest httpServletRequest) {
-        String authenticatedUsername = authenticationUtil.getAuthenticatedUsername(httpServletRequest);
-        UserDto user = userService.findByUsername(authenticatedUsername);
-
+        UserDto user = getAuthenticatedUser(httpServletRequest);
+        List<String> userRoles = user.getRoles();
         BusinessServiceRequestDto serviceRequest = businessServiceRequestService.findById(requestId);
 
-        if (!serviceRequest.getUser().getId().equals(user.getId())) {
+        authorizeForRequest(user, userRoles, serviceRequest);
+        return serviceRequest;
+    }
+
+    private UserDto getAuthenticatedUser(HttpServletRequest httpServletRequest) {
+        String authenticatedUsername = authenticationUtil.getAuthenticatedUsername(httpServletRequest);
+        if (authenticatedUsername == null) {
             throw new UnauthorizedUserException();
         }
+        return userService.findByUsername(authenticatedUsername);
+    }
 
-        return serviceRequest;
+    private void authorizeForRequest(UserDto user, List<String> userRoles, BusinessServiceRequestDto serviceRequest) {
+        if (userRoles.contains(UserRole.ADMIN.name())) {
+            businessService.ensureBusinessBelongsToUser(serviceRequest.getBusiness().getId(), user.getId());
+        } else if (userRoles.contains(UserRole.USER.name())) {
+            if (!serviceRequest.getUser().getId().equals(user.getId())) {
+                throw new UnauthorizedUserException();
+            }
+        } else {
+            throw new UnauthorizedUserException();
+        }
     }
 }

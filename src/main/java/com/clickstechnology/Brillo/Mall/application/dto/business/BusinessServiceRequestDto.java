@@ -1,14 +1,15 @@
 package com.clickstechnology.Brillo.Mall.application.dto.business;
 
-import com.clickstechnology.Brillo.Mall.application.dto.BusinessDto;
 import com.clickstechnology.Brillo.Mall.application.dto.CustomerDto;
 import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;
+import com.clickstechnology.Brillo.Mall.application.enums.ServiceRequestStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 
 @Data
 @Builder
@@ -37,5 +38,11 @@ public class BusinessServiceRequestDto {
 
     private String notes;
 
+    private ServiceRequestStatus requestStatus;
+
     private EntityStatus status;
+
+    private Instant createdAt;
+
+    private Instant updatedAt;
 }

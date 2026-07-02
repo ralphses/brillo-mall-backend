@@ -7,7 +7,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Index;
-import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
@@ -21,7 +20,7 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(
-        name = "BRILLO_ALL_REQUEST",
+        name = "brillo_all_request",
         indexes = {
                 @Index(name = "idx_request_reference", columnList = "reference"),
                 @Index(name = "idx_request_status", columnList = "status")
@@ -37,7 +36,6 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 class AllRequest extends JpaAuditor implements Serializable {
 
-    @Lob
     @Column(name = "request_body", nullable = false, columnDefinition = "LONGTEXT")
     private String requestBody;
 
@@ -45,7 +43,6 @@ class AllRequest extends JpaAuditor implements Serializable {
     @Column(name = "status", nullable = false, length = 30)
     private RequestStatus status;
 
-    @Lob
     @Column(name = "response_body", columnDefinition = "LONGTEXT")
     private String responseBody;
 

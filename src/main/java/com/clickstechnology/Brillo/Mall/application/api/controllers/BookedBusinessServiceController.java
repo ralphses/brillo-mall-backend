@@ -5,6 +5,7 @@ import com.clickstechnology.Brillo.Mall.application.dto.request.business.BookASe
 import com.clickstechnology.Brillo.Mall.application.dto.request.business.UpdateBookingRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.response.PaginatedResponse;
 import com.clickstechnology.Brillo.Mall.application.dto.response.ResponseWrapper;
+import com.clickstechnology.Brillo.Mall.application.enums.BookingStatus;
 import com.clickstechnology.Brillo.Mall.application.features.business.BookAService;
 import com.clickstechnology.Brillo.Mall.application.features.business.ManageBookings;
 import jakarta.servlet.http.HttpServletRequest;
@@ -43,11 +44,12 @@ public class BookedBusinessServiceController {
             final HttpServletRequest httpServletRequest,
             @RequestParam(required = false) final String businessId,
             @RequestParam(required = false) final String businessServiceId,
+            @RequestParam(required = false) final BookingStatus bookingStatus,
             @RequestParam(required = false, defaultValue = "false") final boolean isBusiness,
             @RequestParam(defaultValue = "1") final Integer page,
             @RequestParam(defaultValue = "10") final Integer pageSize) {
         PaginatedResponse<BookedServiceDto> response = manageBookings.getBookings(
-                businessId, businessServiceId, isBusiness, page, pageSize, httpServletRequest);
+                businessId, businessServiceId, bookingStatus, isBusiness, page, pageSize, httpServletRequest);
         return success(response);
     }
 

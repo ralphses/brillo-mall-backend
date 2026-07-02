@@ -9,6 +9,8 @@ import java.util.Set;
 public interface CustomerService {
     CustomerDto resolveCustomer(CustomerDto customer, String userId, Set<String> businessIds);
 
+    CustomerDto findById(String customerId);
+
     PaginatedResponse<CustomerDto> findAllByRefs(Set<String> customerRefs, int page, int pageSize);
 
     CustomerDto findByPhoneOrEmail(String ownerId);
@@ -20,4 +22,6 @@ public interface CustomerService {
     void updateCustomer(String customerId, CustomerDto customer);
 
     PaginatedResponse<CustomerDto> findAllByBusinessId(String businessId, Pageable pageable);
+
+    CustomerDto resolveWhatsappCustomer(String phoneNumber, String displayName, String businessId);
 }

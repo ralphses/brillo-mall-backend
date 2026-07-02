@@ -1,8 +1,7 @@
 package com.clickstechnology.Brillo.Mall.application.dto.order;
 
-import com.clickstechnology.Brillo.Mall.application.dto.BusinessDto;
+import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessDto;
 import com.clickstechnology.Brillo.Mall.application.dto.CustomerDto;
-import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.enums.OrderStatus;
 import com.clickstechnology.Brillo.Mall.application.enums.PaymentMethod;
 import lombok.AllArgsConstructor;
@@ -20,6 +19,7 @@ import java.util.List;
 @AllArgsConstructor
 public class OrderDto {
     private String id;
+    private String businessId;
     private String userId;
     private BusinessDto business;
     private CustomerDto customer;

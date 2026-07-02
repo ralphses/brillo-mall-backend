@@ -1,6 +1,6 @@
 package com.clickstechnology.Brillo.Mall.application.api.contracts;
 
-import com.clickstechnology.Brillo.Mall.application.dto.BusinessDto;
+import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessDto;
 import com.clickstechnology.Brillo.Mall.application.dto.CustomerDto;
 import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.dto.request.business.OnboardBusinessRequest;
@@ -9,6 +9,7 @@ import com.clickstechnology.Brillo.Mall.application.dto.response.PaginatedRespon
 import com.clickstechnology.Brillo.Mall.application.enums.BusinessCategory;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 public interface BusinessService {
@@ -27,6 +28,8 @@ public interface BusinessService {
 
     void updateBusiness(String businessId, UpdateBusinessRequest updateBusinessRequest);
 
+    void activateStorefront(String businessId);
+
     PaginatedResponse<BusinessDto> findAllByOwnerId(String userId, Integer page, Integer pageSize);
 
     void validateBusinessIsActive(Set<String> allProductOwners);
@@ -38,5 +41,9 @@ public interface BusinessService {
     List<BusinessDto> findAllByOwnerId(String userId);
 
     List<BusinessDto> findAllByBusinessIds(Set<String> businessIds);
+
+    Optional<BusinessDto> findByWhatsappNumber(String whatsappNumber);
+
+    List<BusinessDto> findWhatsappRouteCandidates();
 
 }

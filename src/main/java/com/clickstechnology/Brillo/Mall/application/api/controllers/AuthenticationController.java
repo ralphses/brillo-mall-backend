@@ -124,7 +124,6 @@ public class AuthenticationController {
     @Operation(summary = "Logout", description = "Invalidates user session/token")
     @PostMapping("logout")
     public ResponseWrapper<String> logout(HttpServletRequest httpServletRequest) {
-
         authenticateUser.logout(httpServletRequest);
         return success();
     }

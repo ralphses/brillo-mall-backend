@@ -141,10 +141,20 @@ class BusinessServiceServiceImpl implements BusinessServiceService {
     public void validateForRequests(BusinessServiceDto businessService) {
         boolean isFitForNegotiation = businessService.isNegotiable()
                 && PricingType.NEGOTIABLE == businessService.getPricingType()
-                && businessService.isActive();
+                && businessService.isActive()
+                && businessService.getStatus() == EntityStatus.ACTIVE;
 
         if (!isFitForNegotiation) {
             throw new BusinessException("This business service is not valid or not negotiable.");
+        }
+    }
+
+    @Override
+    public void validateForBooking(BusinessServiceDto businessService) {
+        boolean isBookable = businessService.isActive() && businessService.getStatus() == EntityStatus.ACTIVE;
+
+        if (!isBookable) {
+            throw new BusinessException("This business service is not available for booking.");
         }
     }
 

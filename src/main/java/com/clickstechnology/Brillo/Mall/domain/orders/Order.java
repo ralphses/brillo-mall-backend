@@ -1,8 +1,7 @@
 package com.clickstechnology.Brillo.Mall.domain.orders;
 
-import com.clickstechnology.Brillo.Mall.application.dto.BusinessDto;
+import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessDto;
 import com.clickstechnology.Brillo.Mall.application.dto.CustomerDto;
-import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.dto.order.OrderDto;
 import com.clickstechnology.Brillo.Mall.application.enums.OrderStatus;
 import com.clickstechnology.Brillo.Mall.application.enums.PaymentMethod;
@@ -35,8 +34,22 @@ import java.util.stream.Collectors;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "BRILLO_ORDER")
+@Table(
+        name = "brillo_order",
+        indexes = {
+                @jakarta.persistence.Index(name = "idx_brillo_order_business", columnList = "business_id"),
+                @jakarta.persistence.Index(name = "idx_brillo_order_customer", columnList = "customer_id"),
+                @jakarta.persistence.Index(name = "idx_brillo_order_user", columnList = "user_id"),
+                @jakarta.persistence.Index(name = "idx_brillo_order_status", columnList = "status")
+        },
+        uniqueConstraints = {
+                @jakarta.persistence.UniqueConstraint(name = "uk_brillo_order_order_id", columnNames = {"order_id"})
+        }
+)
 class Order extends JpaAuditor implements Serializable {
+
+    @Column(name = "business_id", nullable = false)
+    private String businessId;
 
     @Column(name = "customer_id", nullable = false)
     private String customerId;
@@ -115,6 +128,7 @@ class Order extends JpaAuditor implements Serializable {
     public OrderDto dto(CustomerDto customerDto, BusinessDto businessDto) {
         return OrderDto.builder()
                 .id(this.getOrderId())
+                .businessId(this.businessId)
                 .business(businessDto)
                 .customer(customerDto)
                 .status(this.status)
@@ -130,8 +144,10 @@ class Order extends JpaAuditor implements Serializable {
     public OrderDto dto() {
         return OrderDto.builder()
                 .id(this.getOrderId())
+                .businessId(this.businessId)
                 .status(this.status)
                 .userId(this.userId)
+                .business(BusinessDto.builder().id(this.businessId).build())
                 .paymentMethod(this.paymentMethod)
                 .totalAmount(this.totalAmount)
                 .shippingAddress(this.shippingAddress)
@@ -140,6 +156,4 @@ class Order extends JpaAuditor implements Serializable {
                 .updatedAt(this.getUpdatedAt())
                 .build();
     }
-
-
 }

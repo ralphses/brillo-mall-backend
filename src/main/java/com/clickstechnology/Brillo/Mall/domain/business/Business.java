@@ -1,16 +1,14 @@
 package com.clickstechnology.Brillo.Mall.domain.business;
 
 
-import com.clickstechnology.Brillo.Mall.application.dto.BusinessDto;
+import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessDto;
 import com.clickstechnology.Brillo.Mall.application.enums.BusinessCategory;
 import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;
 import com.clickstechnology.Brillo.Mall.application.enums.WhatsappType;
 import com.clickstechnology.Brillo.Mall.infrastructure.persistence.JpaAuditor;
 import com.clickstechnology.Brillo.Mall.infrastructure.persistence.StringListConverter;
-import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
-import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -25,9 +23,7 @@ import lombok.Setter;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 @Entity
@@ -38,7 +34,7 @@ import java.util.Set;
 @AllArgsConstructor
 @SQLRestriction("status <> 'DELETED'")
 @Table(
-        name = "BRILLO_BUSINESS",
+        name = "brillo_business",
         indexes = {
                 @Index(name = "idx_brillo_business_owner", columnList = "owner_id"),
                 @Index(name = "idx_brillo_business_slug", columnList = "slug"),
@@ -60,7 +56,7 @@ class Business extends JpaAuditor implements Serializable {
     private String name;
 
     @Convert(converter = StringListConverter.class)
-    @Column(name = "customers", columnDefinition = "json")
+    @Column(name = "customers", columnDefinition = "CLOB")
     private Set<String> customers;
 
     @Column(name = "slug", length = 120, nullable = false, unique = true)

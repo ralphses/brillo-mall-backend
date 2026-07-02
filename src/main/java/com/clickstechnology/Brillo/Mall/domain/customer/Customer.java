@@ -33,10 +33,13 @@ import java.util.Set;
 @AllArgsConstructor
 @SQLRestriction("status <> 'DELETED'")
 @Table(
-        name = "BRILLO_CUSTOMER",
+        name = "brillo_customer",
         indexes = {
-                @Index(name = "idx_brillo_customer_business", columnList = "business_id"),
                 @Index(name = "idx_brillo_customer_user", columnList = "user_id")
+        },
+        uniqueConstraints = {
+                @jakarta.persistence.UniqueConstraint(name = "uk_brillo_customer_email", columnNames = {"email"}),
+                @jakarta.persistence.UniqueConstraint(name = "uk_brillo_customer_phone", columnNames = {"phone_number"})
         }
 )
 class Customer extends JpaAuditor implements Serializable {

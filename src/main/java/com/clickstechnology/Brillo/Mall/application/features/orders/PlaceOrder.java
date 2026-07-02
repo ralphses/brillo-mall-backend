@@ -15,6 +15,7 @@ import com.clickstechnology.Brillo.Mall.application.dto.product.ProductDto;
 import com.clickstechnology.Brillo.Mall.application.dto.order.OrderItemRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.order.PlaceOrderRequest;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
+import com.clickstechnology.Brillo.Mall.application.exception.ResourceNotFoundException;
 import com.clickstechnology.Brillo.Mall.infrastructure.logging.LoggableRequest;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -46,16 +47,14 @@ public class PlaceOrder {
         String userId = resolveUserId(httpServletRequest, request.getCustomer());
 
         List<ProductDto> products = loadProducts(request);
-        Set<String> businessIds = products.stream()
-                .map(ProductDto::getBusinessId).collect(Collectors.toSet());
+        String businessId = validateProductsAndGetBusinessId(products);
+        Set<String> businessIds = Set.of(businessId);
 
         CustomerDto customer = resolveCustomer(request, userId, businessIds);
 
-        validateProductsAndGetBusinessId(products);
-
         validateInventory(request.getItems());
 
-        OrderDto order = createOrUpdateOrder(request, userId);
+        OrderDto order = createOrUpdateOrder(request, userId, businessId);
 
         attachCustomerToBusinesses(customer, products);
 
@@ -72,7 +71,13 @@ public class PlaceOrder {
 
     private String resolveUserId(final HttpServletRequest httpServletRequest, final CustomerDto customer) {
         String authenticatedUsername = authenticationUtil.getAuthenticatedUsername(httpServletRequest);
-        UserDto userDto = userService.findByUsername(authenticatedUsername);
+        UserDto userDto;
+        try {
+            userDto = userService.findByUsername(authenticatedUsername);
+        } catch (ResourceNotFoundException ex) {
+            log.debug("Authenticated user {} not found; falling back to customer phone number", authenticatedUsername);
+            userDto = null;
+        }
 
         return Optional.ofNullable(userDto).map(UserDto::getId)
                 .orElse(customer.getCustomerPhoneNumber());
@@ -135,11 +140,15 @@ public class PlaceOrder {
         productService.checkInStock(productQuantityMap);
     }
 
-    private OrderDto createOrUpdateOrder(PlaceOrderRequest request, String userId) {
+    private OrderDto createOrUpdateOrder(PlaceOrderRequest request, String userId, String businessId) {
 
         if (request.getOrderId() != null) {
             OrderDto existingOrder =
                     orderService.findOrderById(request.getOrderId());
+
+            if (existingOrder.getBusinessId() != null && !existingOrder.getBusinessId().equals(businessId)) {
+                throw new BusinessException("Order items must belong to the same business.");
+            }
 
             return orderService.addItemsToOrder(
                     existingOrder.getId(),
@@ -149,7 +158,7 @@ public class PlaceOrder {
 
         String orderId = orderService.generateOrderId();
 
-        return orderService.createNewOrder(orderId, request, userId);
+        return orderService.createNewOrder(orderId, request, userId, businessId);
     }
 
     private void attachCustomerToBusinesses(
@@ -163,17 +172,20 @@ public class PlaceOrder {
         businessService.addCustomer(customer, businessIds);
     }
 
-    private void validateProductsAndGetBusinessId(List<ProductDto> products) {
+    private String validateProductsAndGetBusinessId(List<ProductDto> products) {
         if (products.isEmpty()) {
             throw new BusinessException("No products found for the given IDs.");
         }
 
-        Set<String> productIds = products.stream().map(ProductDto::getId).collect(Collectors.toSet());
-        List<ProductDto> allProducts = productService.findAllByProductIds(productIds);
+        Set<String> allProductOwners = products.stream()
+                .map(ProductDto::getBusinessId)
+                .collect(Collectors.toSet());
 
-        Set<String> allProductOwners = allProducts.stream()
-                .map(ProductDto::getBusinessId).collect(Collectors.toSet());
+        if (allProductOwners.size() != 1) {
+            throw new BusinessException("Order items must belong to the same business.");
+        }
 
         businessService.validateBusinessIsActive(allProductOwners);
+        return allProductOwners.iterator().next();
     }
 }

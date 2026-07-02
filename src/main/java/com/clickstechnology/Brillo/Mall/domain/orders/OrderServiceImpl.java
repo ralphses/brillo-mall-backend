@@ -1,17 +1,20 @@
 package com.clickstechnology.Brillo.Mall.domain.orders;
 
 import com.clickstechnology.Brillo.Mall.application.api.contracts.BusinessService;
+import com.clickstechnology.Brillo.Mall.application.api.contracts.CustomerService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.OrderService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.ProductService;
-import com.clickstechnology.Brillo.Mall.application.dto.BusinessDto;
+import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessDto;
 import com.clickstechnology.Brillo.Mall.application.dto.CustomerDto;
 import com.clickstechnology.Brillo.Mall.application.dto.order.OrderDto;
+import com.clickstechnology.Brillo.Mall.application.dto.order.OrderItemDto;
 import com.clickstechnology.Brillo.Mall.application.dto.order.PlaceOrderRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.product.ProductDto;
 import com.clickstechnology.Brillo.Mall.application.dto.response.PaginatedResponse;
 import com.clickstechnology.Brillo.Mall.application.enums.OrderStatus;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
 import com.clickstechnology.Brillo.Mall.application.exception.ResourceNotFoundException;
+import com.clickstechnology.Brillo.Mall.application.features.notifications.NotificationEventPublisher;
 import com.clickstechnology.Brillo.Mall.infrastructure.caching.CacheNames;
 import com.clickstechnology.Brillo.Mall.infrastructure.caching.CacheUtil;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,31 +45,40 @@ class OrderServiceImpl implements OrderService {
     private final CacheUtil cacheUtil;
     private final ProductService productService;
     private final BusinessService businessService;
+    private final CustomerService customerService;
+    private final NotificationEventPublisher notificationEventPublisher;
 
     @Override
     public OrderDto findOrderById(String orderId) {
-        return getOrder(orderId).dto();
+        return enrich(getOrder(orderId));
     }
 
     @Override
     public OrderDto findOrderByIdAndCustomerId(String orderId, String customerId) {
         return orderRepository.findOrderDetailsByOrderIdAndCustomerId(orderId, customerId)
-                .map(Order::dto)
+                .map(this::enrich)
                 .orElseThrow(() -> new BusinessException("Order not found or does not belong to the customer"));
     }
 
     @Override
     public OrderDto findOrderDetailsForCustomer(String orderId, String customerId) {
         return orderRepository.findOrderDetailsByOrderIdAndCustomerId(orderId, customerId)
-                .map(Order::dto)
+                .map(this::enrich)
                 .orElseThrow(() -> new BusinessException("Order not found or does not belong to the customer."));
     }
 
     @Override
     public PaginatedResponse<OrderDto> findAllByUserId(String userId, Integer page, Integer pageSize) {
-        Pageable pageable = PageRequest.of(page - 1, pageSize);
+        Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by(Sort.Direction.ASC, "createdAt"));
         Page<Order> orderPage = orderRepository.findAllByUserId(userId, pageable);
         return getOrderPaginatedResponse(orderPage);
+    }
+
+    @Override
+    public void ensureOrderBelongsToUser(OrderDto order, String userId) {
+        if (!order.getUserId().equals(userId)) {
+            throw new BusinessException("Order does not belong to the user.");
+        }
     }
 
     @Override
@@ -89,13 +102,13 @@ class OrderServiceImpl implements OrderService {
         order.setStatus(OrderStatus.PENDING);
         order.setPaymentMethod(request.getPaymentMethod());
         order.setCustomerId(request.getCustomer().getId());
-        order.setShippingAddress(order.getShippingAddress());
+        order.setShippingAddress(request.getCustomer().getAddress());
 
-        return orderRepository.save(order).dto();
+        return enrich(orderRepository.save(order));
     }
 
     @Override
-    public OrderDto createNewOrder(String newOrderId, PlaceOrderRequest request, String userId) {
+    public OrderDto createNewOrder(String newOrderId, PlaceOrderRequest request, String userId, String businessId) {
 
         List<OrderItem> orderItems = createOrderItems(request);
 
@@ -106,6 +119,7 @@ class OrderServiceImpl implements OrderService {
         Order newOrder = Order.builder()
                 .orderId(newOrderId)
                 .userId(userId)
+                .businessId(businessId)
                 .customerId(request.getCustomer().getId())
                 .paymentMethod(request.getPaymentMethod())
                 .shippingAddress(request.getCustomer().getAddress())
@@ -114,7 +128,15 @@ class OrderServiceImpl implements OrderService {
 
         newOrder.addOrderItems(orderItems);
 
-        return orderRepository.saveAndFlush(newOrder).dto();
+        OrderDto savedOrder = enrich(orderRepository.saveAndFlush(newOrder));
+        if (notificationEventPublisher != null) {
+            notificationEventPublisher.publishOrderCreated(
+                    savedOrder,
+                    resolveCustomer(savedOrder.getCustomer().getId()),
+                    resolveBusiness(businessId)
+            );
+        }
+        return savedOrder;
     }
 
     @Override
@@ -140,22 +162,22 @@ class OrderServiceImpl implements OrderService {
 
     @Override
     public PaginatedResponse<OrderDto> findAllByCustomerId(String customerId, Integer page, Integer pageSize) {
-        Pageable pageable = PageRequest.of(page - 1, pageSize);
+        Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by(Sort.Direction.ASC, "createdAt"));
         Page<Order> orderPage = orderRepository.findAllByCustomerId(customerId, pageable);
         return getOrderPaginatedResponse(orderPage);
     }
 
     @Override
     public PaginatedResponse<OrderDto> findAllByBusinessId(String businessId, Integer page, Integer pageSize) {
-        Pageable pageable = PageRequest.of(page - 1, pageSize);
+        Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by(Sort.Direction.ASC, "createdAt"));
         Page<Order> orderPage = orderRepository.findAllByBusinessId(businessId, pageable);
         return getOrderPaginatedResponse(orderPage);
     }
 
     @Override
     public PaginatedResponse<OrderDto> findAllByBusinessIds(List<String> businessIds, Integer page, Integer pageSize) {
-        Pageable pageable = PageRequest.of(page - 1, pageSize);
-        Page<Order> orderPage = orderRepository.findAllByBusinessIds(businessIds, pageable);
+        Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by(Sort.Direction.ASC, "createdAt"));
+        Page<Order> orderPage = orderRepository.findAllByBusinessIdIn(businessIds, pageable);
         return getOrderPaginatedResponse(orderPage);
     }
 
@@ -164,6 +186,11 @@ class OrderServiceImpl implements OrderService {
     public OrderDto updateOrderStatus(String orderId, OrderStatus newStatus) {
         Order order = orderRepository.findByOrderId(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found with ID: " + orderId));
+        OrderStatus previousStatus = order.getStatus();
+
+        if (previousStatus == newStatus) {
+            return enrich(order);
+        }
 
         if (newStatus == OrderStatus.CANCELLED && order.getStatus() != OrderStatus.PENDING) {
                 throw new BusinessException("Order not valid or cancelled");
@@ -171,11 +198,49 @@ class OrderServiceImpl implements OrderService {
 
         order.setStatus(newStatus);
         Order updatedOrder = orderRepository.save(order);
-        return updatedOrder.dto();
+        OrderDto updatedOrderDto = enrich(updatedOrder);
+        if (notificationEventPublisher != null) {
+            notificationEventPublisher.publishOrderStatusChanged(
+                    updatedOrderDto,
+                    resolveCustomer(updatedOrderDto.getCustomer().getId()),
+                    resolveBusiness(updatedOrderDto.getBusinessId()),
+                    previousStatus,
+                    newStatus
+            );
+        }
+        return updatedOrderDto;
     }
 
     private PaginatedResponse<OrderDto> getOrderPaginatedResponse(Page<Order> orderPage) {
-        List<OrderDto> orderDtos = orderPage.getContent().stream().map(Order::dto).collect(Collectors.toList());
+        List<String> orderIds = orderPage.getContent().stream()
+                .map(Order::getOrderId)
+                .toList();
+
+        List<OrderItem> orderItems = orderIds.isEmpty()
+                ? List.of()
+                : orderItemRepository.findByOrderIdIn(orderIds);
+
+        Map<String, List<OrderItemDto>> itemsByOrderId = orderItems.stream()
+                .collect(Collectors.groupingBy(
+                        item -> item.getOrder().getOrderId(),
+                        Collectors.mapping(OrderItem::dto, Collectors.toList())
+                ));
+
+        List<OrderDto> orderDtos = orderPage.getContent().stream()
+                .map(order -> buildOrderDto(order, itemsByOrderId.getOrDefault(order.getOrderId(), List.of())))
+                .collect(Collectors.toList());
+
+        if (orderDtos.isEmpty()) {
+            return PaginatedResponse.<OrderDto>builder()
+                    .items(orderDtos)
+                    .page(orderPage.getNumber() + 1)
+                    .perPage(orderPage.getSize())
+                    .total(orderPage.getTotalElements())
+                    .totalPages(orderPage.getTotalPages())
+                    .hasNext(orderPage.hasNext())
+                    .hasPrevious(orderPage.hasPrevious())
+                    .build();
+        }
 
         // Collect all product IDs from the current page of orders
         List<String> productIds = orderDtos.stream()
@@ -192,27 +257,32 @@ class OrderServiceImpl implements OrderService {
         Map<String, String> orderCustomerMap = orderPage.getContent().stream()
                 .collect(Collectors.toMap(Order::getOrderId, Order::getCustomerId));
 
-        Set<String> businessIds = products.stream()
-                .map(ProductDto::getBusinessId)
+        Set<String> businessIds = orderPage.getContent().stream()
+                .map(Order::getBusinessId)
                 .collect(Collectors.toSet());
-        List<BusinessDto> businesses = businessService.findAllByBusinessIds(businessIds);
+        List<BusinessDto> businesses = businessIds.isEmpty()
+                ? List.of()
+                : businessService.findAllByBusinessIds(businessIds);
         Map<String, BusinessDto> businessMap = businesses.stream()
                 .collect(Collectors.toMap(BusinessDto::getId, business -> business));
 
         // Enrich the order DTOs
-        orderDtos.forEach(orderDto -> orderDto.getItems().forEach(item -> {
+        orderDtos.forEach(orderDto -> {
+            orderDto.getItems().forEach(item -> {
             ProductDto fullProduct = productMap.get(item.getProduct().getId());
             if (fullProduct != null) {
                 item.setProduct(fullProduct);
                 item.setBusiness(businessMap.get(fullProduct.getBusinessId()));
             }
+            });
 
             CustomerDto customerDto = CustomerDto.builder()
                     .id(orderCustomerMap.get(orderDto.getId()))
                     .build();
 
             orderDto.setCustomer(customerDto);
-        }));
+            orderDto.setBusiness(businessMap.get(orderDto.getBusinessId()));
+        });
 
         return PaginatedResponse.<OrderDto>builder()
                 .items(orderDtos)
@@ -225,11 +295,55 @@ class OrderServiceImpl implements OrderService {
                 .build();
     }
 
+    private OrderDto buildOrderDto(Order order, List<OrderItemDto> items) {
+        return OrderDto.builder()
+                .id(order.getOrderId())
+                .businessId(order.getBusinessId())
+                .userId(order.getUserId())
+                .business(BusinessDto.builder().id(order.getBusinessId()).build())
+                .status(order.getStatus())
+                .paymentMethod(order.getPaymentMethod())
+                .totalAmount(order.getTotalAmount())
+                .shippingAddress(order.getShippingAddress())
+                .items(items)
+                .createdAt(order.getCreatedAt())
+                .updatedAt(order.getUpdatedAt())
+                .build();
+    }
+
     private Order getOrder(String orderId) {
         String cacheKey = CacheNames.ORDER_ID + orderId;
         return Optional.ofNullable(cacheUtil.get(cacheKey, Order.class))
                 .orElseGet(() -> orderRepository.findByOrderId(orderId)
                         .orElseThrow(() -> new BusinessException("Order with ID: " + orderId + " does not exist")));
+    }
+
+    private OrderDto enrich(Order order) {
+        CustomerDto customer = resolveCustomer(order.getCustomerId());
+        BusinessDto business = resolveBusiness(order.getBusinessId());
+        return order.dto(customer, business);
+    }
+
+    private CustomerDto resolveCustomer(String customerId) {
+        if (customerService == null) {
+            return CustomerDto.builder().id(customerId).build();
+        }
+        try {
+            return customerService.findById(customerId);
+        } catch (Exception ex) {
+            return CustomerDto.builder().id(customerId).build();
+        }
+    }
+
+    private BusinessDto resolveBusiness(String businessId) {
+        if (businessService == null) {
+            return BusinessDto.builder().id(businessId).build();
+        }
+        try {
+            return businessService.findByBusinessId(businessId);
+        } catch (Exception ex) {
+            return BusinessDto.builder().id(businessId).build();
+        }
     }
 
     private static List<OrderItem> createOrderItems(PlaceOrderRequest request) {

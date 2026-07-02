@@ -2,8 +2,6 @@ package com.clickstechnology.Brillo.Mall.domain.orders;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -29,13 +27,10 @@ interface OrderRepository extends JpaRepository<Order, Long> {
             @Param("orderId") String orderId,
             @Param("customerId") String customerId);
 
-    @Query("SELECT o FROM Order o " +
-            "LEFT JOIN FETCH o.items oi " +
-            "WHERE o.customerId = :customerId")
     Page<Order> findAllByCustomerId(
             @Param("customerId") String customerId,
             Pageable pageable);
-    
+
     @Query("SELECT o FROM Order o " +
             "LEFT JOIN FETCH o.items oi " +
             "WHERE o.orderId = :orderId " +
@@ -46,38 +41,24 @@ interface OrderRepository extends JpaRepository<Order, Long> {
 
     @Query("SELECT o FROM Order o " +
             "LEFT JOIN FETCH o.items oi " +
-            "JOIN Product p ON p.reference = oi.productId " +
-            "WHERE o.orderId = :orderId AND p.businessId IN :businessIds")
+            "WHERE o.orderId = :orderId AND o.businessId IN :businessIds")
     Optional<Order> findOrderForBusinessAdmin(
             @Param("orderId") String orderId,
             @Param("businessIds") List<String> businessIds);
-    
-    @Query("SELECT o FROM Order o " +
-            "LEFT JOIN FETCH o.items oi " +
-            "WHERE o.orderId = :orderId ")
-    Optional<Order> findAnyByOrderId(@Param("orderId") String orderId);
 
     @Query("SELECT o FROM Order o " +
-            "LEFT JOIN FETCH o.items items " +
-            "WHERE o.id IN " +
-            "(SELECT oi.order.id FROM OrderItem oi WHERE oi.productId IN " +
-            "(SELECT p.reference FROM Product p WHERE p.businessId = :businessId))")
+            "LEFT JOIN FETCH o.items oi " +
+            "WHERE o.orderId = :orderId")
+    Optional<Order> findAnyByOrderId(@Param("orderId") String orderId);
+
     Page<Order> findAllByBusinessId(
             @Param("businessId") String businessId,
             Pageable pageable);
 
-    @Query("SELECT o FROM Order o " +
-            "LEFT JOIN FETCH o.items items " +
-            "WHERE o.id IN " +
-            "(SELECT oi.order.id FROM OrderItem oi WHERE oi.productId IN " +
-            "(SELECT p.reference FROM Product p WHERE p.businessId IN :businessIds))")
-    Page<Order> findAllByBusinessIds(
+    Page<Order> findAllByBusinessIdIn(
             @Param("businessIds") List<String> businessIds,
             Pageable pageable);
 
-    @Query("SELECT o FROM Order o " +
-            "LEFT JOIN FETCH o.items items " +
-            "WHERE o.userId = :userId")
     Page<Order> findAllByUserId(
             @Param("userId") String userId,
             Pageable pageable);

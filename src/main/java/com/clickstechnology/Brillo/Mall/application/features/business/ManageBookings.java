@@ -6,14 +6,16 @@ import com.clickstechnology.Brillo.Mall.application.api.contracts.BusinessServic
 import com.clickstechnology.Brillo.Mall.application.api.contracts.BusinessServiceService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.CustomerService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.UserService;
-import com.clickstechnology.Brillo.Mall.application.dto.BusinessDto;
 import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.dto.business.BookedServiceDto;
+import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessDto;
 import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessServiceDto;
 import com.clickstechnology.Brillo.Mall.application.dto.request.business.UpdateBookingRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.response.PaginatedResponse;
+import com.clickstechnology.Brillo.Mall.application.enums.BookingStatus;
 import com.clickstechnology.Brillo.Mall.application.enums.UserRole;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
+import com.clickstechnology.Brillo.Mall.application.exception.UnauthorizedUserException;
 import com.clickstechnology.Brillo.Mall.application.utils.AppUtils;
 import com.clickstechnology.Brillo.Mall.infrastructure.logging.LoggableRequest;
 import jakarta.servlet.http.HttpServletRequest;
@@ -42,6 +44,7 @@ public class ManageBookings {
     public PaginatedResponse<BookedServiceDto> getBookings(
             final String businessId,
             final String businessServiceId,
+            final BookingStatus bookingStatus,
             final boolean isBusiness,
             final Integer page,
             final Integer pageSize,
@@ -51,10 +54,10 @@ public class ManageBookings {
         Pageable pageable = AppUtils.getPageable(page, pageSize);
 
         if (isBusiness && user.getRoles().contains(UserRole.ADMIN.name())) {
-            return getBookingsForBusinessAdmin(businessId, businessServiceId, user, pageable);
+            return getBookingsForBusinessAdmin(businessId, businessServiceId, bookingStatus, user, pageable);
         }
 
-        return bookedBusinessServiceService.findAllForUser(user.getId(), pageable);
+        return bookedBusinessServiceService.findAllForUser(user.getId(), bookingStatus, pageable);
     }
 
     public BookedServiceDto getBooking(String bookingId, HttpServletRequest httpServletRequest) {
@@ -79,7 +82,10 @@ public class ManageBookings {
             final HttpServletRequest httpServletRequest) {
         UserDto user = getAuthenticatedUser(httpServletRequest);
         BookedServiceDto bookedService = bookedBusinessServiceService.findById(bookingId);
-        authorizeUserForBooking(user, bookedService);
+        if (!user.getRoles().contains(UserRole.ADMIN.name())) {
+            throw new UnauthorizedUserException();
+        }
+        authorizeBusinessForBooking(user, bookedService);
 
         BookedServiceDto updatedBooking = bookedBusinessServiceService.updateBooking(bookingId, updateBookingRequest);
 
@@ -101,27 +107,34 @@ public class ManageBookings {
 
     private UserDto getAuthenticatedUser(HttpServletRequest httpServletRequest) {
         String username = authenticationUtil.getAuthenticatedUsername(httpServletRequest);
+        if (username == null) {
+            throw new UnauthorizedUserException();
+        }
         return userService.findByUsername(username);
     }
 
     private PaginatedResponse<BookedServiceDto> getBookingsForBusinessAdmin(
-            String businessId, String businessServiceId, UserDto user, Pageable pageable) {
+            String businessId,
+            String businessServiceId,
+            BookingStatus bookingStatus,
+            UserDto user,
+            Pageable pageable) {
         if (Objects.nonNull(businessServiceId)) {
             BusinessServiceDto thisBusinessService = businessServiceService.getByIdOrSlug(businessServiceId);
             businessService.ensureBusinessBelongsToUser(thisBusinessService.getBusinessId(), user.getId());
-            return bookedBusinessServiceService.getBookingsForBusinessService(thisBusinessService.getId(), pageable);
+            return bookedBusinessServiceService.getBookingsForBusinessService(thisBusinessService.getId(), bookingStatus, pageable);
         }
 
         if (Objects.nonNull(businessId)) {
             BusinessDto business = businessService.findByBusinessId(businessId);
             businessService.ensureBusinessBelongsToUser(business.getId(), user.getId());
-            return bookedBusinessServiceService.getBookingsForBusiness(business.getId(), pageable);
+            return bookedBusinessServiceService.getBookingsForBusiness(business.getId(), bookingStatus, pageable);
         }
 
         List<BusinessDto> adminBusinesses = businessService.findAllByOwnerId(user.getId());
         Set<String> businessIds = adminBusinesses.stream().map(BusinessDto::getId).collect(Collectors.toSet());
 
-        return bookedBusinessServiceService.findAllForBusinesses(businessIds, pageable);
+        return bookedBusinessServiceService.findAllForBusinesses(businessIds, bookingStatus, pageable);
     }
 
     private void authorizeUserForBooking(UserDto user, BookedServiceDto bookedService) {
@@ -133,5 +146,9 @@ public class ManageBookings {
         } else {
             throw new BusinessException("Booking not found or invalid");
         }
+    }
+
+    private void authorizeBusinessForBooking(UserDto user, BookedServiceDto bookedService) {
+        businessService.ensureBusinessBelongsToUser(bookedService.getBusiness().getId(), user.getId());
     }
 }

@@ -19,6 +19,7 @@ public final class AppConstants {
             "/swagger-ui/**",
             "/webjars/**",
             "/actuator/**",
+            "/api/v1/whatsapp/**",
     };
 
     public static final SecureRandom SECURE_RANDOM = new SecureRandom();

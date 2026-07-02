@@ -1,6 +1,6 @@
 package com.clickstechnology.Brillo.Mall.domain.business;
 
-import com.clickstechnology.Brillo.Mall.application.dto.BusinessDto;
+import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessDto;
 import com.clickstechnology.Brillo.Mall.application.dto.CustomerDto;
 import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.dto.request.business.OnboardBusinessRequest;
@@ -188,6 +188,21 @@ class BusinessServiceImplTest {
     }
 
     @Test
+    @DisplayName("activateStorefront should mark storefront and setup as completed")
+    void activateStorefront_shouldEnableStorefront() {
+        // Given
+        when(cacheUtil.get(anyString(), eq(Business.class))).thenReturn(business);
+
+        // When
+        businessService.activateStorefront("biz1");
+
+        // Then
+        verify(businessRepository).save(business);
+        assertThat(business.getStorefrontActive()).isTrue();
+        assertThat(business.getSetupCompleted()).isTrue();
+    }
+
+    @Test
     @DisplayName("findAllByOwnerId should return paginated businesses")
     void findAllByOwnerId_shouldReturnPaginatedBusinesses() {
         // Given
@@ -290,8 +305,8 @@ class BusinessServiceImplTest {
     class ExistsByBusinessIdTests {
 
         @Test
-        @DisplayName("Should return false when business exists")
-        void existsByBusinessId_shouldReturnFalse_whenExists() {
+        @DisplayName("Should return true when business exists")
+        void existsByBusinessId_shouldReturnTrue_whenExists() {
             // Given
             when(businessRepository.existsByReference("biz1")).thenReturn(true);
 
@@ -299,12 +314,12 @@ class BusinessServiceImplTest {
             boolean exists = businessService.existsByBusinessId("biz1");
 
             // Then
-            assertThat(exists).isFalse();
+            assertThat(exists).isTrue();
         }
 
         @Test
-        @DisplayName("Should return true when business does not exist")
-        void existsByBusinessId_shouldReturnTrue_whenNotExists() {
+        @DisplayName("Should return false when business does not exist")
+        void existsByBusinessId_shouldReturnFalse_whenNotExists() {
             // Given
             when(businessRepository.existsByReference("biz2")).thenReturn(false);
 
@@ -312,7 +327,7 @@ class BusinessServiceImplTest {
             boolean exists = businessService.existsByBusinessId("biz2");
 
             // Then
-            assertThat(exists).isTrue();
+            assertThat(exists).isFalse();
         }
     }
 

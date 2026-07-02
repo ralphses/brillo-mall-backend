@@ -9,13 +9,14 @@ import org.springframework.data.domain.Pageable;
 
 import java.text.Normalizer;
 import java.util.Locale;
+import java.util.UUID;
 import java.util.regex.Pattern;
 
 public final class AppUtils {
     private AppUtils() {}
 
     private static final Pattern NONLATIN = Pattern.compile("[^\\w-]");
-    private static final Pattern WHITESPACE = Pattern.compile("[\\s]");
+    private static final Pattern WHITESPACE = Pattern.compile("\\s");
 
 
     public static MessageMedium resolveMessageMedium(String username) {
@@ -66,5 +67,9 @@ public final class AppUtils {
         String normalized = Normalizer.normalize(noWhitespace, Normalizer.Form.NFD);
         String slug = NONLATIN.matcher(normalized).replaceAll("");
         return slug.toLowerCase(Locale.ENGLISH);
+    }
+
+    public static String generateUniqueReference() {
+        return UUID.randomUUID().toString().replaceAll("-", "");
     }
 }
