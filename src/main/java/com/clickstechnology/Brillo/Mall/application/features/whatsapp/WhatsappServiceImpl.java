@@ -25,6 +25,8 @@ import com.clickstechnology.Brillo.Mall.application.enums.ConversationStatus;
 import com.clickstechnology.Brillo.Mall.application.enums.MessageType;
 import com.clickstechnology.Brillo.Mall.application.enums.WhatsappMessageType;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
+import com.clickstechnology.Brillo.Mall.application.features.runtime.ConversationTurnProcessor;
+import com.clickstechnology.Brillo.Mall.application.features.runtime.TaskTurnResult;
 import com.clickstechnology.Brillo.Mall.application.utils.WhatsappMessageGenerator;
 import com.clickstechnology.Brillo.Mall.domain.conversation.MessageRepository;
 import com.clickstechnology.Brillo.Mall.infrastructure.config.AppPropertiesConfig;
@@ -64,6 +66,7 @@ class WhatsappServiceImpl implements WhatsappService {
     private final MessageRepository messageRepository;
     private final AppPropertiesConfig appPropertiesConfig;
     private final ObjectMapper objectMapper;
+    private final ConversationTurnProcessor conversationTurnProcessor;
 
     @Override
     public String verifyWebhook(String mode, String verifyToken, String challenge) {
@@ -158,33 +161,33 @@ class WhatsappServiceImpl implements WhatsappService {
             return;
         }
 
-        WhatsappReplyPlan replyPlan = planReply(event, business, baselineConversation, now);
+        TaskTurnResult turnResult = conversationTurnProcessor.processTurn(baselineConversation, business, customer, event);
         ConversationDto updatedConversation = conversationService.upsertConversation(ConversationUpsertRequest.builder()
                 .businessId(business.getId())
                 .customerId(customer.getId())
                 .whatsappConversationId(event.whatsappConversationId())
                 .whatsappBusinessNumber(normalizePhoneNumber(event.businessPhoneNumber()))
-                .status(replyPlan.status())
-                .lastIntent(replyPlan.intent())
-                .activeTaskKey(replyPlan.activeTaskKey())
-                .humanTakeover(replyPlan.humanTakeover())
+                .status(turnResult.conversationStatus())
+                .lastIntent(turnResult.intentKey())
+                .activeTaskKey("SHOW_MENU".equals(turnResult.taskKey()) ? TASK_MENU : turnResult.taskKey())
+                .humanTakeover(turnResult.humanTakeover())
                 .lastInteractionAt(now)
                 .sessionExpiresAt(now.plus(appPropertiesConfig.getWhatsapp().getSessionWindowHours(), ChronoUnit.HOURS))
                 .build());
 
-        if (replyPlan.payload() != null) {
-            WhatsappResponse response = messageSendService.sendMessage((WhatsAppMessageRequest) replyPlan.payload());
+        if (turnResult.outboundMessage() != null) {
+            WhatsappResponse response = messageSendService.sendMessage(turnResult.outboundMessage());
             String outboundMessageId = response != null && response.getMessages() != null && !response.getMessages().isEmpty()
                     ? response.getMessages().getFirst().getId()
                     : null;
 
             conversationService.addMessage(MessageCreateRequest.builder()
                     .conversationReference(updatedConversation.getReference())
-                    .content(replyPlan.content())
+                    .content(turnResult.replyText())
                     .messageType(MessageType.OUTBOUND)
-                    .intent(replyPlan.intent())
+                    .intent(turnResult.intentKey())
                     .whatsappMessageId(outboundMessageId)
-                    .transportType(replyPlan.transportType().getValue())
+                    .transportType(turnResult.presentationType() != null ? turnResult.presentationType().getValue() : WhatsappMessageType.TEXT.getValue())
                     .sourceEventId(event.whatsappMessageId())
                     .metadata(event.metadata())
                     .build());

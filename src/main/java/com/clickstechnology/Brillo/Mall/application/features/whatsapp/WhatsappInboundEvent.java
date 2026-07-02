@@ -2,7 +2,7 @@ package com.clickstechnology.Brillo.Mall.application.features.whatsapp;
 
 import java.time.Instant;
 
-record WhatsappInboundEvent(
+public record WhatsappInboundEvent(
         String senderPhone,
         String senderName,
         String businessPhoneNumber,
