@@ -9,6 +9,8 @@ import java.util.Set;
 public interface CustomerService {
     CustomerDto resolveCustomer(CustomerDto customer, String userId, Set<String> businessIds);
 
+    CustomerDto findById(String customerId);
+
     PaginatedResponse<CustomerDto> findAllByRefs(Set<String> customerRefs, int page, int pageSize);
 
     CustomerDto findByPhoneOrEmail(String ownerId);

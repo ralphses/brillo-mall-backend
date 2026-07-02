@@ -64,6 +64,13 @@ class CustomerServiceImpl implements CustomerService {
     }
 
     @Override
+    public CustomerDto findById(String customerId) {
+        return customerRepository.findByReference(customerId)
+                .map(Customer::dto)
+                .orElseThrow(() -> new BusinessException("Customer not found"));
+    }
+
+    @Override
     public CustomerDto findByPhoneOrEmail(String ownerId) {
         log.debug("Finding Customer by Phone or Email: {}", ownerId);
         return customerRepository.findByPhone(ownerId)

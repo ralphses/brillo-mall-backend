@@ -1,7 +1,10 @@
 package com.clickstechnology.Brillo.Mall.domain.business_service;
 
 import com.clickstechnology.Brillo.Mall.application.api.contracts.BusinessServiceRequestService;
+import com.clickstechnology.Brillo.Mall.application.api.contracts.BusinessService;
+import com.clickstechnology.Brillo.Mall.application.api.contracts.CustomerService;
 import com.clickstechnology.Brillo.Mall.application.dto.CustomerDto;
+import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessDto;
 import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessServiceDto;
 import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessServiceRequestDto;
 import com.clickstechnology.Brillo.Mall.application.dto.request.business.PlaceBusinessServiceRequestPayload;
@@ -10,6 +13,7 @@ import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;
 import com.clickstechnology.Brillo.Mall.application.enums.PricingType;
 import com.clickstechnology.Brillo.Mall.application.enums.ServiceRequestStatus;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
+import com.clickstechnology.Brillo.Mall.application.features.notifications.NotificationEventPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -29,6 +33,9 @@ class BusinessServiceRequestServiceImpl implements BusinessServiceRequestService
     private static final int MAX_NEGOTIATION_ATTEMPTS = 3;
 
     private final BusinessServiceRequestRepository businessServiceRequestRepository;
+    private final BusinessService businessService;
+    private final CustomerService customerService;
+    private final NotificationEventPublisher notificationEventPublisher;
 
     @Override
     @Transactional
@@ -53,7 +60,14 @@ class BusinessServiceRequestServiceImpl implements BusinessServiceRequestService
                 .status(EntityStatus.PENDING)
                 .build();
 
-        businessServiceRequestRepository.save(newBusinessServiceRequest);
+        BusinessServiceRequest saved = businessServiceRequestRepository.save(newBusinessServiceRequest);
+        if (notificationEventPublisher != null) {
+            notificationEventPublisher.publishServiceRequestCreated(
+                    enrich(saved),
+                    resolveCustomer(customer.getId()),
+                    resolveBusiness(saved.getBusinessId())
+            );
+        }
     }
 
     private BigDecimal resolveInitialPrice(BusinessServiceDto businessService) {
@@ -81,7 +95,7 @@ class BusinessServiceRequestServiceImpl implements BusinessServiceRequestService
 
     @Override
     public BusinessServiceRequestDto findById(String requestId) {
-        return findByRequestId(requestId).dto();
+        return enrich(findByRequestId(requestId));
     }
 
     @Override
@@ -111,8 +125,18 @@ class BusinessServiceRequestServiceImpl implements BusinessServiceRequestService
             businessServiceRequest.setRequestStatus(ServiceRequestStatus.REJECTED);
         }
 
-        businessServiceRequestRepository.save(businessServiceRequest);
-        return businessServiceRequest.dto();
+        ServiceRequestStatus previousStatus = businessServiceRequest.getRequestStatus();
+        BusinessServiceRequest saved = businessServiceRequestRepository.save(businessServiceRequest);
+        if (previousStatus != saved.getRequestStatus() || request.getLastOfferedPrice() != null || request.getAgreedPrice() != null || request.getNotes() != null || request.getWhatsappConversationId() != null) {
+            if (notificationEventPublisher != null) {
+                notificationEventPublisher.publishServiceRequestUpdated(
+                        enrich(saved),
+                        resolveCustomer(saved.getCustomerId()),
+                        resolveBusiness(saved.getBusinessId())
+                );
+            }
+        }
+        return enrich(saved);
     }
 
     private void applyCustomerUpdate(BusinessServiceRequest businessServiceRequest, PlaceBusinessServiceRequestPayload request) {
@@ -291,7 +315,14 @@ class BusinessServiceRequestServiceImpl implements BusinessServiceRequestService
         BusinessServiceRequest serviceRequest = findByRequestId(request.getId());
         serviceRequest.setStatus(EntityStatus.DELETED);
         serviceRequest.setRequestStatus(ServiceRequestStatus.CANCELLED);
-        businessServiceRequestRepository.save(serviceRequest);
+        BusinessServiceRequest saved = businessServiceRequestRepository.save(serviceRequest);
+        if (notificationEventPublisher != null) {
+            notificationEventPublisher.publishServiceRequestUpdated(
+                    enrich(saved),
+                    resolveCustomer(saved.getCustomerId()),
+                    resolveBusiness(saved.getBusinessId())
+            );
+        }
     }
 
     @Override
@@ -307,7 +338,14 @@ class BusinessServiceRequestServiceImpl implements BusinessServiceRequestService
         }
 
         serviceRequest.setRequestStatus(ServiceRequestStatus.BOOKED);
-        businessServiceRequestRepository.save(serviceRequest);
+        BusinessServiceRequest saved = businessServiceRequestRepository.save(serviceRequest);
+        if (notificationEventPublisher != null) {
+            notificationEventPublisher.publishServiceRequestUpdated(
+                    enrich(saved),
+                    resolveCustomer(saved.getCustomerId()),
+                    resolveBusiness(saved.getBusinessId())
+            );
+        }
     }
 
     @Override
@@ -321,6 +359,35 @@ class BusinessServiceRequestServiceImpl implements BusinessServiceRequestService
     public void ensureBelongsToService(BusinessServiceRequestDto serviceRequest, String businessServiceId) {
         if (!serviceRequest.getBusinessService().getId().equals(businessServiceId)) {
             throw new BusinessException("The selected service request does not belong to the business service.");
+        }
+    }
+
+    private BusinessServiceRequestDto enrich(BusinessServiceRequest request) {
+        BusinessServiceRequestDto dto = request.dto();
+        dto.setCustomer(resolveCustomer(request.getCustomerId()));
+        dto.setBusiness(resolveBusiness(request.getBusinessId()));
+        return dto;
+    }
+
+    private CustomerDto resolveCustomer(String customerId) {
+        if (customerService == null) {
+            return CustomerDto.builder().id(customerId).build();
+        }
+        try {
+            return customerService.findById(customerId);
+        } catch (Exception ex) {
+            return CustomerDto.builder().id(customerId).build();
+        }
+    }
+
+    private BusinessDto resolveBusiness(String businessId) {
+        if (this.businessService == null) {
+            return BusinessDto.builder().id(businessId).build();
+        }
+        try {
+            return this.businessService.findByBusinessId(businessId);
+        } catch (Exception ex) {
+            return BusinessDto.builder().id(businessId).build();
         }
     }
 }

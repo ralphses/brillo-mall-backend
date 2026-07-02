@@ -21,6 +21,7 @@ import com.clickstechnology.Brillo.Mall.application.enums.PayableType;
 import com.clickstechnology.Brillo.Mall.application.enums.PaymentStatus;
 import com.clickstechnology.Brillo.Mall.application.enums.UserRole;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
+import com.clickstechnology.Brillo.Mall.application.features.notifications.NotificationEventPublisher;
 import com.clickstechnology.Brillo.Mall.application.utils.AppUtils;
 import com.clickstechnology.Brillo.Mall.infrastructure.logging.LoggableRequest;
 import jakarta.servlet.http.HttpServletRequest;
@@ -44,6 +45,7 @@ public class ManagePayments {
     private final BookedBusinessServiceService bookedBusinessServiceService;
     private final OrderService orderService;
     private final PaymentProcessorResolver paymentProcessorResolver;
+    private final NotificationEventPublisher notificationEventPublisher;
 
     @Value("${payment.processor.default}")
     private String defaultPaymentProcessor;
@@ -161,6 +163,14 @@ public class ManagePayments {
             throw new BusinessException("Invalid payment status transition.");
         }
 
+        OrderDto order = null;
+        BookedServiceDto booking = null;
+        if (paymentLog.getPayableType() == PayableType.ORDER) {
+            order = orderService.findOrderById(paymentLog.getPayableId());
+        } else if (paymentLog.getPayableType() == PayableType.BOOKING) {
+            booking = bookedBusinessServiceService.findById(paymentLog.getPayableId());
+        }
+
         if (targetStatus == PaymentStatus.PAID) {
             if (paymentLog.getPayableType() == PayableType.ORDER) {
                 orderService.updateOrderStatus(paymentLog.getPayableId(), OrderStatus.PAID);
@@ -173,7 +183,37 @@ public class ManagePayments {
         }
 
         paymentService.updateStatusWithPaymentReference(paymentReference, targetStatus);
+        if (targetStatus == PaymentStatus.PAID || targetStatus == PaymentStatus.FAILED || targetStatus == PaymentStatus.REVERSED) {
+            String templateName = switch (targetStatus) {
+                case PAID -> "payment_confirmed";
+                case REVERSED -> "payment_reversed";
+                default -> "payment_failed";
+            };
+            boolean success = targetStatus == PaymentStatus.PAID;
+            publishPaymentNotification(paymentLog, order, booking, targetStatus, templateName, success);
+        }
         log.info("Payment {} reconciled from {} using {}", paymentReference, source, gatewayMessage);
+    }
+
+    private void publishPaymentNotification(
+            PaymentLogDto paymentLog,
+            OrderDto order,
+            BookedServiceDto booking,
+            PaymentStatus targetStatus,
+            String templateName,
+            boolean success
+    ) {
+        if (notificationEventPublisher == null) {
+            return;
+        }
+        notificationEventPublisher.publishPaymentUpdate(
+                paymentLog,
+                order != null ? order.getCustomer() : booking != null ? booking.getCustomer() : null,
+                order != null ? order.getBusiness() : booking != null ? booking.getBusiness() : null,
+                targetStatus,
+                templateName,
+                success
+        );
     }
 
     private boolean hasGatewayCredentials(PaymentLogDto paymentLog) {

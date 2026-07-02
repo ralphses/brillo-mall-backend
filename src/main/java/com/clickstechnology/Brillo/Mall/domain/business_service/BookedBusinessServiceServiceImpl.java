@@ -2,8 +2,11 @@ package com.clickstechnology.Brillo.Mall.domain.business_service;
 
 import com.clickstechnology.Brillo.Mall.application.api.contracts.BookedBusinessServiceService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.BusinessServiceRequestService;
+import com.clickstechnology.Brillo.Mall.application.api.contracts.BusinessService;
+import com.clickstechnology.Brillo.Mall.application.api.contracts.CustomerService;
 import com.clickstechnology.Brillo.Mall.application.dto.CustomerDto;
 import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
+import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessDto;
 import com.clickstechnology.Brillo.Mall.application.dto.business.BookedServiceDto;
 import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessServiceDto;
 import com.clickstechnology.Brillo.Mall.application.dto.request.business.BookAServiceRequest;
@@ -12,6 +15,7 @@ import com.clickstechnology.Brillo.Mall.application.dto.response.PaginatedRespon
 import com.clickstechnology.Brillo.Mall.application.enums.BookingStatus;
 import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
+import com.clickstechnology.Brillo.Mall.application.features.notifications.NotificationEventPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -30,6 +34,9 @@ import java.util.stream.Collectors;
 class BookedBusinessServiceServiceImpl implements BookedBusinessServiceService {
     private final BookedBusinessServiceRepository bookedBusinessServiceRepository;
     private final BusinessServiceRequestService businessServiceRequestService;
+    private final BusinessService businessService;
+    private final CustomerService customerService;
+    private final NotificationEventPublisher notificationEventPublisher;
 
     @Override
     @Transactional
@@ -73,7 +80,15 @@ class BookedBusinessServiceServiceImpl implements BookedBusinessServiceService {
             businessServiceRequestService.markBooked(saved.getServiceRequestId());
         }
 
-        return saved.dto();
+        BookedServiceDto bookingDto = enrich(saved);
+        if (notificationEventPublisher != null) {
+            notificationEventPublisher.publishBookingCreated(
+                    bookingDto,
+                    resolveCustomer(customer.getId()),
+                    resolveBusiness(businessService.getBusinessId())
+            );
+        }
+        return bookingDto;
     }
 
     private java.math.BigDecimal resolveBookingAmount(BookAServiceRequest bookAServiceRequest, BusinessServiceDto businessService) {
@@ -155,7 +170,7 @@ class BookedBusinessServiceServiceImpl implements BookedBusinessServiceService {
 
     @Override
     public BookedServiceDto findById(String bookingId) {
-        return findByReference(bookingId).dto();
+        return enrich(findByReference(bookingId));
     }
 
     @Override
@@ -172,16 +187,27 @@ class BookedBusinessServiceServiceImpl implements BookedBusinessServiceService {
         if (bookedBusinessService.getBookingStatus() == BookingStatus.CANCELLED) {
             return;
         }
+        BookingStatus previousStatus = bookedBusinessService.getBookingStatus();
         ensureCancelable(bookedBusinessService);
         bookedBusinessService.setStatus(EntityStatus.INACTIVE);
         bookedBusinessService.setBookingStatus(BookingStatus.CANCELLED);
-        bookedBusinessServiceRepository.save(bookedBusinessService);
+        BookedBusinessService saved = bookedBusinessServiceRepository.save(bookedBusinessService);
+        if (notificationEventPublisher != null) {
+            notificationEventPublisher.publishBookingStatusChanged(
+                    enrich(saved),
+                    resolveCustomer(saved.getCustomerId()),
+                    resolveBusiness(saved.getBusinessId()),
+                    previousStatus,
+                    BookingStatus.CANCELLED
+            );
+        }
     }
 
     @Override
     @Transactional
     public BookedServiceDto updateBooking(String bookingId, UpdateBookingRequest updateBookingRequest) {
         BookedBusinessService bookedBusinessService = findByReference(bookingId);
+        BookingStatus previousStatus = bookedBusinessService.getBookingStatus();
         ensureMutable(bookedBusinessService);
 
         if (updateBookingRequest.getAgreedPrice() != null) {
@@ -219,7 +245,19 @@ class BookedBusinessServiceServiceImpl implements BookedBusinessServiceService {
             }
         }
 
-        return bookedBusinessServiceRepository.save(bookedBusinessService).dto();
+        BookedBusinessService saved = bookedBusinessServiceRepository.save(bookedBusinessService);
+        if (previousStatus != saved.getBookingStatus()) {
+            if (notificationEventPublisher != null) {
+                notificationEventPublisher.publishBookingStatusChanged(
+                        enrich(saved),
+                        resolveCustomer(saved.getCustomerId()),
+                        resolveBusiness(saved.getBusinessId()),
+                        previousStatus,
+                        saved.getBookingStatus()
+                );
+            }
+        }
+        return enrich(saved);
     }
 
     private void ensureMutable(BookedBusinessService bookedBusinessService) {
@@ -257,8 +295,47 @@ class BookedBusinessServiceServiceImpl implements BookedBusinessServiceService {
         if (bookedBusinessService.getBookingStatus() == BookingStatus.DELETED) {
             return;
         }
+        BookingStatus previousStatus = bookedBusinessService.getBookingStatus();
         bookedBusinessService.setStatus(EntityStatus.DELETED);
         bookedBusinessService.setBookingStatus(BookingStatus.DELETED);
-        bookedBusinessServiceRepository.save(bookedBusinessService);
+        BookedBusinessService saved = bookedBusinessServiceRepository.save(bookedBusinessService);
+        if (notificationEventPublisher != null) {
+            notificationEventPublisher.publishBookingStatusChanged(
+                    enrich(saved),
+                    resolveCustomer(saved.getCustomerId()),
+                    resolveBusiness(saved.getBusinessId()),
+                    previousStatus,
+                    BookingStatus.DELETED
+            );
+        }
+    }
+
+    private BookedServiceDto enrich(BookedBusinessService booking) {
+        BookedServiceDto dto = booking.dto();
+        dto.setCustomer(resolveCustomer(booking.getCustomerId()));
+        dto.setBusiness(resolveBusiness(booking.getBusinessId()));
+        return dto;
+    }
+
+    private CustomerDto resolveCustomer(String customerId) {
+        if (customerService == null) {
+            return CustomerDto.builder().id(customerId).build();
+        }
+        try {
+            return customerService.findById(customerId);
+        } catch (Exception ex) {
+            return CustomerDto.builder().id(customerId).build();
+        }
+    }
+
+    private BusinessDto resolveBusiness(String businessId) {
+        if (this.businessService == null) {
+            return BusinessDto.builder().id(businessId).build();
+        }
+        try {
+            return this.businessService.findByBusinessId(businessId);
+        } catch (Exception ex) {
+            return BusinessDto.builder().id(businessId).build();
+        }
     }
 }

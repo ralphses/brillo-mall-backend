@@ -25,6 +25,7 @@ import com.clickstechnology.Brillo.Mall.application.enums.ConversationStatus;
 import com.clickstechnology.Brillo.Mall.application.enums.MessageType;
 import com.clickstechnology.Brillo.Mall.application.enums.WhatsappMessageType;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
+import com.clickstechnology.Brillo.Mall.application.features.notifications.NotificationEventPublisher;
 import com.clickstechnology.Brillo.Mall.application.features.runtime.ConversationTurnProcessor;
 import com.clickstechnology.Brillo.Mall.application.features.runtime.TaskTurnResult;
 import com.clickstechnology.Brillo.Mall.application.utils.WhatsappMessageGenerator;
@@ -67,6 +68,7 @@ class WhatsappServiceImpl implements WhatsappService {
     private final AppPropertiesConfig appPropertiesConfig;
     private final ObjectMapper objectMapper;
     private final ConversationTurnProcessor conversationTurnProcessor;
+    private final NotificationEventPublisher notificationEventPublisher;
 
     @Override
     public String verifyWebhook(String mode, String verifyToken, String challenge) {
@@ -134,6 +136,20 @@ class WhatsappServiceImpl implements WhatsappService {
                 .sessionExpiresAt(now.plus(appPropertiesConfig.getWhatsapp().getSessionWindowHours(), ChronoUnit.HOURS))
                 .build());
 
+        if (existingConversation.isPresent()
+                && existingConversation.get().getSessionExpiresAt() != null
+                && existingConversation.get().getSessionExpiresAt().isBefore(now)) {
+            if (notificationEventPublisher != null) {
+                notificationEventPublisher.publishSessionExpired(
+                        recipientForBusiness(business),
+                        business,
+                        customer,
+                        baselineConversation.getReference(),
+                        "Conversation " + baselineConversation.getReference() + " expired and was reopened."
+                );
+            }
+        }
+
         conversationService.addMessage(MessageCreateRequest.builder()
                 .conversationReference(baselineConversation.getReference())
                 .content(resolveInboundContent(event))
@@ -162,6 +178,17 @@ class WhatsappServiceImpl implements WhatsappService {
         }
 
         TaskTurnResult turnResult = conversationTurnProcessor.processTurn(baselineConversation, business, customer, event);
+        if (turnResult.humanTakeover()) {
+            if (notificationEventPublisher != null) {
+                notificationEventPublisher.publishHumanTakeoverRequested(
+                        recipientForBusiness(business),
+                        business,
+                        customer,
+                        baselineConversation.getReference(),
+                        "Human takeover requested for conversation " + baselineConversation.getReference() + "."
+                );
+            }
+        }
         ConversationDto updatedConversation = conversationService.upsertConversation(ConversationUpsertRequest.builder()
                 .businessId(business.getId())
                 .customerId(customer.getId())
@@ -538,6 +565,12 @@ class WhatsappServiceImpl implements WhatsappService {
             return null;
         }
         return phoneNumber.replaceAll("[^\\d]", "");
+    }
+
+    private String recipientForBusiness(BusinessDto business) {
+        return business.getWhatsappNumber() != null && !business.getWhatsappNumber().isBlank()
+                ? business.getWhatsappNumber()
+                : business.getPhoneNumber();
     }
 
     private List<WhatsappInboundEvent> extractInboundEvents(JsonNode payload) {

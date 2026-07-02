@@ -1,6 +1,7 @@
 package com.clickstechnology.Brillo.Mall.domain.orders;
 
 import com.clickstechnology.Brillo.Mall.application.api.contracts.BusinessService;
+import com.clickstechnology.Brillo.Mall.application.api.contracts.CustomerService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.OrderService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.ProductService;
 import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessDto;
@@ -12,6 +13,7 @@ import com.clickstechnology.Brillo.Mall.application.dto.response.PaginatedRespon
 import com.clickstechnology.Brillo.Mall.application.enums.OrderStatus;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
 import com.clickstechnology.Brillo.Mall.application.exception.ResourceNotFoundException;
+import com.clickstechnology.Brillo.Mall.application.features.notifications.NotificationEventPublisher;
 import com.clickstechnology.Brillo.Mall.infrastructure.caching.CacheNames;
 import com.clickstechnology.Brillo.Mall.infrastructure.caching.CacheUtil;
 import lombok.RequiredArgsConstructor;
@@ -41,23 +43,25 @@ class OrderServiceImpl implements OrderService {
     private final CacheUtil cacheUtil;
     private final ProductService productService;
     private final BusinessService businessService;
+    private final CustomerService customerService;
+    private final NotificationEventPublisher notificationEventPublisher;
 
     @Override
     public OrderDto findOrderById(String orderId) {
-        return getOrder(orderId).dto();
+        return enrich(getOrder(orderId));
     }
 
     @Override
     public OrderDto findOrderByIdAndCustomerId(String orderId, String customerId) {
         return orderRepository.findOrderDetailsByOrderIdAndCustomerId(orderId, customerId)
-                .map(Order::dto)
+                .map(this::enrich)
                 .orElseThrow(() -> new BusinessException("Order not found or does not belong to the customer"));
     }
 
     @Override
     public OrderDto findOrderDetailsForCustomer(String orderId, String customerId) {
         return orderRepository.findOrderDetailsByOrderIdAndCustomerId(orderId, customerId)
-                .map(Order::dto)
+                .map(this::enrich)
                 .orElseThrow(() -> new BusinessException("Order not found or does not belong to the customer."));
     }
 
@@ -98,7 +102,7 @@ class OrderServiceImpl implements OrderService {
         order.setCustomerId(request.getCustomer().getId());
         order.setShippingAddress(request.getCustomer().getAddress());
 
-        return orderRepository.save(order).dto();
+        return enrich(orderRepository.save(order));
     }
 
     @Override
@@ -122,7 +126,15 @@ class OrderServiceImpl implements OrderService {
 
         newOrder.addOrderItems(orderItems);
 
-        return orderRepository.saveAndFlush(newOrder).dto();
+        OrderDto savedOrder = enrich(orderRepository.saveAndFlush(newOrder));
+        if (notificationEventPublisher != null) {
+            notificationEventPublisher.publishOrderCreated(
+                    savedOrder,
+                    resolveCustomer(savedOrder.getCustomer().getId()),
+                    resolveBusiness(businessId)
+            );
+        }
+        return savedOrder;
     }
 
     @Override
@@ -172,9 +184,10 @@ class OrderServiceImpl implements OrderService {
     public OrderDto updateOrderStatus(String orderId, OrderStatus newStatus) {
         Order order = orderRepository.findByOrderId(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found with ID: " + orderId));
+        OrderStatus previousStatus = order.getStatus();
 
-        if (order.getStatus() == newStatus) {
-            return order.dto();
+        if (previousStatus == newStatus) {
+            return enrich(order);
         }
 
         if (newStatus == OrderStatus.CANCELLED && order.getStatus() != OrderStatus.PENDING) {
@@ -183,7 +196,17 @@ class OrderServiceImpl implements OrderService {
 
         order.setStatus(newStatus);
         Order updatedOrder = orderRepository.save(order);
-        return updatedOrder.dto();
+        OrderDto updatedOrderDto = enrich(updatedOrder);
+        if (notificationEventPublisher != null) {
+            notificationEventPublisher.publishOrderStatusChanged(
+                    updatedOrderDto,
+                    resolveCustomer(updatedOrderDto.getCustomer().getId()),
+                    resolveBusiness(updatedOrderDto.getBusinessId()),
+                    previousStatus,
+                    newStatus
+            );
+        }
+        return updatedOrderDto;
     }
 
     private PaginatedResponse<OrderDto> getOrderPaginatedResponse(Page<Order> orderPage) {
@@ -257,6 +280,34 @@ class OrderServiceImpl implements OrderService {
         return Optional.ofNullable(cacheUtil.get(cacheKey, Order.class))
                 .orElseGet(() -> orderRepository.findByOrderId(orderId)
                         .orElseThrow(() -> new BusinessException("Order with ID: " + orderId + " does not exist")));
+    }
+
+    private OrderDto enrich(Order order) {
+        CustomerDto customer = resolveCustomer(order.getCustomerId());
+        BusinessDto business = resolveBusiness(order.getBusinessId());
+        return order.dto(customer, business);
+    }
+
+    private CustomerDto resolveCustomer(String customerId) {
+        if (customerService == null) {
+            return CustomerDto.builder().id(customerId).build();
+        }
+        try {
+            return customerService.findById(customerId);
+        } catch (Exception ex) {
+            return CustomerDto.builder().id(customerId).build();
+        }
+    }
+
+    private BusinessDto resolveBusiness(String businessId) {
+        if (businessService == null) {
+            return BusinessDto.builder().id(businessId).build();
+        }
+        try {
+            return businessService.findByBusinessId(businessId);
+        } catch (Exception ex) {
+            return BusinessDto.builder().id(businessId).build();
+        }
     }
 
     private static List<OrderItem> createOrderItems(PlaceOrderRequest request) {
