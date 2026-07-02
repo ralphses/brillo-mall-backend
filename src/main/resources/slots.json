@@ -1,0 +1,319 @@
+{
+  "USER_ONBOARDING_TASK": {
+    "global_slots": {
+      "name": null,
+      "user_id": null,
+      "phone": null,
+      "email": null,
+      "business_interest": null
+    },
+    "state_slots": {
+      "COLLECT_NAME": {
+        "required": ["name"]
+      },
+      "CREATE_ACCOUNT": {
+        "required": ["phone"]
+      },
+      "ASK_BUSINESS_OPTIONAL": {
+        "optional": ["business_interest"]
+      }
+    }
+  },
+
+  "BUSINESS_ONBOARDING_TASK": {
+    "global_slots": {
+      "business_name": null,
+      "business_type": null,
+      "category": null,
+      "owner_id": null
+    },
+    "state_slots": {
+      "COLLECT_BUSINESS_NAME": {
+        "required": ["business_name"]
+      },
+      "COLLECT_BUSINESS_TYPE": {
+        "required": ["business_type"]
+      },
+      "VALIDATE_CATEGORY": {
+        "required": ["category"]
+      }
+    }
+  },
+
+  "PRODUCT_SEARCH_TASK": {
+    "global_slots": {
+      "query": null,
+      "filters": null,
+      "results": [],
+      "page": 1
+    },
+    "state_slots": {
+      "QUERY_INPUT": {
+        "required": ["query"]
+      },
+      "FILTERING": {
+        "optional": ["filters"]
+      }
+    }
+  },
+
+  "PRODUCT_PURCHASE_TASK": {
+    "global_slots": {
+      "product_id": null,
+      "product_name": null,
+      "description": null,
+      "quantity": null,
+      "unit_price": null,
+      "total_price": null,
+      "negotiation_round": 0,
+      "delivery_address": null,
+      "payment_method": null,
+      "user_id": null
+    },
+    "state_slots": {
+      "DISCOVERY": {
+        "required": ["product_id"]
+      },
+      "PRODUCT_SELECTED": {
+        "required": ["quantity"]
+      },
+      "NEGOTIATION": {
+        "optional": ["unit_price", "negotiation_round"]
+      },
+      "CHECKOUT_INITIATED": {
+        "required": ["delivery_address"]
+      },
+      "PAYMENT_PENDING": {
+        "required": ["payment_method", "total_price"]
+      }
+    }
+  },
+
+  "ORDER_TRACKING_TASK": {
+    "global_slots": {
+      "order_list": [],
+      "selected_order_id": null,
+      "order_status": null
+    },
+    "state_slots": {
+      "SHOW_ORDER_LIST": {
+        "required": ["order_list"]
+      },
+      "SELECT_ORDER": {
+        "required": ["selected_order_id"]
+      }
+    }
+  },
+
+  "ORDER_MODIFICATION_TASK": {
+    "global_slots": {
+      "order_id": null,
+      "modification_type": null,
+      "new_address": null,
+      "new_quantity": null
+    },
+    "state_slots": {
+      "SELECT_ORDER": {
+        "required": ["order_id"]
+      },
+      "VALIDATE_MODIFICATION": {
+        "required": ["modification_type"]
+      }
+    }
+  },
+
+  "SERVICE_SEARCH_TASK": {
+    "global_slots": {
+      "query": null,
+      "location": null,
+      "results": []
+    },
+    "state_slots": {
+      "QUERY_INPUT": {
+        "required": ["query"]
+      }
+    }
+  },
+
+  "SERVICE_REQUEST_TASK": {
+    "global_slots": {
+      "service_id": null,
+      "service_name": null,
+      "location": null,
+      "description": null,
+      "price": null,
+      "negotiation_round": 0,
+      "status": null,
+      "user_id": null
+    },
+    "state_slots": {
+      "DISCOVERY": {
+        "required": ["service_id"]
+      },
+      "BOOKING_DETAILS": {
+        "required": ["location"]
+      },
+      "NEGOTIATION": {
+        "optional": ["price", "negotiation_round"]
+      },
+      "AWAITING_ADMIN_DECISION": {
+        "required": []
+      }
+    }
+  },
+
+  "SERVICE_TRACKING_TASK": {
+    "global_slots": {
+      "request_list": [],
+      "selected_request_id": null,
+      "status": null
+    },
+    "state_slots": {
+      "REQUEST_LIST": {
+        "required": ["request_list"]
+      },
+      "SELECT_REQUEST": {
+        "required": ["selected_request_id"]
+      }
+    }
+  },
+
+  "NEGOTIATION_TASK": {
+    "global_slots": {
+      "item_id": null,
+      "item_type": null,
+      "user_offer": null,
+      "bot_offer": null,
+      "round": 0,
+      "status": null
+    },
+    "state_slots": {
+      "USER_OFFER": {
+        "required": ["user_offer"]
+      },
+      "BOT_COUNTER_OFFER": {
+        "required": ["bot_offer", "round"]
+      }
+    }
+  },
+
+  "PAYMENT_TASK": {
+    "global_slots": {
+      "amount": null,
+      "currency": "NGN",
+      "payment_method": null,
+      "transaction_id": null,
+      "status": null
+    },
+    "state_slots": {
+      "AWAITING_METHOD": {
+        "required": ["payment_method"]
+      },
+      "PROCESSING": {
+        "required": ["amount"]
+      }
+    }
+  },
+
+  "BUSINESS_PRODUCT_ORDER_TASK": {
+    "global_slots": {
+      "order_id": null,
+      "order_list": [],
+      "status": null,
+      "customer_id": null
+    },
+    "state_slots": {
+      "NEW_ORDERS": {
+        "required": ["order_list"]
+      },
+      "UPDATE_STATUS": {
+        "required": ["order_id", "status"]
+      }
+    }
+  },
+
+  "BUSINESS_SERVICE_REQUEST_TASK": {
+    "global_slots": {
+      "request_id": null,
+      "request_list": [],
+      "status": null,
+      "customer_id": null
+    },
+    "state_slots": {
+      "NEW_REQUESTS": {
+        "required": ["request_list"]
+      },
+      "ACCEPT_REQUEST": {
+        "required": ["request_id"]
+      }
+    }
+  },
+
+  "SUPPORT_TASK": {
+    "global_slots": {
+      "issue_type": null,
+      "message": null,
+      "context": null,
+      "ticket_id": null
+    },
+    "state_slots": {
+      "CAPTURE_ISSUE": {
+        "required": ["message"]
+      },
+      "CLASSIFY_ISSUE": {
+        "required": ["issue_type"]
+      }
+    }
+  },
+
+  "GLOBAL_SEARCH_TASK": {
+    "global_slots": {
+      "query": null,
+      "results": [],
+      "filters": null
+    },
+    "state_slots": {
+      "QUERY_INPUT": {
+        "required": ["query"]
+      }
+    }
+  },
+
+  "ORDER_STATUS_QUERY_TASK": {
+    "global_slots": {
+      "order_id": null,
+      "status": null
+    },
+    "state_slots": {
+      "IDENTIFY_ORDER": {
+        "required": ["order_id"]
+      }
+    }
+  },
+
+  "AUTH_GUARD_TASK": {
+    "global_slots": {
+      "original_task_id": null,
+      "intercepted_action": null,
+      "user_status": null
+    },
+    "state_slots": {
+      "INTERCEPT_ACTION": {
+        "required": ["user_status"]
+      }
+    }
+  },
+
+  "SESSION_ROUTING_TASK": {
+    "global_slots": {
+      "active_task_id": null,
+      "paused_tasks": [],
+      "last_intent": null
+    },
+    "state_slots": {
+      "ACTIVE_TASK_DETECTION": {
+        "required": ["active_task_id"]
+      }
+    }
+  }
+}

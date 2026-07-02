@@ -1,0 +1,210 @@
+{
+  "USER_ONBOARDING_TASK": {
+    "type": "USER_ONBOARDING_TASK",
+    "states": [
+      "COLLECT_NAME",
+      "CREATE_ACCOUNT",
+      "ASK_BUSINESS_OPTIONAL",
+      "COMPLETED"
+    ]
+  },
+
+  "BUSINESS_ONBOARDING_TASK": {
+    "type": "BUSINESS_ONBOARDING_TASK",
+    "states": [
+      "COLLECT_BUSINESS_NAME",
+      "COLLECT_BUSINESS_TYPE",
+      "VALIDATE_CATEGORY",
+      "CONFIRMATION",
+      "COMPLETED"
+    ]
+  },
+
+  "PRODUCT_SEARCH_TASK": {
+    "type": "PRODUCT_SEARCH_TASK",
+    "states": [
+      "QUERY_INPUT",
+      "SHOW_RESULTS",
+      "PAGINATION",
+      "FILTERING",
+      "COMPLETED"
+    ]
+  },
+
+  "PRODUCT_PURCHASE_TASK": {
+    "type": "PRODUCT_PURCHASE_TASK",
+    "states": [
+      "DISCOVERY",
+      "PRODUCT_SELECTED",
+      "PRODUCT_DETAILS",
+      "NEGOTIATION",
+      "CHECKOUT_INITIATED",
+      "AWAITING_AUTH",
+      "PAYMENT_PENDING",
+      "COMPLETED"
+    ]
+  },
+
+  "ORDER_TRACKING_TASK": {
+    "type": "ORDER_TRACKING_TASK",
+    "states": [
+      "SHOW_ORDER_LIST",
+      "SELECT_ORDER",
+      "SHOW_ORDER_DETAILS",
+      "LIVE_STATUS_VIEW",
+      "COMPLETED"
+    ]
+  },
+
+  "ORDER_MODIFICATION_TASK": {
+    "type": "ORDER_MODIFICATION_TASK",
+    "states": [
+      "SELECT_ORDER",
+      "VALIDATE_MODIFICATION",
+      "APPLY_CHANGE",
+      "CONFIRMATION",
+      "COMPLETED"
+    ]
+  },
+
+  "SERVICE_SEARCH_TASK": {
+    "type": "SERVICE_SEARCH_TASK",
+    "states": [
+      "QUERY_INPUT",
+      "SHOW_RESULTS",
+      "FILTERING",
+      "COMPLETED"
+    ]
+  },
+
+  "SERVICE_REQUEST_TASK": {
+    "type": "SERVICE_REQUEST_TASK",
+    "states": [
+      "DISCOVERY",
+      "SERVICE_SELECTED",
+      "BOOKING_DETAILS",
+      "NEGOTIATION",
+      "AWAITING_ADMIN_DECISION",
+      "ACCEPTED",
+      "REJECTED",
+      "IN_PROGRESS",
+      "COMPLETED"
+    ]
+  },
+
+  "SERVICE_TRACKING_TASK": {
+    "type": "SERVICE_TRACKING_TASK",
+    "states": [
+      "REQUEST_LIST",
+      "SELECT_REQUEST",
+      "SHOW_REQUEST_DETAILS",
+      "STATUS_VIEW",
+      "COMPLETED"
+    ]
+  },
+
+  "NEGOTIATION_TASK": {
+    "type": "NEGOTIATION_TASK",
+    "states": [
+      "INIT",
+      "USER_OFFER",
+      "BOT_COUNTER_OFFER",
+      "NEGOTIATION_LOOP",
+      "AGREEMENT_REACHED",
+      "FAILED",
+      "ESCALATED_TO_HUMAN"
+    ]
+  },
+
+  "PAYMENT_TASK": {
+    "type": "PAYMENT_TASK",
+    "states": [
+      "INITIATED",
+      "AWAITING_METHOD",
+      "PROCESSING",
+      "SUCCESS",
+      "FAILED",
+      "CANCELLED"
+    ]
+  },
+
+  "BUSINESS_PRODUCT_ORDER_TASK": {
+    "type": "BUSINESS_PRODUCT_ORDER_TASK",
+    "states": [
+      "NEW_ORDERS",
+      "SELECT_ORDER",
+      "UPDATE_STATUS",
+      "PICKED",
+      "DISPATCHED",
+      "DELAYED",
+      "REJECTED",
+      "COMPLETED"
+    ]
+  },
+
+  "BUSINESS_SERVICE_REQUEST_TASK": {
+    "type": "BUSINESS_SERVICE_REQUEST_TASK",
+    "states": [
+      "NEW_REQUESTS",
+      "SELECT_REQUEST",
+      "ACCEPT_REQUEST",
+      "REJECT_REQUEST",
+      "IN_PROGRESS",
+      "COMPLETED"
+    ]
+  },
+
+  "SUPPORT_TASK": {
+    "type": "SUPPORT_TASK",
+    "states": [
+      "CAPTURE_ISSUE",
+      "CLASSIFY_ISSUE",
+      "COLLECT_CONTEXT",
+      "REDIRECT_TO_WHATSAPP",
+      "CLOSED"
+    ]
+  },
+
+  "GLOBAL_SEARCH_TASK": {
+    "type": "GLOBAL_SEARCH_TASK",
+    "states": [
+      "QUERY_INPUT",
+      "SHOW_RESULTS",
+      "FILTERING",
+      "COMPLETED"
+    ]
+  },
+
+  "ORDER_STATUS_QUERY_TASK": {
+    "type": "ORDER_STATUS_QUERY_TASK",
+    "states": [
+      "IDENTIFY_ORDER",
+      "FETCH_STATUS",
+      "DISPLAY_STATUS",
+      "COMPLETED"
+    ]
+  },
+
+  "AUTH_GUARD_TASK": {
+    "type": "AUTH_GUARD_TASK",
+    "states": [
+      "INTERCEPT_ACTION",
+      "REDIRECT_TO_ONBOARDING",
+      "PAUSE_ORIGINAL_TASK",
+      "RESUME_TASK",
+      "COMPLETED"
+    ]
+  },
+
+  "SESSION_ROUTING_TASK": {
+    "type": "SESSION_ROUTING_TASK",
+    "states": [
+      "ACTIVE_TASK_DETECTION",
+      "PRIORITY_RESOLUTION",
+      "TASK_PAUSE",
+      "TASK_RESUME",
+      "TASK_SWITCH",
+      "COMPLETED"
+    ]
+  }
+}
