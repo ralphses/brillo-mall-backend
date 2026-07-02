@@ -1,9 +1,11 @@
 package com.clickstechnology.Brillo.Mall.application.features.runtime;
 
+import com.clickstechnology.Brillo.Mall.application.dto.conversation.ConversationDto;
 import com.clickstechnology.Brillo.Mall.application.enums.TaskDecisionSource;
 import com.clickstechnology.Brillo.Mall.application.enums.TaskSessionStatus;
 import com.clickstechnology.Brillo.Mall.application.enums.WhatsappMessageType;
 import com.clickstechnology.Brillo.Mall.domain.conversation.Conversation;
+import com.clickstechnology.Brillo.Mall.domain.conversation.ConversationRepository;
 import com.clickstechnology.Brillo.Mall.domain.conversation.task.ConversationTaskEvent;
 import com.clickstechnology.Brillo.Mall.domain.conversation.task.ConversationTaskEventRepository;
 import com.clickstechnology.Brillo.Mall.domain.conversation.task.ConversationTaskSession;
@@ -22,15 +24,17 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class TaskSessionService {
 
-    private final com.clickstechnology.Brillo.Mall.domain.conversation.ConversationRepository conversationRepository;
+    private final ConversationRepository conversationRepository;
     private final ConversationTaskSessionRepository taskSessionRepository;
     private final ConversationTaskEventRepository taskEventRepository;
     private final ObjectMapper objectMapper;
 
     @Transactional
-    public ConversationTaskSession getOrCreate(com.clickstechnology.Brillo.Mall.application.dto.conversation.ConversationDto conversation,
-                                               String businessId,
-                                               String customerId) {
+    public ConversationTaskSession getOrCreate(
+            final ConversationDto conversation,
+            final String businessId,
+            final String customerId) {
+
         return taskSessionRepository.findByConversation_Reference(conversation.getReference())
                 .orElseGet(() -> taskSessionRepository.save(ConversationTaskSession.builder()
                         .conversation(conversationRepository.findByReference(conversation.getReference())

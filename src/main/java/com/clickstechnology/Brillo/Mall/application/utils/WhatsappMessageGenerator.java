@@ -2,6 +2,7 @@ package com.clickstechnology.Brillo.Mall.application.utils;
 
 import com.clickstechnology.Brillo.Mall.application.dto.whatsapp.ButtonInteractive;
 import com.clickstechnology.Brillo.Mall.application.dto.whatsapp.CtaUrlInteractive;
+import com.clickstechnology.Brillo.Mall.application.dto.whatsapp.FlowInteractive;
 import com.clickstechnology.Brillo.Mall.application.dto.whatsapp.ImageMessageRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.whatsapp.InteractiveMessageRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.whatsapp.ListInteractive;
@@ -12,6 +13,7 @@ import com.clickstechnology.Brillo.Mall.application.dto.whatsapp.shared.Button;
 import com.clickstechnology.Brillo.Mall.application.dto.whatsapp.shared.ButtonAction;
 import com.clickstechnology.Brillo.Mall.application.dto.whatsapp.shared.CtaUrlAction;
 import com.clickstechnology.Brillo.Mall.application.dto.whatsapp.shared.Footer;
+import com.clickstechnology.Brillo.Mall.application.dto.whatsapp.shared.FlowAction;
 import com.clickstechnology.Brillo.Mall.application.dto.whatsapp.shared.Header;
 import com.clickstechnology.Brillo.Mall.application.dto.whatsapp.shared.ImageMessage;
 import com.clickstechnology.Brillo.Mall.application.dto.whatsapp.shared.ListAction;
@@ -23,6 +25,7 @@ import com.clickstechnology.Brillo.Mall.application.dto.whatsapp.shared.TextMess
 import com.clickstechnology.Brillo.Mall.application.dto.whatsapp.shared.VoiceCallAction;
 import com.clickstechnology.Brillo.Mall.application.enums.WhatsappMessageType;
 
+import java.util.Map;
 import java.util.List;
 
 public final class WhatsappMessageGenerator {
@@ -167,6 +170,57 @@ public final class WhatsappMessageGenerator {
                 .body(body)
                 .footer(footer)
                 .action(buttonAction)
+                .build();
+
+        return InteractiveMessageRequest.builder()
+                .to(to)
+                .interactive(interactive)
+                .build();
+    }
+
+    public static InteractiveMessageRequest createFlowMessage(
+            String to,
+            Body body,
+            Footer footer,
+            String flowId,
+            String flowToken,
+            String flowCta,
+            String flowMessageVersion,
+            String mode,
+            String flowAction,
+            Map<String, Object> flowActionPayload,
+            Header documentHeader,
+            Header imageHeader,
+            Header textHeader,
+            Header videoHeader
+    ) {
+        Header header = resolveHeader(
+                documentHeader,
+                imageHeader,
+                textHeader,
+                videoHeader,
+                body != null ? body.getText() : null
+        );
+
+        FlowInteractive interactive = FlowInteractive.builder()
+                .header(header)
+                .body(body)
+                .footer(footer)
+                .action(
+                        FlowAction.builder()
+                                .parameters(
+                                        FlowAction.Parameters.builder()
+                                                .flowId(flowId)
+                                                .flowToken(flowToken)
+                                                .flowCta(flowCta)
+                                                .flowMessageVersion(flowMessageVersion)
+                                                .mode(mode)
+                                                .flowAction(flowAction)
+                                                .flowActionPayload(flowActionPayload)
+                                                .build()
+                                )
+                                .build()
+                )
                 .build();
 
         return InteractiveMessageRequest.builder()

@@ -11,9 +11,11 @@ import com.clickstechnology.Brillo.Mall.application.dto.request.business.UpdateB
 import com.clickstechnology.Brillo.Mall.application.dto.whatsapp.WhatsappResponse;
 import com.clickstechnology.Brillo.Mall.application.enums.BusinessCategory;
 import com.clickstechnology.Brillo.Mall.application.enums.ConversationStatus;
+import com.clickstechnology.Brillo.Mall.application.enums.FlowSessionStatus;
 import com.clickstechnology.Brillo.Mall.application.enums.WhatsappType;
 import com.clickstechnology.Brillo.Mall.domain.conversation.ConversationRepository;
 import com.clickstechnology.Brillo.Mall.domain.conversation.MessageRepository;
+import com.clickstechnology.Brillo.Mall.domain.conversation.flow.ConversationFlowSessionRepository;
 import com.clickstechnology.Brillo.Mall.infrastructure.caching.CacheUtil;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -55,6 +57,9 @@ class WhatsappServiceImplIntegrationTest {
 
     @Autowired
     private MessageRepository messageRepository;
+
+    @Autowired
+    private ConversationFlowSessionRepository flowSessionRepository;
 
     @MockitoBean
     private MessageSendService messageSendService;
@@ -261,5 +266,219 @@ class WhatsappServiceImplIntegrationTest {
         var conversation = conversationRepository.findByWhatsappConversationId("2348013333333").orElseThrow();
         assertThat(conversation.getStatus()).isEqualTo(ConversationStatus.HUMAN_TAKEOVER);
         assertThat(conversation.getHumanTakeover()).isTrue();
+    }
+
+    @Test
+    @DisplayName("Business onboarding launches a WhatsApp Flow and persists flow session state")
+    void onboardingLaunchesFlow() throws Exception {
+        JsonNode greeting = objectMapper.readTree("""
+                {
+                  "entry": [
+                    {
+                      "changes": [
+                        {
+                          "value": {
+                            "metadata": {
+                              "display_phone_number": "2348030000000"
+                            },
+                            "contacts": [
+                              {
+                                "profile": { "name": "Flow User" },
+                                "wa_id": "2348014444444"
+                              }
+                            ],
+                            "messages": [
+                              {
+                                "from": "2348014444444",
+                                "id": "wamid.inbound.flow.greeting",
+                                "timestamp": "1719830400",
+                                "type": "text",
+                                "text": { "body": "Hi" }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+                """);
+        JsonNode onboard = objectMapper.readTree("""
+                {
+                  "entry": [
+                    {
+                      "changes": [
+                        {
+                          "value": {
+                            "metadata": {
+                              "display_phone_number": "2348030000000"
+                            },
+                            "contacts": [
+                              {
+                                "profile": { "name": "Flow User" },
+                                "wa_id": "2348014444444"
+                              }
+                            ],
+                            "messages": [
+                              {
+                                "from": "2348014444444",
+                                "id": "wamid.inbound.flow.onboard",
+                                "timestamp": "1719830500",
+                                "type": "interactive",
+                                "interactive": {
+                                  "type": "list_reply",
+                                  "list_reply": {
+                                    "id": "menu:onboard",
+                                    "title": "Onboard your business"
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+                """);
+
+        whatsappService.processWebhookPayload(greeting);
+        whatsappService.processWebhookPayload(onboard);
+
+        var conversation = conversationRepository.findByWhatsappConversationId("2348014444444").orElseThrow();
+        var flowSession = flowSessionRepository.findByConversation_Reference(conversation.getReference()).orElseThrow();
+
+        assertThat(flowSession.getFlowStatus()).isEqualTo(FlowSessionStatus.LAUNCHED);
+        assertThat(flowSession.getFlowId()).isEqualTo("brillo-business-onboarding");
+        assertThat(flowSession.getLaunchTaskKey()).isEqualTo("BUSINESS_ONBOARDING_TASK");
+        assertThat(flowSession.getLaunchStateKey()).isEqualTo("COLLECT_BUSINESS_TYPE");
+        assertThat(flowSession.getFlowToken()).isNotBlank();
+        assertThat(messageRepository.findByWhatsappMessageId("wamid.inbound.flow.onboard")).isPresent();
+        verify(messageSendService, times(2)).sendMessage(any());
+    }
+
+    @Test
+    @DisplayName("Flow submissions are parsed and persisted back into the conversation runtime")
+    void flowSubmission_isPersisted() throws Exception {
+        JsonNode greeting = objectMapper.readTree("""
+                {
+                  "entry": [
+                    {
+                      "changes": [
+                        {
+                          "value": {
+                            "metadata": {
+                              "display_phone_number": "2348030000000"
+                            },
+                            "contacts": [
+                              {
+                                "profile": { "name": "Flow User" },
+                                "wa_id": "2348015555555"
+                              }
+                            ],
+                            "messages": [
+                              {
+                                "from": "2348015555555",
+                                "id": "wamid.inbound.flow2.greeting",
+                                "timestamp": "1719830400",
+                                "type": "text",
+                                "text": { "body": "Hi" }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+                """);
+        JsonNode onboard = objectMapper.readTree("""
+                {
+                  "entry": [
+                    {
+                      "changes": [
+                        {
+                          "value": {
+                            "metadata": {
+                              "display_phone_number": "2348030000000"
+                            },
+                            "contacts": [
+                              {
+                                "profile": { "name": "Flow User" },
+                                "wa_id": "2348015555555"
+                              }
+                            ],
+                            "messages": [
+                              {
+                                "from": "2348015555555",
+                                "id": "wamid.inbound.flow2.onboard",
+                                "timestamp": "1719830500",
+                                "type": "interactive",
+                                "interactive": {
+                                  "type": "list_reply",
+                                  "list_reply": {
+                                    "id": "menu:onboard",
+                                    "title": "Onboard your business"
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+                """);
+        JsonNode submission = objectMapper.readTree("""
+                {
+                  "entry": [
+                    {
+                      "changes": [
+                        {
+                          "value": {
+                            "metadata": {
+                              "display_phone_number": "2348030000000"
+                            },
+                            "contacts": [
+                              {
+                                "profile": { "name": "Flow User" },
+                                "wa_id": "2348015555555"
+                              }
+                            ],
+                            "messages": [
+                              {
+                                "from": "2348015555555",
+                                "id": "wamid.inbound.flow2.submit",
+                                "timestamp": "1719830600",
+                                "type": "interactive",
+                                "interactive": {
+                                  "type": "nfm_reply",
+                                  "nfm_reply": {
+                                    "name": "flow",
+                                    "response_json": "{\\"business_name\\":\\"Flow Mart\\",\\"business_type\\":\\"PRODUCTS\\",\\"category\\":\\"PHARMACY\\"}"
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+                """);
+
+        whatsappService.processWebhookPayload(greeting);
+        whatsappService.processWebhookPayload(onboard);
+        whatsappService.processWebhookPayload(submission);
+
+        var conversation = conversationRepository.findByWhatsappConversationId("2348015555555").orElseThrow();
+        var flowSession = flowSessionRepository.findByConversation_Reference(conversation.getReference()).orElseThrow();
+
+        assertThat(flowSession.getFlowStatus()).isEqualTo(FlowSessionStatus.SUBMITTED);
+        assertThat(flowSession.getSubmissionPayload()).contains("Flow Mart");
+        assertThat(messageRepository.findByWhatsappMessageId("wamid.inbound.flow2.submit")).isPresent();
+        verify(messageSendService, times(3)).sendMessage(any());
     }
 }

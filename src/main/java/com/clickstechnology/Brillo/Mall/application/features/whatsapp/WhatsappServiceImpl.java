@@ -514,6 +514,9 @@ class WhatsappServiceImpl implements WhatsappService {
     }
 
     private String resolveInboundContent(WhatsappInboundEvent event) {
+        if (event.flowResponseJson() != null && !event.flowResponseJson().isBlank()) {
+            return event.flowResponseJson();
+        }
         if (event.interactiveReplyTitle() != null && !event.interactiveReplyTitle().isBlank()) {
             return event.interactiveReplyTitle();
         }
@@ -561,6 +564,10 @@ class WhatsappServiceImpl implements WhatsappService {
                     String textBody = message.path("text").path("body").asText(null);
                     String interactiveReplyId = resolveInteractiveReplyId(message);
                     String interactiveReplyTitle = resolveInteractiveReplyTitle(message);
+                    String flowId = resolveFlowId(message);
+                    String flowName = resolveFlowName(message);
+                    String flowToken = resolveFlowToken(message);
+                    String flowResponseJson = resolveFlowResponseJson(message);
                     Instant occurredAt = resolveTimestamp(message.path("timestamp").asText(null));
 
                     events.add(new WhatsappInboundEvent(
@@ -574,6 +581,10 @@ class WhatsappServiceImpl implements WhatsappService {
                             textBody,
                             interactiveReplyId,
                             interactiveReplyTitle,
+                            flowId,
+                            flowName,
+                            flowToken,
+                            flowResponseJson,
                             type,
                             message.path("context").path("id").asText(null),
                             occurredAt,
@@ -621,6 +632,64 @@ class WhatsappServiceImpl implements WhatsappService {
         }
         if (interactive.has("list_reply")) {
             return interactive.path("list_reply").path("title").asText(null);
+        }
+        return null;
+    }
+
+    private String resolveFlowId(JsonNode message) {
+        JsonNode interactive = message.path("interactive");
+        if (interactive.isMissingNode()) {
+            return null;
+        }
+        JsonNode flowReply = interactive.path("nfm_reply");
+        if (!flowReply.isMissingNode()) {
+            return flowReply.path("flow_id").asText(null);
+        }
+        return interactive.path("flow").path("id").asText(null);
+    }
+
+    private String resolveFlowName(JsonNode message) {
+        JsonNode interactive = message.path("interactive");
+        if (interactive.isMissingNode()) {
+            return null;
+        }
+        JsonNode flowReply = interactive.path("nfm_reply");
+        if (!flowReply.isMissingNode()) {
+            return flowReply.path("name").asText(null);
+        }
+        return interactive.path("flow").path("name").asText(null);
+    }
+
+    private String resolveFlowToken(JsonNode message) {
+        JsonNode interactive = message.path("interactive");
+        if (interactive.isMissingNode()) {
+            return null;
+        }
+        JsonNode flowReply = interactive.path("nfm_reply");
+        if (!flowReply.isMissingNode()) {
+            return flowReply.path("flow_token").asText(null);
+        }
+        return interactive.path("flow").path("flow_token").asText(null);
+    }
+
+    private String resolveFlowResponseJson(JsonNode message) {
+        JsonNode interactive = message.path("interactive");
+        if (interactive.isMissingNode()) {
+            return null;
+        }
+        JsonNode flowReply = interactive.path("nfm_reply");
+        if (!flowReply.isMissingNode()) {
+            String responseJson = flowReply.path("response_json").asText(null);
+            if (responseJson != null && !responseJson.isBlank()) {
+                return responseJson;
+            }
+        }
+        JsonNode flowResponse = interactive.path("flow_response");
+        if (!flowResponse.isMissingNode()) {
+            String responseJson = flowResponse.path("response_json").asText(null);
+            if (responseJson != null && !responseJson.isBlank()) {
+                return responseJson;
+            }
         }
         return null;
     }

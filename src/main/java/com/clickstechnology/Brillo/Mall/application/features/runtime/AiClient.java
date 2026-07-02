@@ -1,11 +1,10 @@
 package com.clickstechnology.Brillo.Mall.application.features.runtime;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-public interface ChatGptAiClient {
+public interface AiClient {
     Optional<AiIntentDecision> classifyIntent(String normalizedInput, Set<String> candidateIntents, Map<String, Object> context);
 
     Optional<AiAmbiguityDecision> detectAmbiguity(String normalizedInput, Set<String> candidateIntents, Map<String, Object> context);

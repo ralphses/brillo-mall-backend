@@ -1,6 +1,5 @@
 package com.clickstechnology.Brillo.Mall.application.features.runtime;
 
-import com.clickstechnology.Brillo.Mall.application.api.contracts.BusinessServiceRequestService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.BusinessServiceService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.OrderService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.ProductService;
@@ -17,7 +16,6 @@ import com.clickstechnology.Brillo.Mall.application.dto.whatsapp.WhatsAppMessage
 import com.clickstechnology.Brillo.Mall.application.dto.whatsapp.shared.Body;
 import com.clickstechnology.Brillo.Mall.application.dto.whatsapp.shared.ButtonAction;
 import com.clickstechnology.Brillo.Mall.application.dto.whatsapp.shared.Footer;
-import com.clickstechnology.Brillo.Mall.application.dto.whatsapp.shared.Header;
 import com.clickstechnology.Brillo.Mall.application.dto.whatsapp.shared.Section;
 import com.clickstechnology.Brillo.Mall.application.enums.ConversationStatus;
 import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;
@@ -52,7 +50,8 @@ public class ConversationTurnProcessor {
 
     private final TaskCatalogLoader catalogLoader;
     private final TaskSessionService taskSessionService;
-    private final ChatGptAiClient aiClient;
+    private final AiClient aiClient;
+    private final WhatsAppFlowService flowService;
     private final ProductService productService;
     private final BusinessServiceService businessServiceService;
     private final OrderService orderService;
@@ -157,6 +156,26 @@ public class ConversationTurnProcessor {
             outboundMessage = buildFallbackButtons(to, replyText);
         }
 
+        Optional<WhatsAppFlowService.FlowLaunchPlan> flowLaunchPlan = flowService.maybeLaunchFlow(
+                conversation,
+                business,
+                customer,
+                session,
+                taskKey,
+                resolvedState,
+                slots,
+                replyText,
+                presentationType,
+                outboundMessage,
+                event
+        );
+        if (flowLaunchPlan.isPresent()) {
+            WhatsAppFlowService.FlowLaunchPlan launchPlan = flowLaunchPlan.get();
+            replyText = launchPlan.replyText();
+            presentationType = launchPlan.presentationType();
+            outboundMessage = launchPlan.outboundMessage();
+        }
+
         if (isTerminalState(taskKey, resolvedState)) {
             taskSessionStatus = TaskSessionStatus.COMPLETED;
             conversationStatus = ConversationStatus.ACTIVE;
@@ -183,6 +202,7 @@ public class ConversationTurnProcessor {
                 aiModel
         );
 
+        flowService.markSubmission(conversation, session, event, slots, routeTo);
         taskSessionService.persistTransition(session, result, resolveInput(event), normalizedInput, slots, event.metadata());
         return result;
     }
@@ -193,6 +213,21 @@ public class ConversationTurnProcessor {
             ConversationDto conversation,
             ConversationTaskSession session
     ) {
+        if (event.flowResponseJson() != null && !event.flowResponseJson().isBlank()) {
+            String currentIntent = Optional.ofNullable(session.getCurrentIntent()).orElse(conversation.getLastIntent());
+            String currentTask = Optional.ofNullable(session.getCurrentTaskKey()).orElse(conversation.getActiveTaskKey());
+            return new RouteResolution(
+                    currentIntent,
+                    currentTask != null ? currentTask : "SHOW_MENU",
+                    TaskDecisionSource.RULE,
+                    1.0d,
+                    false,
+                    "Flow submission received",
+                    null,
+                    TaskSessionStatus.ACTIVE
+            );
+        }
+
         String interactiveId = Optional.ofNullable(event.interactiveReplyId()).orElse("");
         String selectedText = normalizedInput;
 
@@ -397,7 +432,8 @@ public class ConversationTurnProcessor {
             Map<String, Object> currentSlots,
             WhatsappInboundEvent event
     ) {
-        Map<String, Object> extracted = new LinkedHashMap<>(deterministicSlotExtraction(normalizedInput, allowedSlots, conversation, business, customer, session, currentSlots));
+        Map<String, Object> extracted = new LinkedHashMap<>(deterministicSlotExtraction(normalizedInput, allowedSlots, conversation, business, customer, session, currentSlots, event));
+        mergeSlots(extracted, flowService.extractSubmissionSlots(event), allowedSlots);
         if (aiClient.isEnabled()) {
             Optional<AiSlotDecision> aiDecision = aiClient.extractSlots(normalizedInput, taskKey, stateKey, allowedSlots, buildSlotContext(conversation, business, customer, session, currentSlots));
             if (aiDecision.isPresent() && aiDecision.get().confidence() >= MIN_AI_CONFIDENCE) {
@@ -414,7 +450,8 @@ public class ConversationTurnProcessor {
             BusinessDto business,
             CustomerDto customer,
             ConversationTaskSession session,
-            Map<String, Object> currentSlots
+            Map<String, Object> currentSlots,
+            WhatsappInboundEvent event
     ) {
         Map<String, Object> values = new LinkedHashMap<>();
         for (String slot : allowedSlots) {
@@ -438,6 +475,21 @@ public class ConversationTurnProcessor {
                 case "business_name" -> values.put("business_name", business.getName());
                 case "business_type" -> values.put("business_type", business.getCategory() != null ? business.getCategory().name() : null);
                 case "customer_id" -> values.put("customer_id", customer.getId());
+                case "flow_id" -> {
+                    if (event.flowId() != null) {
+                        values.put("flow_id", event.flowId());
+                    }
+                }
+                case "flow_name" -> {
+                    if (event.flowName() != null) {
+                        values.put("flow_name", event.flowName());
+                    }
+                }
+                case "flow_token" -> {
+                    if (event.flowToken() != null) {
+                        values.put("flow_token", event.flowToken());
+                    }
+                }
                 default -> {
                     if (currentSlots.containsKey(slot) && currentSlots.get(slot) != null) {
                         values.putIfAbsent(slot, currentSlots.get(slot));

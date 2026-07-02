@@ -1,5 +1,9 @@
-package com.clickstechnology.Brillo.Mall.application.features.runtime;
+package com.clickstechnology.Brillo.Mall.infrastructure.ai;
 
+import com.clickstechnology.Brillo.Mall.application.features.runtime.AiAmbiguityDecision;
+import com.clickstechnology.Brillo.Mall.application.features.runtime.AiClient;
+import com.clickstechnology.Brillo.Mall.application.features.runtime.AiIntentDecision;
+import com.clickstechnology.Brillo.Mall.application.features.runtime.AiSlotDecision;
 import com.clickstechnology.Brillo.Mall.infrastructure.config.AppPropertiesConfig;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -25,7 +29,7 @@ import java.util.function.Function;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-class OpenAiChatGptAiClient implements ChatGptAiClient {
+class ChatGptAiClient implements AiClient {
 
     private final AppPropertiesConfig appPropertiesConfig;
     private final ObjectMapper objectMapper;
@@ -158,8 +162,8 @@ class OpenAiChatGptAiClient implements ChatGptAiClient {
             ));
 
             RestTemplate restTemplate = restTemplateBuilder
-                    .setConnectTimeout(Duration.ofSeconds(appPropertiesConfig.getOpenAi().getTimeoutSeconds()))
-                    .setReadTimeout(Duration.ofSeconds(appPropertiesConfig.getOpenAi().getTimeoutSeconds()))
+                    .connectTimeout(Duration.ofSeconds(appPropertiesConfig.getOpenAi().getTimeoutSeconds()))
+                    .readTimeout(Duration.ofSeconds(appPropertiesConfig.getOpenAi().getTimeoutSeconds()))
                     .build();
 
             HttpHeaders headers = new HttpHeaders();

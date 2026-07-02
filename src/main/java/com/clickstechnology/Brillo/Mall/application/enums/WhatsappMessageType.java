@@ -9,6 +9,7 @@ public enum WhatsappMessageType {
     IMAGE("image"),
     BUTTON("button"),
     LIST("list"),
+    FLOW("flow"),
     CTA_URL("cta_url"),
     ADDRESS_MESSAGE("address_message"),
     VOICE_CALL("voice_call"),
