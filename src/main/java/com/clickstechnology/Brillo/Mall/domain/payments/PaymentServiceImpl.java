@@ -2,15 +2,18 @@ package com.clickstechnology.Brillo.Mall.domain.payments;
 
 import com.clickstechnology.Brillo.Mall.application.api.contracts.PaymentService;
 import com.clickstechnology.Brillo.Mall.application.dto.payments.PaymentLogDto;
-import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;
 import com.clickstechnology.Brillo.Mall.application.enums.PayableType;
+import com.clickstechnology.Brillo.Mall.application.enums.PaymentStatus;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
+import com.clickstechnology.Brillo.Mall.infrastructure.persistence.JpaAuditor.RecordStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -28,39 +31,68 @@ class PaymentServiceImpl implements PaymentService {
                 .payableType(payableType)
                 .payableId(payableId)
                 .email(email)
+                .paymentStatus(PaymentStatus.PENDING)
                 .build();
         paymentLogRepository.save(paymentLog);
     }
 
     @Transactional
     @Override
-    public void updateStatus(String paymentLogId, EntityStatus status) {
+    public void updateInitialization(String paymentLogId, String authorizationUrl, String accessCode, PaymentStatus status) {
         PaymentLog existingPaymentLog = findByReference(paymentLogId);
+        existingPaymentLog.setAuthorizationUrl(authorizationUrl);
+        existingPaymentLog.setAccessCode(accessCode);
+        existingPaymentLog.setPaymentStatus(status);
+        existingPaymentLog.setVerifiedAt(null);
+        existingPaymentLog.setReconciledAt(null);
+        existingPaymentLog.setGatewayMessage(null);
+        paymentLogRepository.save(existingPaymentLog);
+    }
 
-        existingPaymentLog.setStatus(status);
+    @Transactional
+    @Override
+    public void updateStatus(String paymentLogId, PaymentStatus status) {
+        PaymentLog existingPaymentLog = findByReference(paymentLogId);
+        applyStatusTransition(existingPaymentLog, status);
         paymentLogRepository.save(existingPaymentLog);
     }
 
     @Override
-    public void updateStatusWithPaymentReference(String reference, EntityStatus status) {
+    public void updateStatusWithPaymentReference(String reference, PaymentStatus status) {
         PaymentLog paymentLog = findByPaymentReferenceInternal(reference);
-
-        PayableType payableType = paymentLog.getPayableType();
-        if (payableType == PayableType.BOOKING) {
-
-        }
-
-        paymentLog.setStatus(status);
+        applyStatusTransition(paymentLog, status);
         paymentLogRepository.save(paymentLog);
     }
 
+    private void applyStatusTransition(PaymentLog paymentLog, PaymentStatus status) {
+        PaymentStatus currentStatus = paymentLog.getPaymentStatus();
+        if (currentStatus == status) {
+            return;
+        }
+
+        if (!currentStatus.canTransitionTo(status)) {
+            throw new BusinessException("Invalid payment status transition.");
+        }
+
+        paymentLog.setPaymentStatus(status);
+        paymentLog.setGatewayMessage(status.name());
+
+        Instant now = Instant.now();
+        if (status == PaymentStatus.PAID) {
+            paymentLog.setVerifiedAt(paymentLog.getVerifiedAt() == null ? now : paymentLog.getVerifiedAt());
+            paymentLog.setReconciledAt(now);
+        } else if (status == PaymentStatus.FAILED || status == PaymentStatus.REVERSED) {
+            paymentLog.setReconciledAt(now);
+        }
+    }
+
     private PaymentLog findByPaymentReferenceInternal(String reference) {
-        return paymentLogRepository.findByPaymentReference(reference)
+        return paymentLogRepository.findByPaymentReferenceAndRecordStatus(reference, RecordStatus.ACTIVE)
                 .orElseThrow(() -> new BusinessException("Payment log not found"));
     }
 
     private PaymentLog findByReference(String paymentLogId) {
-        return paymentLogRepository.findByReference(paymentLogId)
+        return paymentLogRepository.findByReferenceAndRecordStatus(paymentLogId, RecordStatus.ACTIVE)
                 .orElseThrow(() -> new BusinessException("Payment log not found"));
     }
 
@@ -68,6 +100,12 @@ class PaymentServiceImpl implements PaymentService {
     public PaymentLogDto findByPaymentReference(String reference) {
         return findByReference(reference)
                 .dto();
+    }
+
+    @Override
+    public Optional<PaymentLogDto> findByPayableTypeAndPayableId(PayableType payableType, String payableId) {
+        return paymentLogRepository.findByPayableTypeAndPayableIdAndRecordStatus(payableType, payableId, RecordStatus.ACTIVE)
+                .map(PaymentLog::dto);
     }
 
 }

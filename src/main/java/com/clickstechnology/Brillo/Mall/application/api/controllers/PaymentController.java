@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
 import static com.clickstechnology.Brillo.Mall.application.dto.response.ResponseBuilder.success;
@@ -31,8 +32,12 @@ public class PaymentController {
     }
 
     @PostMapping("/webhooks/{processor}")
-    public ResponseEntity<Void> handleWebHook(@PathVariable String processor, @RequestBody final String payload, HttpServletRequest httpServletRequest) {
-        managePayments.handleWebHook(processor, payload, httpServletRequest);
+    public ResponseEntity<Void> handleWebHook(
+            @PathVariable String processor,
+            @RequestHeader(value = "X-Paystack-Signature", required = false) String signature,
+            @RequestBody final String payload,
+            HttpServletRequest httpServletRequest) {
+        managePayments.handleWebHook(processor, signature, payload, httpServletRequest);
         return ResponseEntity.ok().build();
     }
 

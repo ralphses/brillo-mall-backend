@@ -1,5 +1,6 @@
 package com.clickstechnology.Brillo.Mall.application.dto.payments;
 
+import com.clickstechnology.Brillo.Mall.application.enums.PaymentStatus;
 import lombok.Builder;
 import lombok.Data;
 
@@ -9,4 +10,5 @@ public class PaymentResponse {
     private String authorizationUrl;
     private String accessCode;
     private String reference;
+    private PaymentStatus paymentStatus;
 }

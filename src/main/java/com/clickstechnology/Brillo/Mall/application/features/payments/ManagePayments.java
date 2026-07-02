@@ -16,9 +16,9 @@ import com.clickstechnology.Brillo.Mall.application.dto.payments.PaymentResponse
 import com.clickstechnology.Brillo.Mall.application.dto.payments.VerificationResponse;
 import com.clickstechnology.Brillo.Mall.application.dto.request.business.UpdateBookingRequest;
 import com.clickstechnology.Brillo.Mall.application.enums.BookingStatus;
-import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;
 import com.clickstechnology.Brillo.Mall.application.enums.OrderStatus;
 import com.clickstechnology.Brillo.Mall.application.enums.PayableType;
+import com.clickstechnology.Brillo.Mall.application.enums.PaymentStatus;
 import com.clickstechnology.Brillo.Mall.application.enums.UserRole;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
 import com.clickstechnology.Brillo.Mall.application.utils.AppUtils;
@@ -28,9 +28,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -47,14 +49,150 @@ public class ManagePayments {
     private String defaultPaymentProcessor;
 
     @LoggableRequest
+    @Transactional
     public PaymentResponse initializePayment(PaymentInitializationRequest initializationRequest, HttpServletRequest httpServletRequest) {
         UserDto user = tenantContextResolver.currentUser(httpServletRequest);
+        PaymentContext paymentContext = resolvePaymentContext(initializationRequest, httpServletRequest, user);
 
-        String reference = AppUtils.generateUniqueReference();
+        Optional<PaymentLogDto> existingPaymentLog = paymentService.findByPayableTypeAndPayableId(
+                initializationRequest.getPayableType(),
+                initializationRequest.getPayableId()
+        );
+
+        PaymentLogDto paymentLog;
+        String reference;
+        if (existingPaymentLog.isPresent()) {
+            paymentLog = existingPaymentLog.get();
+            reference = paymentLog.getPaymentReference();
+            if (hasGatewayCredentials(paymentLog) && paymentLog.getPaymentStatus() != PaymentStatus.FAILED) {
+                return buildPaymentResponse(paymentLog);
+            }
+        } else {
+            reference = AppUtils.generateUniqueReference();
+            paymentService.createNewLog(
+                    paymentContext.businessId,
+                    user.getId(),
+                    reference,
+                    paymentContext.amount,
+                    initializationRequest.getPayableType(),
+                    initializationRequest.getPayableId(),
+                    user.getEmail()
+            );
+            paymentLog = paymentService.findByPaymentReference(reference);
+        }
+
+        PaymentProcessor processor = paymentProcessorResolver.resolve(defaultPaymentProcessor);
+        PaymentRequest paymentRequest = PaymentRequest.builder()
+                .amount(paymentContext.amount)
+                .email(user.getEmail())
+                .currency("NGN")
+                .reference(reference)
+                .build();
+
+        PaymentResponse processorResponse = processor.initializePayment(paymentRequest);
+        paymentService.updateInitialization(reference, processorResponse.getAuthorizationUrl(), processorResponse.getAccessCode(), PaymentStatus.PROCESSING);
+
+        return PaymentResponse.builder()
+                .authorizationUrl(processorResponse.getAuthorizationUrl())
+                .accessCode(processorResponse.getAccessCode())
+                .reference(reference)
+                .paymentStatus(PaymentStatus.PROCESSING)
+                .build();
+    }
+
+    @Transactional
+    public VerificationResponse verifyPayment(String reference) {
+        PaymentLogDto paymentLog = paymentService.findByPaymentReference(reference);
+
+        if (paymentLog.getPaymentStatus() == PaymentStatus.PAID) {
+            return VerificationResponse.builder()
+                    .verified(true)
+                    .message("Payment already verified")
+                    .reference(reference)
+                    .paymentStatus(PaymentStatus.PAID)
+                    .reconciled(true)
+                    .build();
+        }
+
+        PaymentProcessor processor = paymentProcessorResolver.resolve(defaultPaymentProcessor);
+        paymentService.updateStatus(paymentLog.getId(), PaymentStatus.PROCESSING);
+        VerificationResponse verification = processor.verifyPayment(reference);
+
+        PaymentStatus targetStatus = verification.isVerified() ? PaymentStatus.PAID : PaymentStatus.FAILED;
+        reconcilePayment(reference, targetStatus, "verification", verification.getMessage());
+
+        return VerificationResponse.builder()
+                .verified(verification.isVerified())
+                .message(verification.getMessage())
+                .reference(reference)
+                .paymentStatus(targetStatus)
+                .reconciled(targetStatus == PaymentStatus.PAID)
+                .build();
+    }
+
+    public void handleWebHook(String processor, String signature, String payload, HttpServletRequest httpServletRequest) {
+        PaymentProcessor paymentProcessor = paymentProcessorResolver.resolve(processor);
+        paymentProcessor.handleWebHook(signature, payload);
+    }
+
+    @Transactional
+    public void handlePaymentNotification(String paymentReference, PaymentStatus paymentStatus, String gatewayMessage) {
+        reconcilePayment(paymentReference, paymentStatus, "webhook", gatewayMessage);
+    }
+
+    private void reconcilePayment(String paymentReference, PaymentStatus targetStatus, String source, String gatewayMessage) {
+        PaymentLogDto paymentLog = paymentService.findByPaymentReference(paymentReference);
+
+        if (paymentLog.getPaymentStatus() == targetStatus) {
+            return;
+        }
+
+        if (paymentLog.getPaymentStatus() == PaymentStatus.PAID && targetStatus == PaymentStatus.FAILED) {
+            log.info("Ignoring late failure for already paid reference {}", paymentReference);
+            return;
+        }
+
+        if (paymentLog.getPaymentStatus() == PaymentStatus.REVERSED && targetStatus != PaymentStatus.REVERSED) {
+            log.info("Ignoring late payment event for reversed reference {}", paymentReference);
+            return;
+        }
+
+        if (paymentLog.getPaymentStatus() != targetStatus && !paymentLog.getPaymentStatus().canTransitionTo(targetStatus)) {
+            throw new BusinessException("Invalid payment status transition.");
+        }
+
+        if (targetStatus == PaymentStatus.PAID) {
+            if (paymentLog.getPayableType() == PayableType.ORDER) {
+                orderService.updateOrderStatus(paymentLog.getPayableId(), OrderStatus.PAID);
+            } else if (paymentLog.getPayableType() == PayableType.BOOKING) {
+                bookedBusinessServiceService.updateBooking(
+                        paymentLog.getPayableId(),
+                        UpdateBookingRequest.builder().status(BookingStatus.CONFIRMED).build()
+                );
+            }
+        }
+
+        paymentService.updateStatusWithPaymentReference(paymentReference, targetStatus);
+        log.info("Payment {} reconciled from {} using {}", paymentReference, source, gatewayMessage);
+    }
+
+    private boolean hasGatewayCredentials(PaymentLogDto paymentLog) {
+        return paymentLog.getAuthorizationUrl() != null && paymentLog.getAccessCode() != null;
+    }
+
+    private PaymentResponse buildPaymentResponse(PaymentLogDto paymentLog) {
+        return PaymentResponse.builder()
+                .authorizationUrl(paymentLog.getAuthorizationUrl())
+                .accessCode(paymentLog.getAccessCode())
+                .reference(paymentLog.getPaymentReference())
+                .paymentStatus(paymentLog.getPaymentStatus())
+                .build();
+    }
+
+    private PaymentContext resolvePaymentContext(PaymentInitializationRequest initializationRequest, HttpServletRequest httpServletRequest, UserDto user) {
+        String businessId;
         BigDecimal amount;
-        String email = user.getEmail();
         List<String> userRoles = user.getRoles();
-        String businessId = "";
 
         if (initializationRequest.getPayableType() == PayableType.ORDER) {
             OrderDto order = orderService.findOrderDetailsForCustomer(initializationRequest.getPayableId(), user.getId());
@@ -65,14 +203,12 @@ public class ManagePayments {
                 orderService.ensureOrderBelongsToUser(order, user.getId());
             }
             amount = order.getTotalAmount();
-
         } else if (initializationRequest.getPayableType() == PayableType.BOOKING) {
             BookedServiceDto booking = bookedBusinessServiceService.findById(initializationRequest.getPayableId());
             businessId = booking.getBusiness().getId();
-           if (initializationRequest.isBusiness() && userRoles.contains(UserRole.ADMIN.name())) {
-               tenantContextResolver.ensureBusinessOwnership(httpServletRequest, businessId);
-           }
-           else {
+            if (initializationRequest.isBusiness() && userRoles.contains(UserRole.ADMIN.name())) {
+                tenantContextResolver.ensureBusinessOwnership(httpServletRequest, businessId);
+            } else {
                 bookedBusinessServiceService.ensureBookingBelongsToUser(booking, user.getId());
             }
             amount = booking.getAgreedPrice();
@@ -80,69 +216,13 @@ public class ManagePayments {
             throw new BusinessException("Invalid payable type");
         }
 
-        paymentService.createNewLog(
-                businessId,
-                user.getId(),
-                reference,
-                amount,
-                initializationRequest.getPayableType(),
-                initializationRequest.getPayableId(),
-                email
-        );
+        if (amount == null) {
+            throw new BusinessException("A payment amount is required.");
+        }
 
-        PaymentRequest paymentRequest = PaymentRequest.builder()
-                .amount(amount)
-                .email(email)
-                .currency("NGN")
-                .reference(reference)
-                .build();
-
-        PaymentProcessor processor = paymentProcessorResolver.resolve(defaultPaymentProcessor);
-
-        return processor.initializePayment(paymentRequest);
+        return new PaymentContext(businessId, amount);
     }
 
-    public VerificationResponse verifyPayment(String reference) {
-        PaymentLogDto paymentLog = paymentService.findByPaymentReference(reference);
-
-        if (paymentLog.getStatus() == EntityStatus.ACTIVE) {
-            return VerificationResponse.builder().verified(true).message("Payment already verified").build();
-        }
-
-        PaymentProcessor processor = paymentProcessorResolver.resolve(defaultPaymentProcessor);
-        VerificationResponse verification = processor.verifyPayment(reference);
-
-        if (verification.isVerified()) {
-            paymentLog.setStatus(EntityStatus.ACTIVE);
-
-            if (paymentLog.getPayableType() == PayableType.ORDER) {
-                orderService.updateOrderStatus(paymentLog.getPayableId(), OrderStatus.PAID);
-            } else if (paymentLog.getPayableType() == PayableType.BOOKING) {
-                bookedBusinessServiceService.updateBooking(paymentLog.getPayableId(), UpdateBookingRequest.builder().status(BookingStatus.CONFIRMED).build());
-            }
-        } else {
-            paymentLog.setStatus(EntityStatus.INACTIVE);
-        }
-
-        paymentService.updateStatus(paymentLog.getId(), paymentLog.getStatus());
-        return verification;
-    }
-
-    public void handleWebHook(String processor, String payload, HttpServletRequest httpServletRequest) {
-        PaymentProcessor paymentProcessor = paymentProcessorResolver.resolve(processor);
-        paymentProcessor.handleWebHook(payload);
-    }
-
-    public void handlePaymentNotification(String paymentReference) {
-        PaymentLogDto paymentLog = paymentService.findByPaymentReference(paymentReference);
-        PayableType payableType = paymentLog.getPayableType();
-        if (payableType == PayableType.BOOKING) {
-            bookedBusinessServiceService.updateBooking(paymentLog.getPayableId(), UpdateBookingRequest.builder().status(BookingStatus.CONFIRMED).build());
-        }
-
-        if (payableType.equals(PayableType.ORDER)) {
-            orderService.updateOrderStatus(paymentLog.getPayableId(), OrderStatus.PAID);
-        }
-        paymentService.updateStatus(paymentLog.getId(), EntityStatus.ACTIVE);
+    private record PaymentContext(String businessId, BigDecimal amount) {
     }
 }

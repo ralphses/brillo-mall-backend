@@ -10,5 +10,5 @@ public interface PaymentProcessor {
     VerificationResponse verifyPayment(String reference);
     String getName();
 
-    void handleWebHook(String payload);
+    void handleWebHook(String signature, String payload);
 }

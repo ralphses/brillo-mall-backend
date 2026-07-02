@@ -208,6 +208,9 @@ class BookedBusinessServiceServiceImpl implements BookedBusinessServiceService {
         }
 
         if (updateBookingRequest.getStatus() != null) {
+            if (bookedBusinessService.getBookingStatus() == updateBookingRequest.getStatus()) {
+                return bookedBusinessService.dto();
+            }
             validateTransition(bookedBusinessService.getBookingStatus(), updateBookingRequest.getStatus());
             bookedBusinessService.setBookingStatus(updateBookingRequest.getStatus());
 

@@ -173,6 +173,10 @@ class OrderServiceImpl implements OrderService {
         Order order = orderRepository.findByOrderId(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found with ID: " + orderId));
 
+        if (order.getStatus() == newStatus) {
+            return order.dto();
+        }
+
         if (newStatus == OrderStatus.CANCELLED && order.getStatus() != OrderStatus.PENDING) {
                 throw new BusinessException("Order not valid or cancelled");
         }

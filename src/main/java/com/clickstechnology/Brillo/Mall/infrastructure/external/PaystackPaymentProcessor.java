@@ -4,6 +4,7 @@ import com.clickstechnology.Brillo.Mall.application.api.contracts.PaymentProcess
 import com.clickstechnology.Brillo.Mall.application.dto.payments.PaymentRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.payments.PaymentResponse;
 import com.clickstechnology.Brillo.Mall.application.dto.payments.VerificationResponse;
+import com.clickstechnology.Brillo.Mall.application.enums.PaymentStatus;
 import com.clickstechnology.Brillo.Mall.application.exception.ApplicationException;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
 import com.clickstechnology.Brillo.Mall.application.features.payments.ManagePayments;
@@ -27,6 +28,7 @@ import org.springframework.web.client.RestTemplate;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 
@@ -69,6 +71,7 @@ public class PaystackPaymentProcessor implements PaymentProcessor {
                         .authorizationUrl(response.getData().getAuthorizationUrl())
                         .accessCode(response.getData().getAccessCode())
                         .reference(response.getData().getReference())
+                        .paymentStatus(PaymentStatus.PROCESSING)
                         .build();
             } else {
                 throw new BusinessException("Payment initialization failed: " + (response != null ? response.getMessage() : "No response"));
@@ -93,17 +96,26 @@ public class PaystackPaymentProcessor implements PaymentProcessor {
                 return VerificationResponse.builder()
                         .verified(true)
                         .message(response.getMessage())
+                        .reference(reference)
+                        .paymentStatus(PaymentStatus.PAID)
+                        .reconciled(true)
                         .build();
             } else {
                 return VerificationResponse.builder()
                         .verified(false)
                         .message(response != null ? response.getMessage() : "No response")
+                        .reference(reference)
+                        .paymentStatus(PaymentStatus.FAILED)
+                        .reconciled(false)
                         .build();
             }
         } catch (Exception e) {
             return VerificationResponse.builder()
                     .verified(false)
                     .message("Payment verification failed: " + e.getMessage())
+                    .reference(reference)
+                    .paymentStatus(PaymentStatus.FAILED)
+                    .reconciled(false)
                     .build();
         }
     }
@@ -116,12 +128,12 @@ public class PaystackPaymentProcessor implements PaymentProcessor {
     private void verifySignature(String signature, String payload) {
         try {
             Mac mac = Mac.getInstance("HmacSHA512");
-            SecretKeySpec secretKeySpec = new SecretKeySpec(paystackSecretKey.getBytes(), "HmacSHA512");
+            SecretKeySpec secretKeySpec = new SecretKeySpec(paystackSecretKey.getBytes(StandardCharsets.UTF_8), "HmacSHA512");
             mac.init(secretKeySpec);
-            byte[] hash = mac.doFinal(payload.getBytes());
+            byte[] hash = mac.doFinal(payload.getBytes(StandardCharsets.UTF_8));
             String mySignature = bytesToHex(hash);
 
-            if (!mySignature.equals(signature)) {
+            if (signature == null || !mySignature.equals(signature)) {
                 throw new BusinessException("Invalid Paystack signature");
             }
         } catch (NoSuchAlgorithmException | InvalidKeyException e) {
@@ -138,17 +150,21 @@ public class PaystackPaymentProcessor implements PaymentProcessor {
     }
 
     @Override
-    public void handleWebHook(String payload) {
+    public void handleWebHook(String signature, String payload) {
         try {
+            verifySignature(signature, payload);
             PaystackWebhookEvent event = objectMapper.readValue(payload, PaystackWebhookEvent.class);
 
             if ("charge.success".equals(event.getEvent())) {
                 String reference = event.getData().getReference();
-                managePayments.handlePaymentNotification(reference);
+                managePayments.handlePaymentNotification(reference, PaymentStatus.PAID, event.getEvent());
+            } else if ("charge.failed".equals(event.getEvent())) {
+                managePayments.handlePaymentNotification(event.getData().getReference(), PaymentStatus.FAILED, event.getEvent());
+            } else if ("refund.processed".equals(event.getEvent())) {
+                managePayments.handlePaymentNotification(event.getData().getReference(), PaymentStatus.REVERSED, event.getEvent());
             }
         } catch (JsonProcessingException e) {
             log.error("Error processing webhook event", e);
         }
     }
 }
-
