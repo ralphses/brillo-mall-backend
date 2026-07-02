@@ -144,11 +144,11 @@ public class ManageOrder {
             return orderService.findAllByCustomerId(customer.getId(), page, pageSize);
         }
 
-        log.info("Request source {}, page: {}, pageSize: {}", source, page, pageSize);
+        log.debug("Order listing request from {} for page {} size {}", source, page, pageSize);
 
         // Handle Web/API requests
         UserDto user = tenantContextResolver.currentUser(httpServletRequest);
-        log.info(":::Logged in user: {}", user.getRoles());
+        log.debug("Resolved logged in user roles {}", user.getRoles());
 
         // Route based on a user role
         if (user.getRoles().contains(UserRole.ADMIN.name()) && (isBusiness || businessId != null)) {

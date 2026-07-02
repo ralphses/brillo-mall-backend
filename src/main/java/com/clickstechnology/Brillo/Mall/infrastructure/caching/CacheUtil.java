@@ -11,6 +11,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
 @Slf4j
 @Component
@@ -70,6 +71,19 @@ public class CacheUtil {
             log.error("Failed to get cache for key={}", key, e);
             throw new ApplicationException("Cache get operation failed", e);
         }
+    }
+
+    public <T> T getOrLoad(String key, Class<T> clazz, Duration ttl, Supplier<T> loader) {
+        T cachedValue = get(key, clazz);
+        if (cachedValue != null) {
+            return cachedValue;
+        }
+
+        T loadedValue = loader.get();
+        if (loadedValue != null) {
+            set(key, loadedValue, ttl);
+        }
+        return loadedValue;
     }
 
     public boolean exists(String key) {

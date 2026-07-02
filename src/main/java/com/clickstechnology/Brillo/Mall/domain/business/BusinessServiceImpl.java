@@ -174,8 +174,7 @@ class BusinessServiceImpl implements BusinessService {
         List<BusinessDto> items = businessPage.getContent().stream()
                 .map(Business::dto)
                 .toList();
-        log.info(":::Total items: {}", items.size());
-        log.info(":::Page items: {}", userId);
+        log.debug("Loaded {} businesses for owner {}", items.size(), userId);
 
         return PaginatedResponse.<BusinessDto>builder()
                 .page(page)

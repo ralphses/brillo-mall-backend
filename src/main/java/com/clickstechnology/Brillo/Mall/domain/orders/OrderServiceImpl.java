@@ -7,6 +7,7 @@ import com.clickstechnology.Brillo.Mall.application.api.contracts.ProductService
 import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessDto;
 import com.clickstechnology.Brillo.Mall.application.dto.CustomerDto;
 import com.clickstechnology.Brillo.Mall.application.dto.order.OrderDto;
+import com.clickstechnology.Brillo.Mall.application.dto.order.OrderItemDto;
 import com.clickstechnology.Brillo.Mall.application.dto.order.PlaceOrderRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.product.ProductDto;
 import com.clickstechnology.Brillo.Mall.application.dto.response.PaginatedResponse;
@@ -21,6 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -67,7 +69,7 @@ class OrderServiceImpl implements OrderService {
 
     @Override
     public PaginatedResponse<OrderDto> findAllByUserId(String userId, Integer page, Integer pageSize) {
-        Pageable pageable = PageRequest.of(page - 1, pageSize);
+        Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by(Sort.Direction.ASC, "createdAt"));
         Page<Order> orderPage = orderRepository.findAllByUserId(userId, pageable);
         return getOrderPaginatedResponse(orderPage);
     }
@@ -160,22 +162,22 @@ class OrderServiceImpl implements OrderService {
 
     @Override
     public PaginatedResponse<OrderDto> findAllByCustomerId(String customerId, Integer page, Integer pageSize) {
-        Pageable pageable = PageRequest.of(page - 1, pageSize);
+        Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by(Sort.Direction.ASC, "createdAt"));
         Page<Order> orderPage = orderRepository.findAllByCustomerId(customerId, pageable);
         return getOrderPaginatedResponse(orderPage);
     }
 
     @Override
     public PaginatedResponse<OrderDto> findAllByBusinessId(String businessId, Integer page, Integer pageSize) {
-        Pageable pageable = PageRequest.of(page - 1, pageSize);
+        Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by(Sort.Direction.ASC, "createdAt"));
         Page<Order> orderPage = orderRepository.findAllByBusinessId(businessId, pageable);
         return getOrderPaginatedResponse(orderPage);
     }
 
     @Override
     public PaginatedResponse<OrderDto> findAllByBusinessIds(List<String> businessIds, Integer page, Integer pageSize) {
-        Pageable pageable = PageRequest.of(page - 1, pageSize);
-        Page<Order> orderPage = orderRepository.findAllByBusinessIds(businessIds, pageable);
+        Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by(Sort.Direction.ASC, "createdAt"));
+        Page<Order> orderPage = orderRepository.findAllByBusinessIdIn(businessIds, pageable);
         return getOrderPaginatedResponse(orderPage);
     }
 
@@ -210,7 +212,23 @@ class OrderServiceImpl implements OrderService {
     }
 
     private PaginatedResponse<OrderDto> getOrderPaginatedResponse(Page<Order> orderPage) {
-        List<OrderDto> orderDtos = orderPage.getContent().stream().map(Order::dto).collect(Collectors.toList());
+        List<String> orderIds = orderPage.getContent().stream()
+                .map(Order::getOrderId)
+                .toList();
+
+        List<OrderItem> orderItems = orderIds.isEmpty()
+                ? List.of()
+                : orderItemRepository.findByOrderIdIn(orderIds);
+
+        Map<String, List<OrderItemDto>> itemsByOrderId = orderItems.stream()
+                .collect(Collectors.groupingBy(
+                        item -> item.getOrder().getOrderId(),
+                        Collectors.mapping(OrderItem::dto, Collectors.toList())
+                ));
+
+        List<OrderDto> orderDtos = orderPage.getContent().stream()
+                .map(order -> buildOrderDto(order, itemsByOrderId.getOrDefault(order.getOrderId(), List.of())))
+                .collect(Collectors.toList());
 
         if (orderDtos.isEmpty()) {
             return PaginatedResponse.<OrderDto>builder()
@@ -249,12 +267,14 @@ class OrderServiceImpl implements OrderService {
                 .collect(Collectors.toMap(BusinessDto::getId, business -> business));
 
         // Enrich the order DTOs
-        orderDtos.forEach(orderDto -> orderDto.getItems().forEach(item -> {
+        orderDtos.forEach(orderDto -> {
+            orderDto.getItems().forEach(item -> {
             ProductDto fullProduct = productMap.get(item.getProduct().getId());
             if (fullProduct != null) {
                 item.setProduct(fullProduct);
                 item.setBusiness(businessMap.get(fullProduct.getBusinessId()));
             }
+            });
 
             CustomerDto customerDto = CustomerDto.builder()
                     .id(orderCustomerMap.get(orderDto.getId()))
@@ -262,7 +282,7 @@ class OrderServiceImpl implements OrderService {
 
             orderDto.setCustomer(customerDto);
             orderDto.setBusiness(businessMap.get(orderDto.getBusinessId()));
-        }));
+        });
 
         return PaginatedResponse.<OrderDto>builder()
                 .items(orderDtos)
@@ -272,6 +292,22 @@ class OrderServiceImpl implements OrderService {
                 .totalPages(orderPage.getTotalPages())
                 .hasNext(orderPage.hasNext())
                 .hasPrevious(orderPage.hasPrevious())
+                .build();
+    }
+
+    private OrderDto buildOrderDto(Order order, List<OrderItemDto> items) {
+        return OrderDto.builder()
+                .id(order.getOrderId())
+                .businessId(order.getBusinessId())
+                .userId(order.getUserId())
+                .business(BusinessDto.builder().id(order.getBusinessId()).build())
+                .status(order.getStatus())
+                .paymentMethod(order.getPaymentMethod())
+                .totalAmount(order.getTotalAmount())
+                .shippingAddress(order.getShippingAddress())
+                .items(items)
+                .createdAt(order.getCreatedAt())
+                .updatedAt(order.getUpdatedAt())
                 .build();
     }
 

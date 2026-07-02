@@ -8,6 +8,7 @@ import com.clickstechnology.Brillo.Mall.infrastructure.config.AppPropertiesConfi
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
@@ -26,26 +27,27 @@ class WhatsappMessageSendService implements MessageSendService {
     @Override
     public WhatsappResponse sendMessage(final WhatsAppMessageRequest whatsAppMessageRequest) {
         try {
-            log.info(":::Outgoing WhatsApp Message: {}", whatsAppMessageRequest);
+            log.debug("Sending WhatsApp message of type {}", whatsAppMessageRequest != null ? whatsAppMessageRequest.getType() : null);
             String requestBody = objectMapper.writeValueAsString(whatsAppMessageRequest);
 
-            HttpEntity<String> stringHttpEntity = new HttpEntity<>(requestBody);
-            stringHttpEntity.getHeaders().setBearerAuth(properties.getWhatsapp().getToken());
+            HttpHeaders headers = new HttpHeaders();
+            headers.setBearerAuth(properties.getWhatsapp().getToken());
+            HttpEntity<String> stringHttpEntity = new HttpEntity<>(requestBody, headers);
 
             ResponseEntity<WhatsappResponse> response = restTemplate.exchange(properties.getWhatsapp().getUrl(), HttpMethod.POST, stringHttpEntity, WhatsappResponse.class);
-            log.info(":::Full Response: {}", response);
+            log.debug("WhatsApp gateway returned status {}", response.getStatusCode());
 
             if (response.getStatusCode().is2xxSuccessful()) {
                 WhatsappResponse responseBody = response.getBody();
-                log.error(":::Success sending WhatsApp Message: {}", responseBody);
+                log.debug("WhatsApp message accepted by gateway");
                 return responseBody;
             }
-            log.error(":::Error Response: {}", response.getStatusCode());
+            log.error("WhatsApp gateway rejected message with status {}", response.getStatusCode());
 
             throw new ApplicationException("Error sending WhatsApp Message");
 
         } catch (Exception e) {
-            log.error(":::Error sending WhatsApp Message", e);
+            log.error("Failed to send WhatsApp message", e);
             throw new ApplicationException("Error sending WhatsApp Message", e);
         }
     }

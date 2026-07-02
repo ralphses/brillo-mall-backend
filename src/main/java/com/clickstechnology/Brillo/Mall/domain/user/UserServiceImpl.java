@@ -112,7 +112,6 @@ class UserServiceImpl implements UserService {
     public AuthUser findUserByUsername(String username) {
 
         final String cacheKey = CacheNames.USER_AUTH + "::" + username;
-
         AuthUser cachedUser = cacheUtil.get(cacheKey, AuthUser.class);
 
         if (cachedUser != null) {

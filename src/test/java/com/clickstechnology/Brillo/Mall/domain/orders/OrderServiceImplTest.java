@@ -31,8 +31,10 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -42,6 +44,9 @@ class OrderServiceImplTest {
 
     @Mock
     private OrderRepository orderRepository;
+
+    @Mock
+    private OrderItemRepository orderItemRepository;
 
     @Mock
     private CacheUtil cacheUtil;
@@ -80,6 +85,8 @@ class OrderServiceImplTest {
         placeOrderRequest.setCustomer(customerDto);
         placeOrderRequest.setItems(List.of(itemRequest));
         placeOrderRequest.setPaymentMethod(PaymentMethod.ONLINE);
+
+        lenient().when(orderItemRepository.findByOrderIdIn(anyList())).thenReturn(List.of());
     }
 
     @Nested
@@ -350,7 +357,7 @@ class OrderServiceImplTest {
             // Given
             List<String> businessIds = List.of("biz1", "biz2");
             Page<Order> orderPage = new PageImpl<>(List.of(order));
-            when(orderRepository.findAllByBusinessIds(eq(businessIds), any(Pageable.class))).thenReturn(orderPage);
+            when(orderRepository.findAllByBusinessIdIn(eq(businessIds), any(Pageable.class))).thenReturn(orderPage);
 
             // When
             PaginatedResponse<OrderDto> result = orderServiceImpl.findAllByBusinessIds(businessIds, 1, 10);
