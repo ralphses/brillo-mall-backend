@@ -6,15 +6,12 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.Instant;
-
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class MessageDto {
-    private String id;
-    private String reference;
+public class MessageCreateRequest {
+    private String conversationReference;
     private String content;
     private MessageType messageType;
     private String intent;
@@ -22,5 +19,4 @@ public class MessageDto {
     private String transportType;
     private String sourceEventId;
     private String metadata;
-    private Instant createdAt;
 }

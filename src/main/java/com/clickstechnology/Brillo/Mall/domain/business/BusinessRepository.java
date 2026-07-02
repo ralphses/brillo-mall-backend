@@ -13,8 +13,10 @@ interface BusinessRepository extends JpaRepository<Business, Long> {
     Optional<Business> findByName(String name);
     Optional<Business> findByReference(String businessId);
     Optional<Business> findBySlug(String slug);
+    Optional<Business> findByWhatsappNumber(String whatsappNumber);
     boolean existsByReference(String businessId);
     Page<Business> findAllByOwnerId(String ownerId, Pageable pageable);
     List<Business> findAllByReferenceIn(Set<String> businessIds);
     List<Business> findAllByOwnerId(String ownerId);
+    List<Business> findTop10ByIsActiveTrueOrderByCreatedAtAsc();
 }

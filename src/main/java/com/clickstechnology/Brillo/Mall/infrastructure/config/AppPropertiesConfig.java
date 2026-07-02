@@ -32,5 +32,7 @@ public class AppPropertiesConfig {
     public static class Whatsapp {
         private String url;
         private String token;
+        private String verifyToken;
+        private Integer sessionWindowHours = 24;
     }
 }

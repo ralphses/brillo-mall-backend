@@ -9,6 +9,7 @@ import com.clickstechnology.Brillo.Mall.application.dto.response.PaginatedRespon
 import com.clickstechnology.Brillo.Mall.application.enums.BusinessCategory;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 public interface BusinessService {
@@ -40,5 +41,9 @@ public interface BusinessService {
     List<BusinessDto> findAllByOwnerId(String userId);
 
     List<BusinessDto> findAllByBusinessIds(Set<String> businessIds);
+
+    Optional<BusinessDto> findByWhatsappNumber(String whatsappNumber);
+
+    List<BusinessDto> findWhatsappRouteCandidates();
 
 }

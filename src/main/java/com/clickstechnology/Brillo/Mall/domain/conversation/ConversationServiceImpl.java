@@ -2,8 +2,9 @@ package com.clickstechnology.Brillo.Mall.domain.conversation;
 
 import com.clickstechnology.Brillo.Mall.application.api.contracts.ConversationService;
 import com.clickstechnology.Brillo.Mall.application.dto.conversation.ConversationDto;
+import com.clickstechnology.Brillo.Mall.application.dto.conversation.ConversationUpsertRequest;
+import com.clickstechnology.Brillo.Mall.application.dto.conversation.MessageCreateRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.conversation.MessageDto;
-import com.clickstechnology.Brillo.Mall.application.enums.MessageType;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,36 +25,51 @@ public class ConversationServiceImpl implements ConversationService {
 
     @Override
     @Transactional
-    public ConversationDto getOrCreateConversation(String businessId, String customerId, String whatsappConversationId) {
-        return conversationRepository.findByWhatsappConversationId(whatsappConversationId)
-                .map(this::mapToDto)
-                .orElseGet(() -> {
-                    Conversation conversation = Conversation.builder()
-                            .businessId(businessId)
-                            .customerId(customerId)
-                            .whatsappConversationId(whatsappConversationId)
-                            .lastInteractionAt(Instant.now())
-                            .build();
-                    return mapToDto(conversationRepository.save(conversation));
-                });
+    public ConversationDto upsertConversation(ConversationUpsertRequest request) {
+        Conversation conversation = conversationRepository.findByWhatsappConversationId(request.getWhatsappConversationId())
+                .orElseGet(Conversation::new);
+
+        if (conversation.getId() == null) {
+            conversation.setBusinessId(request.getBusinessId());
+            conversation.setCustomerId(request.getCustomerId());
+            conversation.setWhatsappConversationId(request.getWhatsappConversationId());
+        }
+
+        conversation.setBusinessId(request.getBusinessId());
+        conversation.setCustomerId(request.getCustomerId());
+        conversation.setWhatsappBusinessNumber(request.getWhatsappBusinessNumber());
+        if (request.getStatus() != null) {
+            conversation.setStatus(request.getStatus());
+        }
+        conversation.setLastIntent(request.getLastIntent());
+        conversation.setActiveTaskKey(request.getActiveTaskKey());
+        conversation.setHumanTakeover(Boolean.TRUE.equals(request.getHumanTakeover()));
+        conversation.setLastInteractionAt(request.getLastInteractionAt() != null ? request.getLastInteractionAt() : Instant.now());
+        conversation.setSessionExpiresAt(request.getSessionExpiresAt());
+
+        return mapToDto(conversationRepository.save(conversation));
     }
 
     @Override
     @Transactional
-    public MessageDto addMessage(String conversationReference, String content, String type, String intent) {
-        Conversation conversation = conversationRepository.findByReference(conversationReference)
+    public MessageDto addMessage(MessageCreateRequest request) {
+        Conversation conversation = conversationRepository.findByReference(request.getConversationReference())
                 .orElseThrow(() -> new BusinessException("Conversation not found"));
-        
+
         Message message = Message.builder()
                 .conversation(conversation)
-                .content(content)
-                .messageType(MessageType.valueOf(type.toUpperCase()))
-                .intent(intent)
+                .content(request.getContent())
+                .messageType(request.getMessageType())
+                .intent(request.getIntent())
+                .whatsappMessageId(request.getWhatsappMessageId())
+                .transportType(request.getTransportType())
+                .sourceEventId(request.getSourceEventId())
+                .metadata(request.getMetadata())
                 .build();
-        
+
         conversation.setLastInteractionAt(Instant.now());
         conversationRepository.save(conversation);
-        
+
         return mapToDto(messageRepository.save(message));
     }
 
@@ -70,7 +86,13 @@ public class ConversationServiceImpl implements ConversationService {
                 .businessId(conversation.getBusinessId())
                 .customerId(conversation.getCustomerId())
                 .whatsappConversationId(conversation.getWhatsappConversationId())
+                .whatsappBusinessNumber(conversation.getWhatsappBusinessNumber())
+                .status(conversation.getStatus())
+                .lastIntent(conversation.getLastIntent())
+                .activeTaskKey(conversation.getActiveTaskKey())
+                .humanTakeover(conversation.getHumanTakeover())
                 .lastInteractionAt(conversation.getLastInteractionAt())
+                .sessionExpiresAt(conversation.getSessionExpiresAt())
                 .createdAt(conversation.getCreatedAt())
                 .updatedAt(conversation.getUpdatedAt())
                 .messages(conversation.getMessages() != null ? 
@@ -85,6 +107,10 @@ public class ConversationServiceImpl implements ConversationService {
                 .content(message.getContent())
                 .messageType(message.getMessageType())
                 .intent(message.getIntent())
+                .whatsappMessageId(message.getWhatsappMessageId())
+                .transportType(message.getTransportType())
+                .sourceEventId(message.getSourceEventId())
+                .metadata(message.getMetadata())
                 .createdAt(message.getCreatedAt())
                 .build();
     }

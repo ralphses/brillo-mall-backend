@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 @Slf4j
@@ -122,6 +123,14 @@ class BusinessServiceImpl implements BusinessService {
             business.setPhoneNumber(request.getBusinessPhone());
         }
 
+        if (request.getWhatsappNumber() != null) {
+            business.setWhatsappNumber(request.getWhatsappNumber().replaceAll("[^\\d]", ""));
+        }
+
+        if (request.getWhatsappType() != null) {
+            business.setWhatsappType(request.getWhatsappType());
+        }
+
         if (request.getDescription() != null) {
             business.setDescription(request.getDescription());
         }
@@ -215,6 +224,21 @@ class BusinessServiceImpl implements BusinessService {
     public List<BusinessDto> findAllByBusinessIds(Set<String> businessIds) {
         return businessRepository.findAllByReferenceIn(businessIds)
                 .stream().map(Business::dto)
+                .toList();
+    }
+
+    @Override
+    public Optional<BusinessDto> findByWhatsappNumber(String whatsappNumber) {
+        return businessRepository.findByWhatsappNumber(whatsappNumber)
+                .map(Business::dto);
+    }
+
+    @Override
+    public List<BusinessDto> findWhatsappRouteCandidates() {
+        return businessRepository.findTop10ByIsActiveTrueOrderByCreatedAtAsc()
+                .stream()
+                .filter(business -> Boolean.TRUE.equals(business.getIsActive()))
+                .map(Business::dto)
                 .toList();
     }
 }

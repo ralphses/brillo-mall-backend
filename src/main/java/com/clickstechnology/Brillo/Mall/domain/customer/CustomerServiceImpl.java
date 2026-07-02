@@ -127,4 +127,24 @@ class CustomerServiceImpl implements CustomerService {
                 .items(items)
                 .build();
     }
+
+    @Override
+    @Transactional
+    public CustomerDto resolveWhatsappCustomer(String phoneNumber, String displayName, String businessId) {
+        Customer customer = customerRepository.findByPhone(phoneNumber)
+                .orElseGet(() -> customerRepository.save(Customer.builder()
+                        .name(displayName != null && !displayName.isBlank() ? displayName : phoneNumber)
+                        .phone(phoneNumber)
+                        .build()));
+
+        Set<String> relatedBusinessIds = customer.getRelatedBusinessIds();
+        relatedBusinessIds.add(businessId);
+        customer.setRelatedBusinessIds(relatedBusinessIds);
+
+        if ((customer.getName() == null || customer.getName().isBlank()) && displayName != null && !displayName.isBlank()) {
+            customer.setName(displayName);
+        }
+
+        return customerRepository.save(customer).dto();
+    }
 }

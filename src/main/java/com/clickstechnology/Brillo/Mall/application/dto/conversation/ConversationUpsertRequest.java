@@ -7,15 +7,12 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
-import java.util.List;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ConversationDto {
-    private String id;
-    private String reference;
+public class ConversationUpsertRequest {
     private String businessId;
     private String customerId;
     private String whatsappConversationId;
@@ -26,7 +23,4 @@ public class ConversationDto {
     private Boolean humanTakeover;
     private Instant lastInteractionAt;
     private Instant sessionExpiresAt;
-    private List<MessageDto> messages;
-    private Instant createdAt;
-    private Instant updatedAt;
 }

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonValue;
 
 public enum WhatsappMessageType {
     TEXT("text"),
+    TEMPLATE("template"),
     INTERACTIVE("interactive"),
     IMAGE("image"),
     BUTTON("button"),

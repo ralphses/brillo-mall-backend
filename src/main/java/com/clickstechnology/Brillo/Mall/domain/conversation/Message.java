@@ -39,4 +39,16 @@ public class Message extends JpaAuditor implements Serializable {
 
     @Column(name = "intent")
     private String intent;
+
+    @Column(name = "whatsapp_message_id", length = 100)
+    private String whatsappMessageId;
+
+    @Column(name = "transport_type", length = 50)
+    private String transportType;
+
+    @Column(name = "source_event_id", length = 100)
+    private String sourceEventId;
+
+    @Column(name = "metadata", columnDefinition = "TEXT")
+    private String metadata;
 }

@@ -20,4 +20,6 @@ public interface CustomerService {
     void updateCustomer(String customerId, CustomerDto customer);
 
     PaginatedResponse<CustomerDto> findAllByBusinessId(String businessId, Pageable pageable);
+
+    CustomerDto resolveWhatsappCustomer(String phoneNumber, String displayName, String businessId);
 }
