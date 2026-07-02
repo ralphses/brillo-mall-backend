@@ -188,6 +188,21 @@ class BusinessServiceImplTest {
     }
 
     @Test
+    @DisplayName("activateStorefront should mark storefront and setup as completed")
+    void activateStorefront_shouldEnableStorefront() {
+        // Given
+        when(cacheUtil.get(anyString(), eq(Business.class))).thenReturn(business);
+
+        // When
+        businessService.activateStorefront("biz1");
+
+        // Then
+        verify(businessRepository).save(business);
+        assertThat(business.getStorefrontActive()).isTrue();
+        assertThat(business.getSetupCompleted()).isTrue();
+    }
+
+    @Test
     @DisplayName("findAllByOwnerId should return paginated businesses")
     void findAllByOwnerId_shouldReturnPaginatedBusinesses() {
         // Given

@@ -1,11 +1,10 @@
 package com.clickstechnology.Brillo.Mall.application.features.orders;
 
-import com.clickstechnology.Brillo.Mall.application.api.contracts.AuthenticationUtil;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.BusinessService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.CustomerService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.OrderService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.ProductService;
-import com.clickstechnology.Brillo.Mall.application.api.contracts.UserService;
+import com.clickstechnology.Brillo.Mall.application.api.contracts.TenantContextResolver;
 import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessDto;
 import com.clickstechnology.Brillo.Mall.application.dto.CustomerDto;
 import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
@@ -36,10 +35,9 @@ public class ManageOrder {
 
     private final OrderService orderService;
     private final CustomerService customerService;
-    private final AuthenticationUtil authenticationUtil;
-    private final UserService userService;
     private final BusinessService businessService;
     private final ProductService productService;
+    private final TenantContextResolver tenantContextResolver;
 
     public OrderDto findOrderById(
             final String orderId,
@@ -53,21 +51,19 @@ public class ManageOrder {
         }
 
         // Handle Web requests
-        String username = authenticationUtil.getAuthenticatedUsername(httpServletRequest);
-        UserDto user = userService.findByUsername(username);
+        UserDto user = tenantContextResolver.currentUser(httpServletRequest);
 
         // Route based on user role
         if (user.getRoles().contains(UserRole.ADMIN.name())) {
-            return findOrderForBusinessAdmin(user, orderId);
+            return findOrderForBusinessAdmin(httpServletRequest, orderId);
         } else {
             return findOrderForCustomer(user.getPhoneNumber(), orderId);
         }
     }
 
-    private OrderDto findOrderForBusinessAdmin(UserDto user, String orderId) {
+    private OrderDto findOrderForBusinessAdmin(HttpServletRequest httpServletRequest, String orderId) {
         // 1. Find all businesses owned by the admin user
-        List<BusinessDto> businesses = businessService.findAllByOwnerId(user.getId());
-        List<String> businessIds = businesses.stream().map(BusinessDto::getId).toList();
+        List<String> businessIds = tenantContextResolver.ownedBusinessIds(httpServletRequest);
 
         if (businessIds.isEmpty()) {
             throw new BusinessException("Admin user does not own any businesses.");
@@ -151,21 +147,20 @@ public class ManageOrder {
         log.info("Request source {}, page: {}, pageSize: {}", source, page, pageSize);
 
         // Handle Web/API requests
-        String username = authenticationUtil.getAuthenticatedUsername(httpServletRequest);
-        UserDto user = userService.findByUsername(username);
+        UserDto user = tenantContextResolver.currentUser(httpServletRequest);
         log.info(":::Logged in user: {}", user.getRoles());
 
         // Route based on a user role
         if (user.getRoles().contains(UserRole.ADMIN.name()) && (isBusiness || businessId != null)) {
             if (businessId != null) {
+                tenantContextResolver.ensureBusinessOwnership(httpServletRequest, businessId);
                 return orderService.findAllByBusinessId(businessId, page, pageSize);
             } else {
                 // Find all businesses for the admin user
-                List<BusinessDto> businesses = businessService.findAllByOwnerId(user.getId());
-                if (businesses.isEmpty()) {
+                List<String> businessIds = tenantContextResolver.ownedBusinessIds(httpServletRequest);
+                if (businessIds.isEmpty()) {
                     return new PaginatedResponse<>(page, pageSize, 0, 0, false, false, Collections.emptyList());
                 }
-                List<String> businessIds = businesses.stream().map(BusinessDto::getId).toList();
                 PaginatedResponse<OrderDto> businessOrders = orderService.findAllByBusinessIds(businessIds, page, pageSize);
                 enrichCustomerDetail(businessOrders.getItems());
                 return businessOrders;
@@ -192,13 +187,9 @@ public class ManageOrder {
     }
 
     public OrderDto updateOrder(String orderId, UpdateOrderStatusRequest request, HttpServletRequest httpServletRequest) {
-        String authenticatedUsername = authenticationUtil.getAuthenticatedUsername(httpServletRequest);
-        UserDto user = userService.findByUsername(authenticatedUsername);
+        UserDto user = tenantContextResolver.currentUser(httpServletRequest);
 
-        List<String> businessIds = businessService.findAllByOwnerId(user.getId())
-                .stream()
-                .map(BusinessDto::getId)
-                .toList();
+        List<String> businessIds = tenantContextResolver.ownedBusinessIds(httpServletRequest);
 
         if (businessIds.isEmpty()) {
             throw new BusinessException("User is not associated with any business.");
@@ -215,8 +206,7 @@ public class ManageOrder {
     }
 
     public OrderDto cancelOrder(String orderId, HttpServletRequest httpServletRequest) {
-        String authenticatedUsername = authenticationUtil.getAuthenticatedUsername(httpServletRequest);
-        UserDto user = userService.findByUsername(authenticatedUsername);
+        UserDto user = tenantContextResolver.currentUser(httpServletRequest);
 
         OrderDto order = orderService.findOrderById(orderId);
 

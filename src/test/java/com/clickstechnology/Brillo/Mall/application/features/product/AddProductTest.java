@@ -1,11 +1,9 @@
 package com.clickstechnology.Brillo.Mall.application.features.product;
 
-import com.clickstechnology.Brillo.Mall.application.api.contracts.AuthenticationUtil;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.BusinessService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.ProductService;
-import com.clickstechnology.Brillo.Mall.application.api.contracts.UserService;
+import com.clickstechnology.Brillo.Mall.application.api.contracts.TenantContextResolver;
 import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessDto;
-import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.dto.product.ProductDto;
 import com.clickstechnology.Brillo.Mall.application.dto.request.product.AddProductRequest;
 import com.clickstechnology.Brillo.Mall.application.enums.BusinessCategory;
@@ -32,6 +30,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -50,10 +49,7 @@ class AddProductTest {
     private BusinessService businessService;
 
     @Mock
-    private AuthenticationUtil authenticationUtil;
-
-    @Mock
-    private UserService userService;
+    private TenantContextResolver tenantContextResolver;
 
     @Mock
     private HttpServletRequest httpServletRequest;
@@ -70,8 +66,6 @@ class AddProductTest {
     void setUp() {
 
         businessId = "biz-123";
-        String userId = "user-456";
-
         request = new AddProductRequest(
                 "Test Product",
                 "Description",
@@ -84,22 +78,14 @@ class AddProductTest {
         activeBusiness = new BusinessDto();
         activeBusiness.setId(businessId);
         activeBusiness.setStatus(EntityStatus.ACTIVE);
-        activeBusiness.setOwnerId(userId);
         activeBusiness.setCategory(BusinessCategory.PRODUCTS);
-
-        UserDto userDto = new UserDto();
-        userDto.setId(userId);
 
         expectedProductDto = ProductDto.builder()
                 .name("Test Product")
                 .sku("SKU123")
                 .build();
 
-        when(authenticationUtil.getAuthenticatedUsername(httpServletRequest))
-                .thenReturn("testuser");
-
-        when(userService.findByUsername("testuser"))
-                .thenReturn(userDto);
+        lenient().doNothing().when(tenantContextResolver).ensureBusinessOwnership(httpServletRequest, businessId);
     }
 
     @Test
@@ -161,15 +147,15 @@ class AddProductTest {
 
     @Test
     void execute_Failure_UnauthorizedOwner() {
-        String authenticatedUserId = "user-456";
         doThrow(new UnauthorizedUserException())
-                .when(businessService)
-                .ensureBusinessBelongsToUser(businessId, authenticatedUserId);
+                .when(tenantContextResolver)
+                .ensureBusinessOwnership(httpServletRequest, businessId);
 
         UnauthorizedUserException exception = assertThrows(UnauthorizedUserException.class, () -> addProduct.execute(businessId, request, httpServletRequest));
         assertEquals("Unauthorized User", exception.getMessage());
 
         verify(productService, never()).createProduct(anyString(), any(), anyString());
+        verify(businessService, never()).findByBusinessId(anyString());
     }
 
 

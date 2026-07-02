@@ -1,9 +1,7 @@
 package com.clickstechnology.Brillo.Mall.application.features.business;
 
-import com.clickstechnology.Brillo.Mall.application.api.contracts.AuthenticationUtil;
-import com.clickstechnology.Brillo.Mall.application.api.contracts.BusinessService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.BusinessServiceService;
-import com.clickstechnology.Brillo.Mall.application.api.contracts.UserService;
+import com.clickstechnology.Brillo.Mall.application.api.contracts.TenantContextResolver;
 import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessServiceDto;
 import com.clickstechnology.Brillo.Mall.application.dto.request.business.AddBusinessServiceRequest;
@@ -23,15 +21,12 @@ import org.springframework.stereotype.Service;
 public class ManageBusinessService {
 
     private final BusinessServiceService businessServiceService;
-    private final AuthenticationUtil authenticationUtil;
-    private final UserService userService;
-    private final BusinessService businessService;
+    private final TenantContextResolver tenantContextResolver;
 
     @LoggableRequest
     public void update(String serviceId, UpdateBusinessServiceRequest request, HttpServletRequest httpServletRequest) {
-        String username = authenticationUtil.getAuthenticatedUsername(httpServletRequest);
-        UserDto userDto = userService.findByUsername(username);
-        businessService.ensureBusinessBelongsToUser(request.getBusinessId(), userDto.getId());
+        UserDto userDto = tenantContextResolver.currentUser(httpServletRequest);
+        tenantContextResolver.ensureBusinessOwnership(httpServletRequest, request.getBusinessId());
         businessServiceService.updateService(serviceId, request, userDto);
     }
 
@@ -47,10 +42,8 @@ public class ManageBusinessService {
 
     @LoggableRequest
     public void deleteById(String serviceId, HttpServletRequest httpServletRequest) {
-        String username = authenticationUtil.getAuthenticatedUsername(httpServletRequest);
-        UserDto userDto = userService.findByUsername(username);
         BusinessServiceDto businessServiceDto = businessServiceService.getByIdOrSlug(serviceId);
-        businessService.ensureBusinessBelongsToUser(businessServiceDto.getBusinessId(), userDto.getId());
+        tenantContextResolver.ensureBusinessOwnership(httpServletRequest, businessServiceDto.getBusinessId());
         businessServiceService.deleteBusinessService(businessServiceDto.getId());
 
     }

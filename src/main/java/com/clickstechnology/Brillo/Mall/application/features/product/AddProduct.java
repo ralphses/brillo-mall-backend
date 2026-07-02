@@ -1,11 +1,9 @@
 package com.clickstechnology.Brillo.Mall.application.features.product;
 
-import com.clickstechnology.Brillo.Mall.application.api.contracts.AuthenticationUtil;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.BusinessService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.ProductService;
-import com.clickstechnology.Brillo.Mall.application.api.contracts.UserService;
+import com.clickstechnology.Brillo.Mall.application.api.contracts.TenantContextResolver;
 import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessDto;
-import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.dto.product.ProductDto;
 import com.clickstechnology.Brillo.Mall.application.dto.request.product.AddProductRequest;
 import com.clickstechnology.Brillo.Mall.application.enums.BusinessCategory;
@@ -27,8 +25,7 @@ public class AddProduct {
 
     private final ProductService productService;
     private final BusinessService businessService;
-    private final AuthenticationUtil authenticationUtil;
-    private final UserService userService;
+    private final TenantContextResolver tenantContextResolver;
     private final AppPropertiesConfig appPropertiesConfig;
 
     /**
@@ -56,9 +53,7 @@ public class AddProduct {
         log.info(":::Attempting to add new product '{}' for businessId: {}", request.getName(), businessId);
 
         // 1. Ensure this business belongs to this user
-        String authenticatedUsername = authenticationUtil.getAuthenticatedUsername(httpServletRequest);
-        UserDto user = userService.findByUsername(authenticatedUsername);
-        businessService.ensureBusinessBelongsToUser(businessId, user.getId());
+        tenantContextResolver.ensureBusinessOwnership(httpServletRequest, businessId);
 
         // 2. Validate Business State
         BusinessDto business = businessService.findByBusinessId(businessId);

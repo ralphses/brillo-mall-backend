@@ -150,6 +150,14 @@ class BusinessServiceImpl implements BusinessService {
     }
 
     @Override
+    public void activateStorefront(String businessId) {
+        Business business = getBusinessByReference(businessId);
+        business.setStorefrontActive(true);
+        business.setSetupCompleted(true);
+        businessRepository.save(business);
+    }
+
+    @Override
     public PaginatedResponse<BusinessDto> findAllByOwnerId(String userId, Integer page, Integer pageSize) {
         Pageable pageable = AppUtils.getPageable(page, pageSize);
         Page<Business> businessPage = businessRepository.findAllByOwnerId(userId, pageable);

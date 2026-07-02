@@ -1,13 +1,11 @@
 package com.clickstechnology.Brillo.Mall.application.features.payments;
 
-import com.clickstechnology.Brillo.Mall.application.api.contracts.AuthenticationUtil;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.BookedBusinessServiceService;
-import com.clickstechnology.Brillo.Mall.application.api.contracts.BusinessService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.OrderService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.PaymentProcessor;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.PaymentProcessorResolver;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.PaymentService;
-import com.clickstechnology.Brillo.Mall.application.api.contracts.UserService;
+import com.clickstechnology.Brillo.Mall.application.api.contracts.TenantContextResolver;
 import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.dto.business.BookedServiceDto;
 import com.clickstechnology.Brillo.Mall.application.dto.order.OrderDto;
@@ -39,12 +37,10 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ManagePayments {
 
-    private final AuthenticationUtil authenticationUtil;
     private final PaymentService paymentService;
-    private final UserService userService;
+    private final TenantContextResolver tenantContextResolver;
     private final BookedBusinessServiceService bookedBusinessServiceService;
     private final OrderService orderService;
-    private final BusinessService businessService;
     private final PaymentProcessorResolver paymentProcessorResolver;
 
     @Value("${payment.processor.default}")
@@ -52,8 +48,7 @@ public class ManagePayments {
 
     @LoggableRequest
     public PaymentResponse initializePayment(PaymentInitializationRequest initializationRequest, HttpServletRequest httpServletRequest) {
-        String username = authenticationUtil.getAuthenticatedUsername(httpServletRequest);
-        UserDto user = userService.findByUsername(username);
+        UserDto user = tenantContextResolver.currentUser(httpServletRequest);
 
         String reference = AppUtils.generateUniqueReference();
         BigDecimal amount;
@@ -65,7 +60,7 @@ public class ManagePayments {
             OrderDto order = orderService.findOrderDetailsForCustomer(initializationRequest.getPayableId(), user.getId());
             businessId = order.getBusinessId();
             if (initializationRequest.isBusiness() && userRoles.contains(UserRole.ADMIN.name())) {
-                businessService.ensureBusinessBelongsToUser(businessId, user.getId());
+                tenantContextResolver.ensureBusinessOwnership(httpServletRequest, businessId);
             } else {
                 orderService.ensureOrderBelongsToUser(order, user.getId());
             }
@@ -75,7 +70,7 @@ public class ManagePayments {
             BookedServiceDto booking = bookedBusinessServiceService.findById(initializationRequest.getPayableId());
             businessId = booking.getBusiness().getId();
            if (initializationRequest.isBusiness() && userRoles.contains(UserRole.ADMIN.name())) {
-               businessService.ensureBusinessBelongsToUser(businessId, user.getId());
+               tenantContextResolver.ensureBusinessOwnership(httpServletRequest, businessId);
            }
            else {
                 bookedBusinessServiceService.ensureBookingBelongsToUser(booking, user.getId());

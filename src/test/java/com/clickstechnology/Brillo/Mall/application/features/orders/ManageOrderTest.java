@@ -1,11 +1,10 @@
 package com.clickstechnology.Brillo.Mall.application.features.orders;
 
-import com.clickstechnology.Brillo.Mall.application.api.contracts.AuthenticationUtil;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.BusinessService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.CustomerService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.OrderService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.ProductService;
-import com.clickstechnology.Brillo.Mall.application.api.contracts.UserService;
+import com.clickstechnology.Brillo.Mall.application.api.contracts.TenantContextResolver;
 import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessDto;
 import com.clickstechnology.Brillo.Mall.application.dto.CustomerDto;
 import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
@@ -43,13 +42,11 @@ class ManageOrderTest {
     @Mock
     private CustomerService customerService;
     @Mock
-    private AuthenticationUtil authenticationUtil;
-    @Mock
-    private UserService userService;
-    @Mock
     private BusinessService businessService;
     @Mock
     private ProductService productService;
+    @Mock
+    private TenantContextResolver tenantContextResolver;
     @Mock
     private HttpServletRequest httpServletRequest;
 
@@ -81,6 +78,7 @@ class ManageOrderTest {
         businessDto = new BusinessDto();
         businessDto.setId("business-id");
         businessDto.setName("Test Business");
+        businessDto.setOwnerId(adminUser.getId());
 
         productDto = ProductDto.builder()
                 .id("product-id")
@@ -127,9 +125,8 @@ class ManageOrderTest {
     void findOrderById_ForWebAdminRequest_ShouldReturnEnrichedOrder() {
         // Given
         String orderId = "order-id";
-        when(authenticationUtil.getAuthenticatedUsername(httpServletRequest)).thenReturn(adminUser.getUsername());
-        when(userService.findByUsername(adminUser.getUsername())).thenReturn(adminUser);
-        when(businessService.findAllByOwnerId(adminUser.getId())).thenReturn(List.of(businessDto));
+        when(tenantContextResolver.currentUser(httpServletRequest)).thenReturn(adminUser);
+        when(tenantContextResolver.ownedBusinessIds(httpServletRequest)).thenReturn(List.of(businessDto.getId()));
         when(orderService.findOrderForBusinessAdmin(orderId, List.of(businessDto.getId()))).thenReturn(orderDto);
         when(productService.findProductsByIds(List.of(productDto.getId()))).thenReturn(List.of(productDto));
 
@@ -142,8 +139,7 @@ class ManageOrderTest {
         assertNotNull(result.getItems().getFirst().getProduct());
         assertEquals("Test Product", result.getItems().getFirst().getProduct().getName());
 
-        verify(userService).findByUsername(adminUser.getUsername());
-        verify(businessService).findAllByOwnerId(adminUser.getId());
+        verify(tenantContextResolver).ownedBusinessIds(httpServletRequest);
         verify(orderService).findOrderForBusinessAdmin(orderId, List.of(businessDto.getId()));
         verify(productService).findProductsByIds(List.of(productDto.getId()));
     }
@@ -152,16 +148,14 @@ class ManageOrderTest {
     void findOrderById_ForWebAdminWithNoBusinesses_ShouldThrowException() {
         // Given
         String orderId = "order-id";
-        when(authenticationUtil.getAuthenticatedUsername(httpServletRequest)).thenReturn(adminUser.getUsername());
-        when(userService.findByUsername(adminUser.getUsername())).thenReturn(adminUser);
-        when(businessService.findAllByOwnerId(adminUser.getId())).thenReturn(Collections.emptyList());
+        when(tenantContextResolver.currentUser(httpServletRequest)).thenReturn(adminUser);
+        when(tenantContextResolver.ownedBusinessIds(httpServletRequest)).thenReturn(Collections.emptyList());
 
         // When & Then
         BusinessException exception = assertThrows(BusinessException.class, () -> manageOrder.findOrderById(orderId, RequestSource.WEB, httpServletRequest, null));
 
         assertEquals("Admin user does not own any businesses.", exception.getMessage());
-        verify(userService).findByUsername(adminUser.getUsername());
-        verify(businessService).findAllByOwnerId(adminUser.getId());
+        verify(tenantContextResolver).ownedBusinessIds(httpServletRequest);
     }
 
     @Test
@@ -170,8 +164,7 @@ class ManageOrderTest {
         String orderId = "order-id";
         customerUser.setPhoneNumber("1234567890");
 
-        when(authenticationUtil.getAuthenticatedUsername(httpServletRequest)).thenReturn(customerUser.getUsername());
-        when(userService.findByUsername(customerUser.getUsername())).thenReturn(customerUser);
+        when(tenantContextResolver.currentUser(httpServletRequest)).thenReturn(customerUser);
         when(orderService.findOrderById(orderId)).thenReturn(orderDto);
         when(businessService.findAllByBusinessIds(Set.of("business-id"))).thenReturn(List.of(businessDto));
 
@@ -184,7 +177,6 @@ class ManageOrderTest {
         assertNotNull(result.getItems().getFirst().getBusiness());
         assertEquals("Test Business", result.getItems().getFirst().getBusiness().getName());
 
-        verify(userService).findByUsername(customerUser.getUsername());
         verify(orderService).findOrderById(orderId);
         verify(businessService).findAllByBusinessIds(Set.of("business-id"));
         verify(customerService, never()).findByPhoneOrEmail(any());
@@ -195,8 +187,7 @@ class ManageOrderTest {
         // Given
         String orderId = "order-id";
         customerUser.setPhoneNumber("1234567890");
-        when(authenticationUtil.getAuthenticatedUsername(httpServletRequest)).thenReturn(customerUser.getUsername());
-        when(userService.findByUsername(customerUser.getUsername())).thenReturn(customerUser);
+        when(tenantContextResolver.currentUser(httpServletRequest)).thenReturn(customerUser);
         when(orderService.findOrderById(orderId)).thenReturn(orderDto);
         when(businessService.findAllByBusinessIds(Set.of("business-id"))).thenReturn(List.of(businessDto));
 
@@ -215,8 +206,7 @@ class ManageOrderTest {
         String orderId = "order-id";
         customerUser.setPhoneNumber("1234567890");
 
-        when(authenticationUtil.getAuthenticatedUsername(httpServletRequest)).thenReturn(customerUser.getUsername());
-        when(userService.findByUsername(customerUser.getUsername())).thenReturn(customerUser);
+        when(tenantContextResolver.currentUser(httpServletRequest)).thenReturn(customerUser);
         when(orderService.findOrderById(orderId)).thenThrow(new BusinessException("Order not found"));
 
         // When & Then
@@ -230,9 +220,8 @@ class ManageOrderTest {
     void findOrderById_ForWebAdmin_ThrowsException_WhenOrderNotFound() {
         // Given
         String orderId = "order-id";
-        when(authenticationUtil.getAuthenticatedUsername(httpServletRequest)).thenReturn(adminUser.getUsername());
-        when(userService.findByUsername(adminUser.getUsername())).thenReturn(adminUser);
-        when(businessService.findAllByOwnerId(adminUser.getId())).thenReturn(List.of(businessDto));
+        when(tenantContextResolver.currentUser(httpServletRequest)).thenReturn(adminUser);
+        when(tenantContextResolver.ownedBusinessIds(httpServletRequest)).thenReturn(List.of(businessDto.getId()));
         when(orderService.findOrderForBusinessAdmin(orderId, List.of(businessDto.getId()))).thenThrow(new BusinessException("Order not found"));
 
         // When & Then

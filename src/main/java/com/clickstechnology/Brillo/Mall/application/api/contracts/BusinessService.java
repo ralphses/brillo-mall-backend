@@ -27,6 +27,8 @@ public interface BusinessService {
 
     void updateBusiness(String businessId, UpdateBusinessRequest updateBusinessRequest);
 
+    void activateStorefront(String businessId);
+
     PaginatedResponse<BusinessDto> findAllByOwnerId(String userId, Integer page, Integer pageSize);
 
     void validateBusinessIsActive(Set<String> allProductOwners);
