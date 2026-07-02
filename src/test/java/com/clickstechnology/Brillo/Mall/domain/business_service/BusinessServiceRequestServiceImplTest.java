@@ -4,6 +4,8 @@ import com.clickstechnology.Brillo.Mall.application.dto.CustomerDto;
 import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessServiceDto;
 import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessServiceRequestDto;
 import com.clickstechnology.Brillo.Mall.application.dto.request.business.PlaceBusinessServiceRequestPayload;
+import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;
+import com.clickstechnology.Brillo.Mall.application.enums.PricingType;
 import com.clickstechnology.Brillo.Mall.application.enums.ServiceRequestStatus;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -40,20 +42,19 @@ class BusinessServiceRequestServiceImplTest {
         BusinessServiceDto businessService = BusinessServiceDto.builder()
                 .id("service-ref")
                 .businessId("business-ref")
+                .basePrice(BigDecimal.valueOf(3000))
+                .negotiable(true)
+                .pricingType(PricingType.NEGOTIABLE)
+                .active(true)
+                .status(EntityStatus.ACTIVE)
                 .build();
 
-        PlaceBusinessServiceRequestPayload payload = new PlaceBusinessServiceRequestPayload(
-                "service-ref",
-                BigDecimal.valueOf(2400),
-                BigDecimal.valueOf(3000),
-                null,
-                0,
-                false,
-                "Need it fast",
-                "wa-conv-1",
-                false,
-                customer
-        );
+        PlaceBusinessServiceRequestPayload payload = new PlaceBusinessServiceRequestPayload();
+        payload.setBusinessServiceId("service-ref");
+        payload.setLastOfferedPrice(BigDecimal.valueOf(2400));
+        payload.setNotes("Need it fast");
+        payload.setWhatsappConversationId("wa-conv-1");
+        payload.setCustomer(customer);
 
         when(businessServiceRequestRepository.save(any(BusinessServiceRequest.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
@@ -68,6 +69,8 @@ class BusinessServiceRequestServiceImplTest {
         assertThat(saved.getNegotiationAttempts()).isZero();
         assertThat(saved.getBusinessId()).isEqualTo("business-ref");
         assertThat(saved.getCustomerId()).isEqualTo("customer-ref");
+        assertThat(saved.getInitialPrice()).isEqualByComparingTo("3000");
+        assertThat(saved.getLastOfferedPrice()).isEqualByComparingTo("2400");
     }
 
     @Test
@@ -86,23 +89,15 @@ class BusinessServiceRequestServiceImplTest {
         when(businessServiceRequestRepository.save(any(BusinessServiceRequest.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        PlaceBusinessServiceRequestPayload payload = new PlaceBusinessServiceRequestPayload(
-                "service-ref",
-                BigDecimal.valueOf(2400),
-                BigDecimal.valueOf(3000),
-                BigDecimal.valueOf(2800),
-                1,
-                false,
-                "Offer accepted",
-                "wa-conv-1",
-                false,
-                CustomerDto.builder().id("customer-ref").build()
-        );
+        PlaceBusinessServiceRequestPayload payload = new PlaceBusinessServiceRequestPayload();
+        payload.setBusinessServiceId("service-ref");
+        payload.setAgreedPrice(BigDecimal.valueOf(2800));
+        payload.setNotes("Offer accepted");
+        payload.setWhatsappConversationId("wa-conv-1");
 
         BusinessServiceRequestDto updated = service.updateRequest("request-ref", payload, true);
 
         assertThat(updated.getRequestStatus()).isEqualTo(ServiceRequestStatus.AGREED);
-        assertThat(updated.getNegotiationAttempts()).isEqualTo(1);
         assertThat(updated.getAgreedPrice()).isEqualByComparingTo("2800");
     }
 }

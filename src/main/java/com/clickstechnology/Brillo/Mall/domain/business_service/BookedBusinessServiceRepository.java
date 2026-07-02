@@ -1,5 +1,6 @@
 package com.clickstechnology.Brillo.Mall.domain.business_service;
 
+import com.clickstechnology.Brillo.Mall.application.enums.BookingStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -10,9 +11,14 @@ import java.util.Set;
 interface BookedBusinessServiceRepository extends JpaRepository<BookedBusinessService, Long> {
 
     Page<BookedBusinessService> findAllByBusinessServiceId(String businessServiceId, Pageable pageable);
+    Page<BookedBusinessService> findAllByBusinessServiceIdAndBookingStatus(String businessServiceId, BookingStatus bookingStatus, Pageable pageable);
     Page<BookedBusinessService> findAllByBusinessId(String businessId, Pageable pageable);
+    Page<BookedBusinessService> findAllByBusinessIdAndBookingStatus(String businessId, BookingStatus bookingStatus, Pageable pageable);
     Page<BookedBusinessService> findAllByUserId(String userId, Pageable pageable);
+    Page<BookedBusinessService> findAllByUserIdAndBookingStatus(String userId, BookingStatus bookingStatus, Pageable pageable);
     Page<BookedBusinessService> findAllByBusinessIdIn(Set<String> businessIds, Pageable pageable);
+    Page<BookedBusinessService> findAllByBusinessIdInAndBookingStatus(Set<String> businessIds, BookingStatus bookingStatus, Pageable pageable);
 
     Optional<BookedBusinessService> findByReference(String reference);
+    Optional<BookedBusinessService> findByServiceRequestId(String serviceRequestId);
 }

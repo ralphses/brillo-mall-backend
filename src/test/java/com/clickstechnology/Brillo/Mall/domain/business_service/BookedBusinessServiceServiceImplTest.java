@@ -6,6 +6,7 @@ import com.clickstechnology.Brillo.Mall.application.dto.business.BookedServiceDt
 import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessServiceDto;
 import com.clickstechnology.Brillo.Mall.application.dto.request.business.BookAServiceRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.request.business.UpdateBookingRequest;
+import com.clickstechnology.Brillo.Mall.application.api.contracts.BusinessServiceRequestService;
 import com.clickstechnology.Brillo.Mall.application.enums.BookingStatus;
 import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;
 import org.junit.jupiter.api.Test;
@@ -28,6 +29,9 @@ class BookedBusinessServiceServiceImplTest {
     @Mock
     private BookedBusinessServiceRepository bookedBusinessServiceRepository;
 
+    @Mock
+    private BusinessServiceRequestService businessServiceRequestService;
+
     @InjectMocks
     private BookedBusinessServiceServiceImpl service;
 
@@ -38,17 +42,15 @@ class BookedBusinessServiceServiceImplTest {
         BusinessServiceDto businessService = BusinessServiceDto.builder()
                 .id("service-ref")
                 .businessId("business-ref")
+                .basePrice(BigDecimal.valueOf(5000))
                 .build();
 
-        BookAServiceRequest request = new BookAServiceRequest(
-                null,
-                "service-ref",
-                "Ikeja",
-                false,
-                customer,
-                BigDecimal.valueOf(5000),
-                LocalDateTime.of(2026, 1, 1, 9, 0)
-        );
+        BookAServiceRequest request = new BookAServiceRequest();
+        request.setServiceId("service-ref");
+        request.setLocation("Ikeja");
+        request.setCustomer(customer);
+        request.setTotalPrice(BigDecimal.valueOf(5000));
+        request.setScheduledDate(LocalDateTime.of(2026, 1, 1, 9, 0));
 
         when(bookedBusinessServiceRepository.save(any(BookedBusinessService.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));

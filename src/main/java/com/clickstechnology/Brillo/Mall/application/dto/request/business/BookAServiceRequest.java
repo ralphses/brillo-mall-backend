@@ -3,12 +3,14 @@ package com.clickstechnology.Brillo.Mall.application.dto.request.business;
 import com.clickstechnology.Brillo.Mall.application.dto.CustomerDto;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
 @AllArgsConstructor
+@NoArgsConstructor
 public class BookAServiceRequest {
     private String serviceRequestId;
     private String serviceId;

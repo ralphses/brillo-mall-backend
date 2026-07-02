@@ -10,6 +10,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 @Data
@@ -21,9 +22,13 @@ public class BookedServiceDto {
     private BusinessDto business;
     private UserDto user;
     private CustomerDto customer;
+    private BusinessServiceDto businessService;
     private BusinessServiceRequestDto businessServiceRequest;
     private BigDecimal agreedPrice;
     private LocalDateTime scheduledDate;
+    private String location;
     private BookingStatus bookingStatus;
     private EntityStatus status;
+    private Instant createdAt;
+    private Instant updatedAt;
 }

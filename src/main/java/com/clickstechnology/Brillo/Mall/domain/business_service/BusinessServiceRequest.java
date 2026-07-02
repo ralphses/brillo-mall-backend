@@ -11,6 +11,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -29,7 +30,16 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @AllArgsConstructor
 @SQLRestriction("status <> 'DELETED'")
-@Table(name = "brillo_business_service_request")
+@Table(
+        name = "brillo_business_service_request",
+        indexes = {
+                @Index(name = "idx_brillo_business_service_request_business", columnList = "business_id"),
+                @Index(name = "idx_brillo_business_service_request_service", columnList = "business_service_id"),
+                @Index(name = "idx_brillo_business_service_request_user", columnList = "user_id"),
+                @Index(name = "idx_brillo_business_service_request_status", columnList = "request_status"),
+                @Index(name = "idx_brillo_business_service_request_conversation", columnList = "whatsapp_conversation_id")
+        }
+)
 class BusinessServiceRequest extends JpaAuditor implements Serializable {
 
     @Column(name = "customer_id", nullable = false, length = 100)
@@ -91,6 +101,8 @@ class BusinessServiceRequest extends JpaAuditor implements Serializable {
                 .requestStatus(requestStatus)
                 .status(status)
                 .whatsappConversationId(whatsappConversationId)
+                .createdAt(getCreatedAt())
+                .updatedAt(getUpdatedAt())
                 .user(UserDto.builder()
                         .id(userId)
                         .build())

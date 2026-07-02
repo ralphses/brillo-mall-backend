@@ -4,6 +4,7 @@ package com.clickstechnology.Brillo.Mall.application.api.controllers;
 import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessServiceRequestDto;
 import com.clickstechnology.Brillo.Mall.application.dto.request.business.PlaceBusinessServiceRequestPayload;
 import com.clickstechnology.Brillo.Mall.application.dto.response.PaginatedResponse;
+import com.clickstechnology.Brillo.Mall.application.enums.ServiceRequestStatus;
 import com.clickstechnology.Brillo.Mall.application.dto.response.ResponseWrapper;
 import com.clickstechnology.Brillo.Mall.application.features.business.ManageBusinessServiceRequest;
 import com.clickstechnology.Brillo.Mall.application.features.business.PlaceBusinessServiceRequest;
@@ -46,8 +47,7 @@ public class BusinessServiceRequestController {
         BusinessServiceRequestDto response= manageBusinessServiceRequest.update(
                 request,
                 httpServletRequest,
-                requestId,
-                true);
+                requestId);
         return success(response);
     }
 
@@ -56,10 +56,18 @@ public class BusinessServiceRequestController {
             final HttpServletRequest httpServletRequest,
             @RequestParam(required = false) final String businessId,
             @RequestParam(required = false) final String businessServiceId,
+            @RequestParam(required = false) final ServiceRequestStatus requestStatus,
             @RequestParam(required = false, defaultValue = "false") final boolean isBusiness,
             @RequestParam(defaultValue = "1") final Integer page,
             @RequestParam(defaultValue = "10") final Integer pageSize) {
-        return success(manageBusinessServiceRequest.list(businessId, businessServiceId, isBusiness, page, pageSize, httpServletRequest));
+        return success(manageBusinessServiceRequest.list(
+                businessId,
+                businessServiceId,
+                requestStatus,
+                isBusiness,
+                page,
+                pageSize,
+                httpServletRequest));
     }
 
     @DeleteMapping("{requestId}")
