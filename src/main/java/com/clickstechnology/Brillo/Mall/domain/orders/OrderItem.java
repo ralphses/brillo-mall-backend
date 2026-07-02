@@ -24,7 +24,7 @@ import java.math.BigDecimal;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "BRILLO_ORDER_ITEM")
+@Table(name = "brillo_order_item")
 class OrderItem extends JpaAuditor implements Serializable {
 
     @ManyToOne(fetch = FetchType.LAZY)

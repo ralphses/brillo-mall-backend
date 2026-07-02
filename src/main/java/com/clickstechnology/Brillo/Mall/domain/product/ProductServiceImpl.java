@@ -12,9 +12,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -64,8 +66,27 @@ class ProductServiceImpl implements ProductService {
 
     @Override
     public PaginatedResponse<ProductDto> getProducts(String businessId, Integer page, Integer pageSize) {
-        Pageable pageable = PageRequest.of(page - 1, pageSize);
-        Specification<Product> spec = productSpecification.getProducts(businessId);
+        return getProducts(businessId, page, pageSize, null, null, null, null, null);
+    }
+
+    @Override
+    public PaginatedResponse<ProductDto> getProducts(
+            String businessId,
+            Integer page,
+            Integer pageSize,
+            String search,
+            BigDecimal minPrice,
+            BigDecimal maxPrice,
+            Boolean inStockOnly,
+            EntityStatus status) {
+        Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Specification<Product> spec = productSpecification.getProducts(
+                businessId,
+                search,
+                minPrice,
+                maxPrice,
+                inStockOnly,
+                status);
         Page<Product> productPage = productRepository.findAll(spec, pageable);
 
         List<ProductDto> productDtos = productPage.getContent().stream()

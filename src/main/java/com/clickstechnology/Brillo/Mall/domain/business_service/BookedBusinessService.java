@@ -31,7 +31,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @SQLRestriction("status <> 'DELETED'")
-@Table(name = "BRILLO_BOOKED_BUSINESS_SERVICE")
+@Table(name = "brillo_booked_business_service")
 class BookedBusinessService extends JpaAuditor implements Serializable {
 
     @Column(name = "business_id", nullable = false)

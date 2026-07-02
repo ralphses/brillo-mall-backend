@@ -34,7 +34,7 @@ import java.util.Set;
 @AllArgsConstructor
 @SQLRestriction("status <> 'DELETED'")
 @Table(
-        name = "BRILLO_BUSINESS",
+        name = "brillo_business",
         indexes = {
                 @Index(name = "idx_brillo_business_owner", columnList = "owner_id"),
                 @Index(name = "idx_brillo_business_slug", columnList = "slug"),

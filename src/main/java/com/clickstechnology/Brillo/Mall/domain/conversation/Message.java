@@ -23,7 +23,7 @@ import java.io.Serializable;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "MESSAGES")
+@Table(name = "messages")
 public class Message extends JpaAuditor implements Serializable {
 
     @ManyToOne

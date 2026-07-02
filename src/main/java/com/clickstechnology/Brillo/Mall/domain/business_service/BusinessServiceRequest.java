@@ -29,7 +29,7 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @AllArgsConstructor
 @SQLRestriction("status <> 'DELETED'")
-@Table(name = "BRILLO_BUSINESS_SERVICE_REQUEST")
+@Table(name = "brillo_business_service_request")
 class BusinessServiceRequest extends JpaAuditor implements Serializable {
 
     @Column(name = "customer_id", nullable = false, length = 100)

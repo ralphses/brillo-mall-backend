@@ -24,7 +24,7 @@ import java.math.BigDecimal;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "BRILLO_PAYMENT_LOG", indexes = {
+@Table(name = "brillo_payment_log", indexes = {
         @Index(name = "idx_brillo_payment_log_reference", columnList = "reference"),
         @Index(name = "idx_brillo_payment_log_business", columnList = "business_id"),
         @Index(name = "idx_brillo_payment_log_payable", columnList = "payable_id")

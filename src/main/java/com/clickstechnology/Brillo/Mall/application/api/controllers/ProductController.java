@@ -5,6 +5,7 @@ import com.clickstechnology.Brillo.Mall.application.dto.request.product.AddProdu
 import com.clickstechnology.Brillo.Mall.application.dto.request.product.UpdateProductRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.response.PaginatedResponse;
 import com.clickstechnology.Brillo.Mall.application.dto.response.ResponseWrapper;
+import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;
 import com.clickstechnology.Brillo.Mall.application.features.product.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import static com.clickstechnology.Brillo.Mall.application.dto.response.ResponseBuilder.success;
@@ -47,8 +49,21 @@ public class ProductController {
     public ResponseWrapper<PaginatedResponse<ProductDto>> getProducts(
             @RequestParam(required = false) final String businessId,
             @RequestParam(value = "page", defaultValue = "1") final Integer page,
-            @RequestParam(value = "pageSize", defaultValue = "20") final Integer pageSize) {
-        PaginatedResponse<ProductDto> response = listAllProducts.execute(businessId, page, pageSize);
+            @RequestParam(value = "pageSize", defaultValue = "20") final Integer pageSize,
+            @RequestParam(required = false) final String search,
+            @RequestParam(required = false) final BigDecimal minPrice,
+            @RequestParam(required = false) final BigDecimal maxPrice,
+            @RequestParam(required = false) final Boolean inStockOnly,
+            @RequestParam(required = false) final EntityStatus status) {
+        PaginatedResponse<ProductDto> response = listAllProducts.execute(
+                businessId,
+                page,
+                pageSize,
+                search,
+                minPrice,
+                maxPrice,
+                inStockOnly,
+                status);
         return success(response);
     }
 

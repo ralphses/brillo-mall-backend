@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
 @NoArgsConstructor
 @AllArgsConstructor
 @Table(
-        name = "BRILLO_ORDER",
+        name = "brillo_order",
         indexes = {
                 @jakarta.persistence.Index(name = "idx_brillo_order_business", columnList = "business_id"),
                 @jakarta.persistence.Index(name = "idx_brillo_order_customer", columnList = "customer_id"),

@@ -4,7 +4,9 @@ import com.clickstechnology.Brillo.Mall.application.dto.product.ProductDto;
 import com.clickstechnology.Brillo.Mall.application.dto.request.product.AddProductRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.request.product.UpdateProductRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.response.PaginatedResponse;
+import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -17,6 +19,16 @@ public interface ProductService {
     ProductDto createProduct(String businessId, AddProductRequest request, String defaultProductLogoUrl);
 
     PaginatedResponse<ProductDto> getProducts(String businessId, Integer page, Integer pageSize);
+
+    PaginatedResponse<ProductDto> getProducts(
+            String businessId,
+            Integer page,
+            Integer pageSize,
+            String search,
+            BigDecimal minPrice,
+            BigDecimal maxPrice,
+            Boolean inStockOnly,
+            EntityStatus status);
 
     ProductDto findProductByProductId(String productId);
 

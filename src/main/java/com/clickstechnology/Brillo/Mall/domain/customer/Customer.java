@@ -33,7 +33,7 @@ import java.util.Set;
 @AllArgsConstructor
 @SQLRestriction("status <> 'DELETED'")
 @Table(
-        name = "BRILLO_CUSTOMER",
+        name = "brillo_customer",
         indexes = {
                 @Index(name = "idx_brillo_customer_user", columnList = "user_id")
         },

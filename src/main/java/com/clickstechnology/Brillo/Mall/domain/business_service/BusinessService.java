@@ -29,7 +29,7 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @SQLRestriction("status <> 'DELETED'")
 @Table(
-        name = "BRILLO_BUSINESS_SERVICE",
+        name = "brillo_business_service",
         indexes = {
                 @Index(name = "idx_service_business_id", columnList = "business_id"),
                 @Index(name = "idx_service_slug", columnList = "slug"),

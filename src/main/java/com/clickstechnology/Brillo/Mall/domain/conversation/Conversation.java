@@ -23,7 +23,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Table(
-        name = "CONVERSATIONS",
+        name = "conversations",
         uniqueConstraints = {
                 @jakarta.persistence.UniqueConstraint(name = "uk_conversations_whatsapp_conversation_id", columnNames = {"whatsapp_conversation_id"})
         }

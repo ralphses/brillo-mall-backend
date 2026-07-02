@@ -27,7 +27,7 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @SQLRestriction("status <> 'DELETED'")
 @Table(
-        name = "BRILLO_PRODUCT",
+        name = "brillo_product",
         indexes = {
                 @Index(name = "idx_brillo_product_business", columnList = "business_id"),
                 @Index(name = "idx_brillo_product_status", columnList = "status")

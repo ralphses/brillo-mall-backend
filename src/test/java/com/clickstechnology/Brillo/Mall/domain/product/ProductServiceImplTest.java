@@ -15,7 +15,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -147,40 +146,65 @@ class ProductServiceImplTest {
         assertEquals(EntityStatus.ACTIVE, capturedProduct.getStatus());
     }
 
-    // ... existing tests ...
-
     @Mock
     private ProductSpecification productSpecification;
 
-    // ... other mocks and injections ...
-
     @Test
     void getProducts_Success() {
+        Specification<Product> mockSpec = (root, query, criteriaBuilder) -> null;
 
-        // Given
-        Specification<Product> mockSpec =
-                (root, query, criteriaBuilder) -> null;
-
-        when(productSpecification.getProducts(businessId))
+        when(productSpecification.getProducts(businessId, null, null, null, null, null))
                 .thenReturn(mockSpec);
 
-        Page<Product> productPage =
-                new PageImpl<>(List.of(new Product()));
+        Page<Product> productPage = new PageImpl<>(List.of(new Product()));
 
         when(productRepository.findAll(eq(mockSpec), any(Pageable.class)))
                 .thenReturn(productPage);
 
-        // When
         var result = productService.getProducts(businessId, 1, 10);
 
-        // Then
         assertNotNull(result);
         assertEquals(1, result.getItems().size());
 
-        verify(productSpecification).getProducts(businessId);
+        verify(productSpecification).getProducts(businessId, null, null, null, null, null);
 
-        verify(productRepository)
-                .findAll(eq(mockSpec), any(Pageable.class));
+        verify(productRepository).findAll(eq(mockSpec), any(Pageable.class));
+    }
+
+    @Test
+    void getProducts_WithFilters_Success() {
+        Specification<Product> mockSpec = (root, query, criteriaBuilder) -> null;
+
+        when(productSpecification.getProducts(
+                businessId,
+                "shirt",
+                BigDecimal.valueOf(10),
+                BigDecimal.valueOf(100),
+                true,
+                EntityStatus.ACTIVE))
+                .thenReturn(mockSpec);
+
+        Page<Product> productPage = new PageImpl<>(List.of(new Product()));
+        when(productRepository.findAll(eq(mockSpec), any(Pageable.class))).thenReturn(productPage);
+
+        var result = productService.getProducts(
+                businessId,
+                1,
+                10,
+                "shirt",
+                BigDecimal.valueOf(10),
+                BigDecimal.valueOf(100),
+                true,
+                EntityStatus.ACTIVE);
+
+        assertNotNull(result);
+        verify(productSpecification).getProducts(
+                businessId,
+                "shirt",
+                BigDecimal.valueOf(10),
+                BigDecimal.valueOf(100),
+                true,
+                EntityStatus.ACTIVE);
     }
 
     @Test

@@ -33,7 +33,7 @@ import java.util.List;
 @AllArgsConstructor
 @SQLRestriction("status <> 'DELETED'")
 @Table(
-        name = "BRILLO_USER",
+        name = "brillo_user",
         indexes = {
                 @Index(name = "idx_brillo_user_email", columnList = "email"),
                 @Index(name = "idx_brillo_user_phone", columnList = "phone_number"),
@@ -66,7 +66,7 @@ class User extends JpaAuditor implements Serializable {
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(
-            name = "BRILLO_USER_ROLES",
+            name = "brillo_user_roles",
             joinColumns = @JoinColumn(name = "user_id"),
             indexes = {
                     @Index(name = "idx_user_roles_user_id", columnList = "user_id"),
