@@ -8,6 +8,7 @@ import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessDto;
 import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.dto.product.ProductDto;
 import com.clickstechnology.Brillo.Mall.application.dto.request.product.AddProductRequest;
+import com.clickstechnology.Brillo.Mall.application.enums.BusinessCategory;
 import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
 import com.clickstechnology.Brillo.Mall.application.exception.UnauthorizedUserException;
@@ -84,6 +85,7 @@ class AddProductTest {
         activeBusiness.setId(businessId);
         activeBusiness.setStatus(EntityStatus.ACTIVE);
         activeBusiness.setOwnerId(userId);
+        activeBusiness.setCategory(BusinessCategory.PRODUCTS);
 
         UserDto userDto = new UserDto();
         userDto.setId(userId);

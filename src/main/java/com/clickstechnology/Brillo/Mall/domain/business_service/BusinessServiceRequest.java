@@ -5,6 +5,7 @@ import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessServiceDto;
 import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessServiceRequestDto;
 import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;
+import com.clickstechnology.Brillo.Mall.application.enums.ServiceRequestStatus;
 import com.clickstechnology.Brillo.Mall.infrastructure.persistence.JpaAuditor;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -34,10 +35,10 @@ class BusinessServiceRequest extends JpaAuditor implements Serializable {
     @Column(name = "customer_id", nullable = false, length = 100)
     private String customerId;
 
-    @Column(name = "user_id", length = 100)
+    @Column(name = "user_id", length = 100, nullable = false)
     private String userId;
 
-    @Column(name = "business_id", length = 100)
+    @Column(name = "business_id", length = 100, nullable = false)
     private String businessId;
 
     @Column(name = "whatsapp_conversation_id", length = 100)
@@ -55,14 +56,20 @@ class BusinessServiceRequest extends JpaAuditor implements Serializable {
     @Column(name = "agreed_price", precision = 19, scale = 2)
     private BigDecimal agreedPrice;
 
+    @Builder.Default
     @Column(name = "negotiation_attempts")
-    private Integer negotiationAttempts = 1;
+    private Integer negotiationAttempts = 0;
 
     @Column(name = "human_takeover")
     private boolean humanTakeover = false;
 
     @Column(name = "notes", columnDefinition = "TEXT")
     private String notes;
+
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "request_status", length = 50)
+    private ServiceRequestStatus requestStatus = ServiceRequestStatus.NEGOTIATING;
 
     @Builder.Default
     @Enumerated(EnumType.STRING)
@@ -81,6 +88,7 @@ class BusinessServiceRequest extends JpaAuditor implements Serializable {
                 .negotiationAttempts(negotiationAttempts)
                 .humanTakeover(humanTakeover)
                 .notes(notes)
+                .requestStatus(requestStatus)
                 .status(status)
                 .whatsappConversationId(whatsappConversationId)
                 .user(UserDto.builder()

@@ -2,6 +2,7 @@ package com.clickstechnology.Brillo.Mall.application.dto.business;
 
 import com.clickstechnology.Brillo.Mall.application.dto.CustomerDto;
 import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
+import com.clickstechnology.Brillo.Mall.application.enums.BookingStatus;
 import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -23,5 +24,6 @@ public class BookedServiceDto {
     private BusinessServiceRequestDto businessServiceRequest;
     private BigDecimal agreedPrice;
     private LocalDateTime scheduledDate;
+    private BookingStatus bookingStatus;
     private EntityStatus status;
 }

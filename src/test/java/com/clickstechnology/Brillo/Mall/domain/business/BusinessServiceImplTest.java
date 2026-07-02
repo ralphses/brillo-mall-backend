@@ -290,8 +290,8 @@ class BusinessServiceImplTest {
     class ExistsByBusinessIdTests {
 
         @Test
-        @DisplayName("Should return false when business exists")
-        void existsByBusinessId_shouldReturnFalse_whenExists() {
+        @DisplayName("Should return true when business exists")
+        void existsByBusinessId_shouldReturnTrue_whenExists() {
             // Given
             when(businessRepository.existsByReference("biz1")).thenReturn(true);
 
@@ -299,12 +299,12 @@ class BusinessServiceImplTest {
             boolean exists = businessService.existsByBusinessId("biz1");
 
             // Then
-            assertThat(exists).isFalse();
+            assertThat(exists).isTrue();
         }
 
         @Test
-        @DisplayName("Should return true when business does not exist")
-        void existsByBusinessId_shouldReturnTrue_whenNotExists() {
+        @DisplayName("Should return false when business does not exist")
+        void existsByBusinessId_shouldReturnFalse_whenNotExists() {
             // Given
             when(businessRepository.existsByReference("biz2")).thenReturn(false);
 
@@ -312,7 +312,7 @@ class BusinessServiceImplTest {
             boolean exists = businessService.existsByBusinessId("biz2");
 
             // Then
-            assertThat(exists).isTrue();
+            assertThat(exists).isFalse();
         }
     }
 

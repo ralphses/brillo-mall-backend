@@ -11,7 +11,7 @@ import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessService
 import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessServiceRequestDto;
 import com.clickstechnology.Brillo.Mall.application.dto.request.business.PlaceBusinessServiceRequestPayload;
 import com.clickstechnology.Brillo.Mall.application.dto.response.PaginatedResponse;
-import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;
+import com.clickstechnology.Brillo.Mall.application.enums.ServiceRequestStatus;
 import com.clickstechnology.Brillo.Mall.application.enums.UserRole;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
 import com.clickstechnology.Brillo.Mall.application.exception.UnauthorizedUserException;
@@ -67,9 +67,13 @@ public class ManageBusinessServiceRequest {
             throw new UnauthorizedUserException();
         }
 
-        List<EntityStatus> acceptedUserStatus = List.of(EntityStatus.PENDING, EntityStatus.INACTIVE);
+        List<ServiceRequestStatus> acceptedUserStatus = List.of(
+                ServiceRequestStatus.NEGOTIATING,
+                ServiceRequestStatus.AGREED,
+                ServiceRequestStatus.BOOKED
+        );
 
-        if (!acceptedUserStatus.contains(businessServiceRequest.getStatus()) && !request.isBusiness()) {
+        if (!acceptedUserStatus.contains(businessServiceRequest.getRequestStatus()) && !request.isBusiness()) {
             throw new BusinessException("Business service request is invalid or already processed.");
         }
 

@@ -17,6 +17,7 @@ import com.clickstechnology.Brillo.Mall.application.dto.payments.PaymentRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.payments.PaymentResponse;
 import com.clickstechnology.Brillo.Mall.application.dto.payments.VerificationResponse;
 import com.clickstechnology.Brillo.Mall.application.dto.request.business.UpdateBookingRequest;
+import com.clickstechnology.Brillo.Mall.application.enums.BookingStatus;
 import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;
 import com.clickstechnology.Brillo.Mall.application.enums.OrderStatus;
 import com.clickstechnology.Brillo.Mall.application.enums.PayableType;
@@ -62,8 +63,8 @@ public class ManagePayments {
 
         if (initializationRequest.getPayableType() == PayableType.ORDER) {
             OrderDto order = orderService.findOrderDetailsForCustomer(initializationRequest.getPayableId(), user.getId());
+            businessId = order.getBusinessId();
             if (initializationRequest.isBusiness() && userRoles.contains(UserRole.ADMIN.name())) {
-                businessId = order.getBusiness().getId();
                 businessService.ensureBusinessBelongsToUser(businessId, user.getId());
             } else {
                 orderService.ensureOrderBelongsToUser(order, user.getId());
@@ -72,13 +73,13 @@ public class ManagePayments {
 
         } else if (initializationRequest.getPayableType() == PayableType.BOOKING) {
             BookedServiceDto booking = bookedBusinessServiceService.findById(initializationRequest.getPayableId());
+            businessId = booking.getBusiness().getId();
            if (initializationRequest.isBusiness() && userRoles.contains(UserRole.ADMIN.name())) {
-               businessId = booking.getBusiness().getId();
                businessService.ensureBusinessBelongsToUser(businessId, user.getId());
            }
            else {
                 bookedBusinessServiceService.ensureBookingBelongsToUser(booking, user.getId());
-           }
+            }
             amount = booking.getAgreedPrice();
         } else {
             throw new BusinessException("Invalid payable type");
@@ -122,7 +123,7 @@ public class ManagePayments {
             if (paymentLog.getPayableType() == PayableType.ORDER) {
                 orderService.updateOrderStatus(paymentLog.getPayableId(), OrderStatus.PAID);
             } else if (paymentLog.getPayableType() == PayableType.BOOKING) {
-                bookedBusinessServiceService.updateBooking(paymentLog.getPayableId(), UpdateBookingRequest.builder().status(EntityStatus.ACTIVE).build());
+                bookedBusinessServiceService.updateBooking(paymentLog.getPayableId(), UpdateBookingRequest.builder().status(BookingStatus.CONFIRMED).build());
             }
         } else {
             paymentLog.setStatus(EntityStatus.INACTIVE);
@@ -141,7 +142,7 @@ public class ManagePayments {
         PaymentLogDto paymentLog = paymentService.findByPaymentReference(paymentReference);
         PayableType payableType = paymentLog.getPayableType();
         if (payableType == PayableType.BOOKING) {
-            bookedBusinessServiceService.updateBooking(paymentLog.getPayableId(), UpdateBookingRequest.builder().status(EntityStatus.ACTIVE).build());
+            bookedBusinessServiceService.updateBooking(paymentLog.getPayableId(), UpdateBookingRequest.builder().status(BookingStatus.CONFIRMED).build());
         }
 
         if (payableType.equals(PayableType.ORDER)) {

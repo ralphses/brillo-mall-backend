@@ -12,7 +12,7 @@ public interface OrderService {
 
     OrderDto addItemsToOrder(String id, PlaceOrderRequest request);
 
-    OrderDto createNewOrder(String newOrderId, PlaceOrderRequest request, String userId);
+    OrderDto createNewOrder(String newOrderId, PlaceOrderRequest request, String userId, String businessId);
 
     String generateOrderId();
 

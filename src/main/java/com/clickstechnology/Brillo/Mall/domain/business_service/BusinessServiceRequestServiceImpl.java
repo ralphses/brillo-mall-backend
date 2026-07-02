@@ -7,6 +7,7 @@ import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessService
 import com.clickstechnology.Brillo.Mall.application.dto.request.business.PlaceBusinessServiceRequestPayload;
 import com.clickstechnology.Brillo.Mall.application.dto.response.PaginatedResponse;
 import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;
+import com.clickstechnology.Brillo.Mall.application.enums.ServiceRequestStatus;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -45,6 +46,7 @@ class BusinessServiceRequestServiceImpl implements BusinessServiceRequestService
                 .lastOfferedPrice(request.getLastOfferedPrice())
                 .whatsappConversationId(request.getWhatsappConversationId())
                 .userId(customer.getUserId())
+                .requestStatus(ServiceRequestStatus.NEGOTIATING)
                 .build();
 
         businessServiceRequestRepository.save(newBusinessServiceRequest);
@@ -70,8 +72,9 @@ class BusinessServiceRequestServiceImpl implements BusinessServiceRequestService
 
         BusinessServiceRequest businessServiceRequest = findByRequestId(requestId);
 
-        if (businessServiceRequest.getAgreedPrice() != null) {
+        if (request.getAgreedPrice() != null) {
             businessServiceRequest.setAgreedPrice(request.getAgreedPrice());
+            businessServiceRequest.setRequestStatus(ServiceRequestStatus.AGREED);
         }
         if (request.getHumanTakeover() != null) {
             businessServiceRequest.setHumanTakeover(request.getHumanTakeover());
@@ -91,7 +94,9 @@ class BusinessServiceRequestServiceImpl implements BusinessServiceRequestService
 
         if (request.getNegotiationAttemptsCount() != null) {
             if (updateNegotiationCounter) {
-                Integer negotiationAttempts = businessServiceRequest.getNegotiationAttempts();
+                Integer negotiationAttempts = businessServiceRequest.getNegotiationAttempts() == null
+                        ? 0
+                        : businessServiceRequest.getNegotiationAttempts();
                 negotiationAttempts = negotiationAttempts + 1;
                 businessServiceRequest.setNegotiationAttempts(negotiationAttempts);
             } else {
@@ -101,6 +106,10 @@ class BusinessServiceRequestServiceImpl implements BusinessServiceRequestService
 
         if (request.getLastOfferedPrice() != null) {
             businessServiceRequest.setLastOfferedPrice(request.getLastOfferedPrice());
+        }
+
+        if (businessServiceRequest.getRequestStatus() == null) {
+            businessServiceRequest.setRequestStatus(ServiceRequestStatus.NEGOTIATING);
         }
 
         businessServiceRequestRepository.save(businessServiceRequest);

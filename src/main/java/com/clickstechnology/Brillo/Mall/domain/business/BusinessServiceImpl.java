@@ -99,7 +99,7 @@ class BusinessServiceImpl implements BusinessService {
 
     @Override
     public boolean existsByBusinessId(String businessId) {
-        return !businessRepository.existsByReference(businessId);
+        return businessRepository.existsByReference(businessId);
     }
 
     @Override

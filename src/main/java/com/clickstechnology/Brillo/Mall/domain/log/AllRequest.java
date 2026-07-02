@@ -38,7 +38,7 @@ import java.time.LocalDateTime;
 class AllRequest extends JpaAuditor implements Serializable {
 
     @Lob
-    @Column(name = "request_body", nullable = false, columnDefinition = "LONGTEXT")
+    @Column(name = "request_body", nullable = false)
     private String requestBody;
 
     @Enumerated(EnumType.STRING)
@@ -46,7 +46,7 @@ class AllRequest extends JpaAuditor implements Serializable {
     private RequestStatus status;
 
     @Lob
-    @Column(name = "response_body", columnDefinition = "LONGTEXT")
+    @Column(name = "response_body")
     private String responseBody;
 
     @Column(name = "origin", length = 100)

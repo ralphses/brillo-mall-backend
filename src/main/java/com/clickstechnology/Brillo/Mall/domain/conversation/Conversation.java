@@ -22,7 +22,12 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "CONVERSATIONS")
+@Table(
+        name = "CONVERSATIONS",
+        uniqueConstraints = {
+                @jakarta.persistence.UniqueConstraint(name = "uk_conversations_whatsapp_conversation_id", columnNames = {"whatsapp_conversation_id"})
+        }
+)
 public class Conversation extends JpaAuditor implements Serializable {
 
     @Column(name = "business_id", nullable = false)

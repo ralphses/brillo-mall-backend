@@ -97,6 +97,7 @@ class ManageOrderTest {
 
         orderDto = new OrderDto();
         orderDto.setId("order-id");
+        orderDto.setBusinessId("business-id");
         orderDto.setItems(List.of(orderItemDto));
     }
 
@@ -106,8 +107,7 @@ class ManageOrderTest {
         String orderId = "order-id";
         String ownerId = "+1234567890";
 
-        when(customerService.findByPhoneOrEmail(ownerId)).thenReturn(customerDto);
-        when(orderService.findOrderDetailsForCustomer(orderId, customerDto.getId())).thenReturn(orderDto);
+        when(orderService.findOrderById(orderId)).thenReturn(orderDto);
         when(businessService.findAllByBusinessIds(Set.of("business-id"))).thenReturn(List.of(businessDto));
 
         // When
@@ -119,8 +119,7 @@ class ManageOrderTest {
         assertNotNull(result.getItems().getFirst().getBusiness());
         assertEquals("Test Business", result.getItems().getFirst().getBusiness().getName());
 
-        verify(customerService).findByPhoneOrEmail(ownerId);
-        verify(orderService).findOrderDetailsForCustomer(orderId, customerDto.getId());
+        verify(orderService).findOrderById(orderId);
         verify(businessService).findAllByBusinessIds(Set.of("business-id"));
     }
 
@@ -173,8 +172,7 @@ class ManageOrderTest {
 
         when(authenticationUtil.getAuthenticatedUsername(httpServletRequest)).thenReturn(customerUser.getUsername());
         when(userService.findByUsername(customerUser.getUsername())).thenReturn(customerUser);
-        when(customerService.findByPhoneOrEmail(customerUser.getPhoneNumber())).thenReturn(customerDto);
-        when(orderService.findOrderDetailsForCustomer(orderId, customerDto.getId())).thenReturn(orderDto);
+        when(orderService.findOrderById(orderId)).thenReturn(orderDto);
         when(businessService.findAllByBusinessIds(Set.of("business-id"))).thenReturn(List.of(businessDto));
 
         // When
@@ -187,24 +185,28 @@ class ManageOrderTest {
         assertEquals("Test Business", result.getItems().getFirst().getBusiness().getName());
 
         verify(userService).findByUsername(customerUser.getUsername());
-        verify(customerService).findByPhoneOrEmail(customerUser.getPhoneNumber());
-        verify(orderService).findOrderDetailsForCustomer(orderId, customerDto.getId());
+        verify(orderService).findOrderById(orderId);
         verify(businessService).findAllByBusinessIds(Set.of("business-id"));
+        verify(customerService, never()).findByPhoneOrEmail(any());
     }
 
     @Test
-    void findOrderById_ForWebCustomer_ThrowsException_WhenCustomerNotFound() {
+    void findOrderById_ForWebCustomer_ShouldNotUseCustomerLookup() {
         // Given
         String orderId = "order-id";
+        customerUser.setPhoneNumber("1234567890");
         when(authenticationUtil.getAuthenticatedUsername(httpServletRequest)).thenReturn(customerUser.getUsername());
         when(userService.findByUsername(customerUser.getUsername())).thenReturn(customerUser);
-        when(customerService.findByPhoneOrEmail(customerUser.getPhoneNumber())).thenThrow(new BusinessException("Customer not found"));
+        when(orderService.findOrderById(orderId)).thenReturn(orderDto);
+        when(businessService.findAllByBusinessIds(Set.of("business-id"))).thenReturn(List.of(businessDto));
 
-        // When & Then
-        BusinessException exception = assertThrows(BusinessException.class, () -> manageOrder.findOrderById(orderId, RequestSource.WEB, httpServletRequest, null));
+        // When
+        OrderDto result = manageOrder.findOrderById(orderId, RequestSource.WEB, httpServletRequest, null);
 
-        assertEquals("Customer not found", exception.getMessage());
-        verify(orderService, never()).findOrderDetailsForCustomer(any(), any());
+        // Then
+        assertNotNull(result);
+        verify(customerService, never()).findByPhoneOrEmail(any());
+        verify(orderService).findOrderById(orderId);
     }
 
     @Test
@@ -215,14 +217,13 @@ class ManageOrderTest {
 
         when(authenticationUtil.getAuthenticatedUsername(httpServletRequest)).thenReturn(customerUser.getUsername());
         when(userService.findByUsername(customerUser.getUsername())).thenReturn(customerUser);
-        when(customerService.findByPhoneOrEmail(customerUser.getPhoneNumber())).thenReturn(customerDto);
-        when(orderService.findOrderDetailsForCustomer(orderId, customerDto.getId())).thenThrow(new BusinessException("Order not found"));
+        when(orderService.findOrderById(orderId)).thenThrow(new BusinessException("Order not found"));
 
         // When & Then
         BusinessException exception = assertThrows(BusinessException.class, () -> manageOrder.findOrderById(orderId, RequestSource.WEB, httpServletRequest, null));
 
         assertEquals("Order not found", exception.getMessage());
-        verify(businessService, never()).findAllByBusinessIds(any());
+        verify(orderService).findOrderById(orderId);
     }
 
     @Test

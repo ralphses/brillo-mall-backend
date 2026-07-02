@@ -9,6 +9,7 @@ import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessService
 import com.clickstechnology.Brillo.Mall.application.dto.request.business.BookAServiceRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.request.business.UpdateBookingRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.response.PaginatedResponse;
+import com.clickstechnology.Brillo.Mall.application.enums.BookingStatus;
 import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
@@ -38,7 +39,7 @@ class BookedBusinessServiceServiceImpl implements BookedBusinessServiceService {
                 .businessId(businessService.getBusinessId())
                 .agreedPrice(bookAServiceRequest.getTotalPrice())
                 .serviceRequestId(bookAServiceRequest.getServiceRequestId())
-                .status(EntityStatus.PENDING)
+                .bookingStatus(BookingStatus.PENDING)
                 .scheduledDate(bookAServiceRequest.getScheduledDate())
                 .build();
 
@@ -113,6 +114,7 @@ class BookedBusinessServiceServiceImpl implements BookedBusinessServiceService {
     public void cancel(String bookingId) {
         BookedBusinessService bookedBusinessService = findByReference(bookingId);
         bookedBusinessService.setStatus(EntityStatus.INACTIVE);
+        bookedBusinessService.setBookingStatus(BookingStatus.CANCELLED);
         bookedBusinessServiceRepository.save(bookedBusinessService);
     }
 
@@ -130,7 +132,7 @@ class BookedBusinessServiceServiceImpl implements BookedBusinessServiceService {
         }
 
         if (updateBookingRequest.getStatus() != null) {
-            bookedBusinessService.setStatus(updateBookingRequest.getStatus());
+            bookedBusinessService.setBookingStatus(updateBookingRequest.getStatus());
         }
 
         return bookedBusinessServiceRepository.save(bookedBusinessService).dto();
@@ -142,6 +144,7 @@ class BookedBusinessServiceServiceImpl implements BookedBusinessServiceService {
     public void delete(String bookingId) {
         BookedBusinessService bookedBusinessService = findByReference(bookingId);
         bookedBusinessService.setStatus(EntityStatus.DELETED);
+        bookedBusinessService.setBookingStatus(BookingStatus.DELETED);
         bookedBusinessServiceRepository.save(bookedBusinessService);
     }
 }

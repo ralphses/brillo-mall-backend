@@ -31,7 +31,7 @@ class OrderItem extends JpaAuditor implements Serializable {
     @JoinColumn(name = "order_id", nullable = false)
     private Order order;
 
-    @JoinColumn(name = "product_id", nullable = false)
+    @Column(name = "product_id", nullable = false)
     private String productId;
 
     @Column(name = "quantity", nullable = false)

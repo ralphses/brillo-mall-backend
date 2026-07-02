@@ -3,6 +3,7 @@ package com.clickstechnology.Brillo.Mall.application.dto.business;
 import com.clickstechnology.Brillo.Mall.application.dto.CustomerDto;
 import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;
+import com.clickstechnology.Brillo.Mall.application.enums.ServiceRequestStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -35,6 +36,8 @@ public class BusinessServiceRequestDto {
     private boolean humanTakeover;
 
     private String notes;
+
+    private ServiceRequestStatus requestStatus;
 
     private EntityStatus status;
 }

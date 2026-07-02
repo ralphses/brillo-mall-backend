@@ -67,6 +67,7 @@ class OrderServiceImplTest {
 
         order = new Order();
         order.setOrderId("order1");
+        order.setBusinessId("biz1");
         order.setTotalAmount(BigDecimal.valueOf(100));
         order.setCustomerId(customerDto.getId());
 
@@ -190,11 +191,12 @@ class OrderServiceImplTest {
             });
 
             // When
-            OrderDto result = orderServiceImpl.createNewOrder(newOrderId, placeOrderRequest, userId);
+            OrderDto result = orderServiceImpl.createNewOrder(newOrderId, placeOrderRequest, userId, "biz1");
 
             // Then
             assertThat(result).isNotNull();
             assertThat(result.getId()).isEqualTo(newOrderId);
+            assertThat(result.getBusinessId()).isEqualTo("biz1");
             assertThat(result.getTotalAmount()).isEqualTo(BigDecimal.valueOf(100));
             verify(orderRepository).saveAndFlush(any(Order.class));
         }

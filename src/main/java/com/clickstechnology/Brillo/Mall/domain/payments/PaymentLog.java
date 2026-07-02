@@ -25,28 +25,31 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @AllArgsConstructor
 @Table(name = "BRILLO_PAYMENT_LOG", indexes = {
-        @Index(name = "idx_brillo_payment_log_reference", columnList = "reference")
+        @Index(name = "idx_brillo_payment_log_reference", columnList = "reference"),
+        @Index(name = "idx_brillo_payment_log_business", columnList = "business_id"),
+        @Index(name = "idx_brillo_payment_log_payable", columnList = "payable_id")
 })
 class PaymentLog extends JpaAuditor {
 
-    @Column(name = "user_id", unique = true, nullable = false)
+    @Column(name = "user_id", nullable = false)
     private String userId;
 
-    @Column(name = "business_id", unique = true, nullable = false)
+    @Column(name = "business_id", nullable = false)
     private String businessId;
 
     @Column(name = "payment_reference", unique = true, nullable = false)
     private String paymentReference;
 
-    @Column(name = "email", unique = true, nullable = false)
+    @Column(name = "email", nullable = false)
     private String email;
 
     @Column(name = "amount", nullable = false)
     private BigDecimal amount;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    private EntityStatus status;
+    private EntityStatus status = EntityStatus.PENDING;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "payable_type", nullable = false)
@@ -58,7 +61,10 @@ class PaymentLog extends JpaAuditor {
     public PaymentLogDto dto() {
         return PaymentLogDto.builder()
                 .id(reference)
+                .businessId(businessId)
+                .userId(userId)
                 .paymentReference(paymentReference)
+                .email(email)
                 .amount(amount)
                 .status(status)
                 .payableType(payableType)

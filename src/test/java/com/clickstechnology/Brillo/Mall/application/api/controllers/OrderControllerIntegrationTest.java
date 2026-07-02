@@ -18,6 +18,7 @@ import com.clickstechnology.Brillo.Mall.application.enums.BusinessCategory;
 import com.clickstechnology.Brillo.Mall.application.enums.OrderStatus;
 import com.clickstechnology.Brillo.Mall.application.enums.PaymentMethod;
 import com.clickstechnology.Brillo.Mall.application.enums.UserRole;
+import com.clickstechnology.Brillo.Mall.infrastructure.caching.CacheUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -30,8 +31,10 @@ import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.math.BigDecimal;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -65,6 +68,9 @@ class OrderControllerIntegrationTest {
 
     @Autowired
     private CustomerService customerService;
+
+    @MockitoBean
+    private CacheUtil cacheUtil;
 
     private ProductDto product;
     private UserDto testUser;
@@ -106,7 +112,7 @@ class OrderControllerIntegrationTest {
         customerDto.setCustomerEmail(testUser.getEmail());
 
 
-        testCustomer = customerService.resolveCustomer(customerDto, testUser.getId(), Set.of(business.getId()));
+        testCustomer = customerService.resolveCustomer(customerDto, testUser.getId(), new HashSet<>(Set.of(business.getId())));
     }
 
     @Test
@@ -464,8 +470,8 @@ class OrderControllerIntegrationTest {
             mockMvc.perform(put("/api/v1/orders/{orderId}/status", orderId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(updateRequest)))
-                    .andExpect(status().isNotFound())
-                    .andExpect(jsonPath("$.message").value("Order not found or user does not have permission to update it."));
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message").value("Order not found or you do not have permission to view it."));
         }
     }
 }

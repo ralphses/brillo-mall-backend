@@ -96,13 +96,13 @@ class OrderServiceImpl implements OrderService {
         order.setStatus(OrderStatus.PENDING);
         order.setPaymentMethod(request.getPaymentMethod());
         order.setCustomerId(request.getCustomer().getId());
-        order.setShippingAddress(order.getShippingAddress());
+        order.setShippingAddress(request.getCustomer().getAddress());
 
         return orderRepository.save(order).dto();
     }
 
     @Override
-    public OrderDto createNewOrder(String newOrderId, PlaceOrderRequest request, String userId) {
+    public OrderDto createNewOrder(String newOrderId, PlaceOrderRequest request, String userId, String businessId) {
 
         List<OrderItem> orderItems = createOrderItems(request);
 
@@ -113,6 +113,7 @@ class OrderServiceImpl implements OrderService {
         Order newOrder = Order.builder()
                 .orderId(newOrderId)
                 .userId(userId)
+                .businessId(businessId)
                 .customerId(request.getCustomer().getId())
                 .paymentMethod(request.getPaymentMethod())
                 .shippingAddress(request.getCustomer().getAddress())
@@ -184,6 +185,18 @@ class OrderServiceImpl implements OrderService {
     private PaginatedResponse<OrderDto> getOrderPaginatedResponse(Page<Order> orderPage) {
         List<OrderDto> orderDtos = orderPage.getContent().stream().map(Order::dto).collect(Collectors.toList());
 
+        if (orderDtos.isEmpty()) {
+            return PaginatedResponse.<OrderDto>builder()
+                    .items(orderDtos)
+                    .page(orderPage.getNumber() + 1)
+                    .perPage(orderPage.getSize())
+                    .total(orderPage.getTotalElements())
+                    .totalPages(orderPage.getTotalPages())
+                    .hasNext(orderPage.hasNext())
+                    .hasPrevious(orderPage.hasPrevious())
+                    .build();
+        }
+
         // Collect all product IDs from the current page of orders
         List<String> productIds = orderDtos.stream()
                 .flatMap(orderDto -> orderDto.getItems().stream())
@@ -199,10 +212,12 @@ class OrderServiceImpl implements OrderService {
         Map<String, String> orderCustomerMap = orderPage.getContent().stream()
                 .collect(Collectors.toMap(Order::getOrderId, Order::getCustomerId));
 
-        Set<String> businessIds = products.stream()
-                .map(ProductDto::getBusinessId)
+        Set<String> businessIds = orderPage.getContent().stream()
+                .map(Order::getBusinessId)
                 .collect(Collectors.toSet());
-        List<BusinessDto> businesses = businessService.findAllByBusinessIds(businessIds);
+        List<BusinessDto> businesses = businessIds.isEmpty()
+                ? List.of()
+                : businessService.findAllByBusinessIds(businessIds);
         Map<String, BusinessDto> businessMap = businesses.stream()
                 .collect(Collectors.toMap(BusinessDto::getId, business -> business));
 
@@ -219,6 +234,7 @@ class OrderServiceImpl implements OrderService {
                     .build();
 
             orderDto.setCustomer(customerDto);
+            orderDto.setBusiness(businessMap.get(orderDto.getBusinessId()));
         }));
 
         return PaginatedResponse.<OrderDto>builder()

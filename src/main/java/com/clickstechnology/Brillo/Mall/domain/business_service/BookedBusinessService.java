@@ -6,6 +6,7 @@ import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.dto.business.BookedServiceDto;
 import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessServiceRequestDto;
 import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;
+import com.clickstechnology.Brillo.Mall.application.enums.BookingStatus;
 import com.clickstechnology.Brillo.Mall.infrastructure.persistence.JpaAuditor;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -56,6 +57,11 @@ class BookedBusinessService extends JpaAuditor implements Serializable {
 
     @Builder.Default
     @Enumerated(EnumType.STRING)
+    @Column(name = "booking_status", length = 50, nullable = false)
+    private BookingStatus bookingStatus = BookingStatus.PENDING;
+
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 50, nullable = false)
     private EntityStatus status = EntityStatus.ACTIVE;
 
@@ -71,6 +77,7 @@ class BookedBusinessService extends JpaAuditor implements Serializable {
                 .businessServiceRequest(BusinessServiceRequestDto.builder().id(serviceRequestId).build())
                 .agreedPrice(agreedPrice)
                 .scheduledDate(scheduledDate)
+                .bookingStatus(bookingStatus)
                 .status(status)
                 .build();
     }

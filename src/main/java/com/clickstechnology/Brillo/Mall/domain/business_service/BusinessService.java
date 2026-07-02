@@ -50,7 +50,7 @@ class BusinessService extends JpaAuditor implements Serializable {
     @Column(name = "name", length = 120, nullable = false)
     private String name;
 
-    @Column(name = "slug", length = 150, nullable = false, unique = true)
+    @Column(name = "slug", length = 150, nullable = false)
     private String slug;
 
     @Column(name = "description", columnDefinition = "TEXT")

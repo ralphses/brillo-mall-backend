@@ -85,7 +85,8 @@ class User extends JpaAuditor implements Serializable {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 50)
-    private EntityStatus status;
+    @Builder.Default
+    private EntityStatus status = EntityStatus.PENDING;
 
     public UserDto dto() {
         return UserDto.builder()
@@ -101,4 +102,3 @@ class User extends JpaAuditor implements Serializable {
                 .build();
     }
 }
-

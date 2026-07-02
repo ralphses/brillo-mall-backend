@@ -47,7 +47,7 @@ class CustomerServiceImpl implements CustomerService {
 
     @Override
     public PaginatedResponse<CustomerDto> findAllByRefs(Set<String> customerRefs,  int page, int pageSize) {
-        Pageable pageable = PageRequest.of(Math.min(0, page-1), pageSize);
+        Pageable pageable = PageRequest.of(Math.max(0, page - 1), pageSize);
         Page<Customer> customerPage = customerRepository.findAllByReferenceIn(customerRefs, pageable);
 
         List<CustomerDto> items = customerPage.getContent().stream().map(Customer::dto).collect(Collectors.toList());
@@ -120,7 +120,7 @@ class CustomerServiceImpl implements CustomerService {
         return PaginatedResponse.<CustomerDto>builder()
                 .page(pageable.getPageNumber() + 1)
                 .perPage(pageable.getPageSize())
-                .total(customerPage.getTotalPages())
+                .total(customerPage.getTotalElements())
                 .totalPages(customerPage.getTotalPages())
                 .hasNext(customerPage.hasNext())
                 .hasPrevious(customerPage.hasPrevious())

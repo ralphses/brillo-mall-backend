@@ -11,7 +11,10 @@ import java.math.BigDecimal;
 @Builder
 public class PaymentLogDto {
     private String id;
+    private String businessId;
+    private String userId;
     private String paymentReference;
+    private String email;
     private BigDecimal amount;
     private EntityStatus status;
     private PayableType payableType;

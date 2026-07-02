@@ -56,7 +56,7 @@ class Business extends JpaAuditor implements Serializable {
     private String name;
 
     @Convert(converter = StringListConverter.class)
-    @Column(name = "customers", columnDefinition = "json")
+    @Column(name = "customers", columnDefinition = "CLOB")
     private Set<String> customers;
 
     @Column(name = "slug", length = 120, nullable = false, unique = true)

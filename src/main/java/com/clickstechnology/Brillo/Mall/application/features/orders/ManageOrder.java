@@ -108,8 +108,10 @@ public class ManageOrder {
         // 3. Enrich order items with full Product details
         enrichOrderProducts(order);
 
-        // 4. Enrich order items with Business data
-        Set<String> businessIds = order.getItems().stream()
+        // 4. Enrich order and items with Business data
+        Set<String> businessIds = order.getBusinessId() != null
+                ? Set.of(order.getBusinessId())
+                : order.getItems().stream()
                 .map(item -> item.getProduct().getBusinessId())
                 .collect(Collectors.toSet());
 
@@ -117,6 +119,7 @@ public class ManageOrder {
         Map<String, BusinessDto> businessMap = businesses.stream()
                 .collect(Collectors.toMap(BusinessDto::getId, Function.identity()));
 
+        order.setBusiness(businessMap.get(order.getBusinessId()));
         order.getItems().forEach(item -> {
             BusinessDto business = businessMap.get(item.getProduct().getBusinessId());
             if (business != null) {
