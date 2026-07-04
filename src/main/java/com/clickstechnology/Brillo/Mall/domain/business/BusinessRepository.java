@@ -3,12 +3,13 @@ package com.clickstechnology.Brillo.Mall.domain.business;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-interface BusinessRepository extends JpaRepository<Business, Long> {
+interface BusinessRepository extends JpaRepository<Business, Long>, JpaSpecificationExecutor<Business> {
     boolean existsByName(String name);
     Optional<Business> findByName(String name);
     Optional<Business> findByReference(String businessId);

@@ -30,6 +30,8 @@ public interface BusinessService {
 
     void activateStorefront(String businessId);
 
+    List<BusinessDto> searchBusinesses(String search);
+
     PaginatedResponse<BusinessDto> findAllByOwnerId(String userId, Integer page, Integer pageSize);
 
     void validateBusinessIsActive(Set<String> allProductOwners);

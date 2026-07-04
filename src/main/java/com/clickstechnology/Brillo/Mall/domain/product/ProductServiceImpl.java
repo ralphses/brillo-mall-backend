@@ -1,10 +1,12 @@
 package com.clickstechnology.Brillo.Mall.domain.product;
 
 import com.clickstechnology.Brillo.Mall.application.api.contracts.ProductService;
+import com.clickstechnology.Brillo.Mall.application.api.contracts.CategoryCatalogService;
 import com.clickstechnology.Brillo.Mall.application.dto.product.ProductDto;
 import com.clickstechnology.Brillo.Mall.application.dto.request.product.AddProductRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.request.product.UpdateProductRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.response.PaginatedResponse;
+import com.clickstechnology.Brillo.Mall.application.enums.BusinessCategory;
 import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +31,7 @@ class ProductServiceImpl implements ProductService {
 
     private final ProductRepository productRepository;
     private final ProductSpecification productSpecification;
+    private final CategoryCatalogService categoryCatalogService;
 
     @Override
     public void ensureProductNameDoesNotExist(String businessId, String name) {
@@ -48,14 +51,17 @@ class ProductServiceImpl implements ProductService {
 
     @Override
     public ProductDto createProduct(String businessId, AddProductRequest request, String defaultProductImageUrl) {
+        String category = categoryCatalogService.resolveCategory(BusinessCategory.PRODUCTS, request.getCategory());
         Product product = Product.builder()
                 .businessId(businessId)
                 .name(request.getName())
+                .category(category)
                 .description(request.getDescription())
                 .price(request.getPrice())
                 .discountedPrice(request.getDiscountedPrice())
                 .sku(request.getSku())
                 .mainImageUrl(defaultProductImageUrl)
+                .flashSale(Boolean.TRUE.equals(request.getFlashSale()))
                 .quantity(request.getQuantity())
                 .status(EntityStatus.ACTIVE)
                 .build();
@@ -105,6 +111,63 @@ class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    public PaginatedResponse<ProductDto> getProducts(
+            String businessId,
+            Integer page,
+            Integer pageSize,
+            String search,
+            String category,
+            Boolean flashSale,
+            BigDecimal minPrice,
+            BigDecimal maxPrice,
+            Boolean inStockOnly,
+            EntityStatus status) {
+        Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Specification<Product> spec = productSpecification.getProducts(
+                businessId,
+                search,
+                category,
+                flashSale,
+                minPrice,
+                maxPrice,
+                inStockOnly,
+                status);
+        Page<Product> productPage = productRepository.findAll(spec, pageable);
+
+        List<ProductDto> productDtos = productPage.getContent().stream()
+                .map(Product::dto)
+                .collect(Collectors.toList());
+
+        return PaginatedResponse.<ProductDto>builder()
+                .items(productDtos)
+                .page(productPage.getNumber() + 1)
+                .perPage(productPage.getSize())
+                .total(productPage.getTotalElements())
+                .totalPages(productPage.getTotalPages())
+                .hasNext(productPage.hasNext())
+                .hasPrevious(productPage.hasPrevious())
+                .build();
+    }
+
+    @Override
+    public List<ProductDto> searchProducts(String search) {
+        Specification<Product> spec = productSpecification.getProducts(
+                null,
+                search,
+                null,
+                null,
+                null,
+                null,
+                null,
+                EntityStatus.ACTIVE);
+
+        return productRepository.findAll(spec, Sort.by(Sort.Direction.DESC, "createdAt"))
+                .stream()
+                .map(Product::dto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public ProductDto findProductByProductId(String productId) {
         return getByReference(productId)
                 .dto();
@@ -145,6 +208,10 @@ class ProductServiceImpl implements ProductService {
             product.setName(request.getName());
         }
 
+        if (request.getCategory() != null) {
+            product.setCategory(categoryCatalogService.resolveCategory(BusinessCategory.PRODUCTS, request.getCategory()));
+        }
+
         if (request.getDescription() != null) {
             product.setDescription(request.getDescription());
         }
@@ -155,6 +222,10 @@ class ProductServiceImpl implements ProductService {
 
         if (request.getDiscountedPrice() != null) {
             product.setDiscountedPrice(request.getDiscountedPrice());
+        }
+
+        if (request.getFlashSale() != null) {
+            product.setFlashSale(request.getFlashSale());
         }
 
         if (request.getQuantity() != null) {

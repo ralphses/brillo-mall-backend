@@ -14,6 +14,8 @@ public class UpdateProductRequest {
 
     private String name;
 
+    private String category;
+
     private String description;
 
     @Positive(message = "Price must be positive.")
@@ -21,6 +23,8 @@ public class UpdateProductRequest {
 
     @Positive(message = "Discounted price must be positive.")
     private BigDecimal discountedPrice;
+
+    private Boolean flashSale;
 
     private Integer quantity;
 }

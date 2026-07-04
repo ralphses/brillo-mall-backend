@@ -14,6 +14,7 @@ public final class AppConstants {
     public static final String[] WHITE_LIST_URL = {
             "/v3/api-docs/**",
             "/api/v1/auth/**",
+            "/api/v1/public/**",
             "/swagger-ui.html",
             "/swagger-resources/**",
             "/swagger-ui/**",

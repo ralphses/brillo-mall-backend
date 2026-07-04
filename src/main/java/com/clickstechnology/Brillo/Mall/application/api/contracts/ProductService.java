@@ -25,10 +25,26 @@ public interface ProductService {
             Integer page,
             Integer pageSize,
             String search,
+            String category,
+            Boolean flashSale,
             BigDecimal minPrice,
             BigDecimal maxPrice,
             Boolean inStockOnly,
             EntityStatus status);
+
+    default PaginatedResponse<ProductDto> getProducts(
+            String businessId,
+            Integer page,
+            Integer pageSize,
+            String search,
+            BigDecimal minPrice,
+            BigDecimal maxPrice,
+            Boolean inStockOnly,
+            EntityStatus status) {
+        return getProducts(businessId, page, pageSize, search, null, null, minPrice, maxPrice, inStockOnly, status);
+    }
+
+    List<ProductDto> searchProducts(String search);
 
     ProductDto findProductByProductId(String productId);
 

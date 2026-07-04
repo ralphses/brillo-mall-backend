@@ -1,44 +1,29 @@
-package com.clickstechnology.Brillo.Mall.domain.product;
+package com.clickstechnology.Brillo.Mall.domain.business_service;
 
+import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;
+import com.clickstechnology.Brillo.Mall.application.enums.PricingType;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Component;
 
-import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;
-
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
 @Component
-public class ProductSpecification {
+class BusinessServiceSpecification {
 
-    public Specification<Product> getProducts(
-            String businessId,
-            String search,
-            BigDecimal minPrice,
-            BigDecimal maxPrice,
-            Boolean inStockOnly,
-            EntityStatus status) {
-        return getProducts(
-                businessId,
-                search,
-                null,
-                null,
-                minPrice,
-                maxPrice,
-                inStockOnly,
-                status);
+    Specification<BusinessService> search(String search) {
+        return getServices(null, search, null, null, null, null, EntityStatus.ACTIVE, Boolean.TRUE);
     }
 
-    public Specification<Product> getProducts(
+    Specification<BusinessService> getServices(
             String businessId,
             String search,
             String category,
-            Boolean flashSale,
-            BigDecimal minPrice,
-            BigDecimal maxPrice,
-            Boolean inStockOnly,
-            EntityStatus status) {
+            PricingType pricingType,
+            Boolean negotiable,
+            Boolean requiresSchedule,
+            EntityStatus status,
+            Boolean active) {
         return (root, query, criteriaBuilder) -> {
             List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
 
@@ -50,8 +35,8 @@ public class ProductSpecification {
                 String likePattern = "%" + search.trim().toLowerCase() + "%";
                 predicates.add(criteriaBuilder.or(
                         criteriaBuilder.like(criteriaBuilder.lower(root.get("name")), likePattern),
-                        criteriaBuilder.like(criteriaBuilder.lower(root.get("sku")), likePattern),
                         criteriaBuilder.like(criteriaBuilder.lower(root.get("description")), likePattern),
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("slug")), likePattern),
                         criteriaBuilder.like(criteriaBuilder.lower(root.get("category")), likePattern)
                 ));
             }
@@ -62,28 +47,24 @@ public class ProductSpecification {
                         category.trim().toLowerCase()));
             }
 
-            if (flashSale != null) {
-                predicates.add(criteriaBuilder.equal(root.get("flashSale"), flashSale));
+            if (pricingType != null) {
+                predicates.add(criteriaBuilder.equal(root.get("pricingType"), pricingType));
             }
 
-            if (minPrice != null) {
-                predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("price"), minPrice));
+            if (negotiable != null) {
+                predicates.add(criteriaBuilder.equal(root.get("negotiable"), negotiable));
             }
 
-            if (maxPrice != null) {
-                predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("price"), maxPrice));
+            if (requiresSchedule != null) {
+                predicates.add(criteriaBuilder.equal(root.get("requiresSchedule"), requiresSchedule));
             }
 
-            if (Boolean.TRUE.equals(inStockOnly)) {
-                predicates.add(criteriaBuilder.greaterThan(root.get("quantity"), 0));
+            if (active != null) {
+                predicates.add(criteriaBuilder.equal(root.get("active"), active));
             }
 
             if (status != null) {
                 predicates.add(criteriaBuilder.equal(root.get("status"), status));
-            }
-
-            if (predicates.isEmpty()) {
-                return criteriaBuilder.conjunction();
             }
 
             return criteriaBuilder.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));

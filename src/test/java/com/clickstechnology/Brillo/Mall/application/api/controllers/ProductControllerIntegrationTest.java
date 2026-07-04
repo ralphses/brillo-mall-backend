@@ -54,10 +54,12 @@ class ProductControllerIntegrationTest {
         businessId = "biz-123";
         validRequest = new AddProductRequest(
                 "Test Product",
+                "PHARMACY",
                 "Test Description",
                 BigDecimal.valueOf(100.00),
                 BigDecimal.valueOf(90.00),
                 "SKU-123",
+                true,
                 50
         );
 
@@ -65,10 +67,12 @@ class ProductControllerIntegrationTest {
                 .id("prod-123")
                 .businessId(businessId)
                 .name("Test Product")
+                .category("PHARMACY")
                 .description("Test Description")
                 .price(BigDecimal.valueOf(100.00))
                 .discountedPrice(BigDecimal.valueOf(90.00))
                 .sku("SKU-123")
+                .flashSale(true)
                 .quantity(50)
                 .status(EntityStatus.ACTIVE)
                 .build();
@@ -86,6 +90,8 @@ class ProductControllerIntegrationTest {
                 .andExpect(jsonPath("$.status").value(200))
                 .andExpect(jsonPath("$.data.id").value("prod-123"))
                 .andExpect(jsonPath("$.data.name").value("Test Product"))
+                .andExpect(jsonPath("$.data.category").value("PHARMACY"))
+                .andExpect(jsonPath("$.data.flashSale").value(true))
                 .andExpect(jsonPath("$.data.sku").value("SKU-123"));
     }
 

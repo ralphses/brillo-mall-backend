@@ -17,6 +17,9 @@ public class AddProductRequest {
     @NotBlank(message = "Product name cannot be blank.")
     private String name;
 
+    @NotBlank(message = "Category cannot be blank.")
+    private String category;
+
     private String description;
 
     @NotNull(message = "Price cannot be null.")
@@ -27,6 +30,8 @@ public class AddProductRequest {
     private BigDecimal discountedPrice;
 
     private String sku;
+
+    private Boolean flashSale = false;
 
     @NotNull(message = "Quantity cannot be null.")
     private Integer quantity;

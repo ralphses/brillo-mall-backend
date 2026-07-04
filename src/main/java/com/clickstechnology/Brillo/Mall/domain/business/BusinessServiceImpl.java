@@ -32,6 +32,7 @@ import java.util.Set;
 class BusinessServiceImpl implements BusinessService {
 
     private final BusinessRepository businessRepository;
+    private final BusinessSpecification businessSpecification;
     private final CacheUtil cacheUtil;
 
     @Override
@@ -164,6 +165,14 @@ class BusinessServiceImpl implements BusinessService {
         business.setStorefrontActive(true);
         business.setSetupCompleted(true);
         businessRepository.save(business);
+    }
+
+    @Override
+    public List<BusinessDto> searchBusinesses(String search) {
+        return businessRepository.findAll(businessSpecification.search(search))
+                .stream()
+                .map(Business::dto)
+                .toList();
     }
 
     @Override

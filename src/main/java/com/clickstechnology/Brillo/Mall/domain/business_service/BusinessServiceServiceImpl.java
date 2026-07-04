@@ -1,11 +1,13 @@
 package com.clickstechnology.Brillo.Mall.domain.business_service;
 
 import com.clickstechnology.Brillo.Mall.application.api.contracts.BusinessServiceService;
+import com.clickstechnology.Brillo.Mall.application.api.contracts.CategoryCatalogService;
 import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessServiceDto;
 import com.clickstechnology.Brillo.Mall.application.dto.request.business.AddBusinessServiceRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.request.business.UpdateBusinessServiceRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.response.PaginatedResponse;
+import com.clickstechnology.Brillo.Mall.application.enums.BusinessCategory;
 import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;
 import com.clickstechnology.Brillo.Mall.application.enums.PricingType;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
@@ -27,6 +29,8 @@ import java.util.stream.Collectors;
 class BusinessServiceServiceImpl implements BusinessServiceService {
 
     private final BusinessServiceRepository businessServiceRepository;
+    private final BusinessServiceSpecification businessServiceSpecification;
+    private final CategoryCatalogService categoryCatalogService;
 
     @Override
     public BusinessServiceDto addService(AddBusinessServiceRequest request, UserDto userDto) {
@@ -36,12 +40,14 @@ class BusinessServiceServiceImpl implements BusinessServiceService {
             throw new BusinessException("A service with this name already exists for your business.");
         }
 
+        String category = categoryCatalogService.resolveCategory(BusinessCategory.SERVICES, request.getCategory());
+
         BusinessService newService = BusinessService.builder()
                 .businessId(request.getBusinessId())
                 .name(request.getName())
                 .slug(slug)
                 .description(request.getDescription())
-                .category(request.getCategory())
+                .category(category)
                 .pricingType(request.getPricingType())
                 .basePrice(request.getBasePrice())
                 .durationMinutes(request.getDurationMinutes())
@@ -64,7 +70,7 @@ class BusinessServiceServiceImpl implements BusinessServiceService {
            serviceToUpdate.setDescription(request.getDescription());
        }
        if (request.getCategory() != null) {
-           serviceToUpdate.setCategory(request.getCategory());
+           serviceToUpdate.setCategory(categoryCatalogService.resolveCategory(BusinessCategory.SERVICES, request.getCategory()));
        }
        if (request.getPricingType() != null) {
            serviceToUpdate.setPricingType(request.getPricingType());
@@ -110,6 +116,53 @@ class BusinessServiceServiceImpl implements BusinessServiceService {
                 .hasPrevious(page.hasPrevious())
                 .items(dtos)
                 .build();
+    }
+
+    @Override
+    public PaginatedResponse<BusinessServiceDto> listServices(
+            String businessId,
+            Integer page,
+            Integer pageSize,
+            String search,
+            String category,
+            PricingType pricingType,
+            Boolean negotiable,
+            Boolean requiresSchedule,
+            EntityStatus status) {
+        Pageable pageable = AppUtils.getPageable(page, pageSize);
+        Page<BusinessService> servicePage = businessServiceRepository.findAll(
+                businessServiceSpecification.getServices(
+                        businessId,
+                        search,
+                        category,
+                        pricingType,
+                        negotiable,
+                        requiresSchedule,
+                        status,
+                        Boolean.TRUE),
+                pageable);
+
+        List<BusinessServiceDto> dtos = servicePage.getContent().stream()
+                .map(BusinessService::dto)
+                .collect(Collectors.toList());
+
+        return PaginatedResponse.<BusinessServiceDto>builder()
+                .page(servicePage.getNumber() + 1)
+                .perPage(servicePage.getSize())
+                .total(servicePage.getTotalElements())
+                .totalPages(servicePage.getTotalPages())
+                .hasNext(servicePage.hasNext())
+                .hasPrevious(servicePage.hasPrevious())
+                .items(dtos)
+                .build();
+    }
+
+    @Override
+    public List<BusinessServiceDto> searchServices(String search) {
+        return businessServiceRepository.findAll(businessServiceSpecification.search(search))
+                .stream()
+                .map(BusinessService::dto)
+                .toList();
     }
 
     @Override

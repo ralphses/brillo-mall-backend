@@ -45,6 +45,9 @@ class Product extends JpaAuditor implements Serializable {
     @Column(name = "name", length = 100, nullable = false)
     private String name;
 
+    @Column(name = "category", length = 100)
+    private String category;
+
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
@@ -60,6 +63,10 @@ class Product extends JpaAuditor implements Serializable {
     @Column(name = "main_image_url", length = 200)
     private String mainImageUrl;
 
+    @Builder.Default
+    @Column(name = "flash_sale", nullable = false)
+    private boolean flashSale = false;
+
     @Column(name = "quantity")
     private Integer quantity;
 
@@ -73,11 +80,13 @@ class Product extends JpaAuditor implements Serializable {
                 .id(this.getReference())
                 .businessId(this.businessId)
                 .name(this.name)
+                .category(this.category)
                 .mainImage(mainImageUrl)
                 .description(this.description)
                 .price(this.price)
                 .discountedPrice(this.discountedPrice)
                 .sku(this.sku)
+                .flashSale(this.flashSale)
                 .quantity(this.quantity)
                 .status(this.status)
                 .createdAt(this.getCreatedAt())

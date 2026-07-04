@@ -18,11 +18,13 @@ public class ProductDto {
     private String id;
     private String businessId;
     private String name;
+    private String category;
     private String description;
     private String mainImage;
     private BigDecimal price;
     private BigDecimal discountedPrice;
     private String sku;
+    private boolean flashSale;
     private Integer quantity;
     private EntityStatus status;
     private Instant createdAt;

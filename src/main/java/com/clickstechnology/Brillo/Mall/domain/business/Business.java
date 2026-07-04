@@ -153,6 +153,8 @@ class Business extends JpaAuditor implements Serializable {
                 .storefrontActive(this.storefrontActive)
                 .isActive(this.isActive)
                 .setupCompleted(this.setupCompleted)
+                .createdAt(this.getCreatedAt())
+                .updatedAt(this.getUpdatedAt())
                 .build();
     }
 }

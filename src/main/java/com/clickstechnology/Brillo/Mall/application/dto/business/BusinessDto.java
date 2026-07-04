@@ -8,6 +8,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.Instant;
+
 @Data
 @Builder
 @AllArgsConstructor
@@ -33,4 +35,6 @@ public class BusinessDto {
     private Boolean storefrontActive;
     private Boolean isActive;
     private Boolean setupCompleted;
+    private Instant createdAt;
+    private Instant updatedAt;
 }

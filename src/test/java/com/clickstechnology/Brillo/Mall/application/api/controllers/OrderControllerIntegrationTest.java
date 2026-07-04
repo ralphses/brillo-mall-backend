@@ -100,7 +100,9 @@ class OrderControllerIntegrationTest {
         // 2. Add a product to the business using the service
         AddProductRequest productRequest = new AddProductRequest();
         productRequest.setName("Test Product");
+        productRequest.setCategory("PHARMACY");
         productRequest.setPrice(BigDecimal.valueOf(19.99));
+        productRequest.setFlashSale(true);
         productRequest.setQuantity(10);
         product = productService.createProduct(business.getId(), productRequest, "logo.png");
 
@@ -271,7 +273,9 @@ class OrderControllerIntegrationTest {
 
         AddProductRequest adminProductRequest = new AddProductRequest();
         adminProductRequest.setName("Admin Product");
+        adminProductRequest.setCategory("PHARMACY");
         adminProductRequest.setPrice(BigDecimal.valueOf(50.00));
+        adminProductRequest.setFlashSale(false);
         adminProductRequest.setQuantity(5);
         ProductDto adminProduct = productService.createProduct(adminBusiness.getId(), adminProductRequest, "logo2.png");
 
@@ -287,7 +291,9 @@ class OrderControllerIntegrationTest {
 
         AddProductRequest otherProductRequest = new AddProductRequest();
         otherProductRequest.setName("Other Product");
+        otherProductRequest.setCategory("PHARMACY");
         otherProductRequest.setPrice(BigDecimal.valueOf(50.00));
+        otherProductRequest.setFlashSale(false);
         otherProductRequest.setQuantity(5);
         ProductDto otherProduct = productService.createProduct(otherBusiness.getId(), otherProductRequest, "logo2.png");
 
@@ -347,7 +353,9 @@ class OrderControllerIntegrationTest {
 
         AddProductRequest otherProductRequest = new AddProductRequest();
         otherProductRequest.setName("Other Product");
+        otherProductRequest.setCategory("PHARMACY");
         otherProductRequest.setPrice(BigDecimal.valueOf(50.00));
+        otherProductRequest.setFlashSale(false);
         otherProductRequest.setQuantity(5);
         ProductDto otherProduct = productService.createProduct(otherBusiness.getId(), otherProductRequest, "logo2.png");
 

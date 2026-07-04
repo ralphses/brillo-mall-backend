@@ -3,6 +3,8 @@ package com.clickstechnology.Brillo.Mall.domain.product;
 import com.clickstechnology.Brillo.Mall.application.dto.product.ProductDto;
 import com.clickstechnology.Brillo.Mall.application.dto.request.product.AddProductRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.request.product.UpdateProductRequest;
+import com.clickstechnology.Brillo.Mall.application.api.contracts.CategoryCatalogService;
+import com.clickstechnology.Brillo.Mall.application.enums.BusinessCategory;
 import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
 import org.junit.jupiter.api.BeforeEach;
@@ -42,6 +44,9 @@ class ProductServiceImplTest {
     @Mock
     private ProductRepository productRepository;
 
+    @Mock
+    private CategoryCatalogService categoryCatalogService;
+
     @InjectMocks
     private ProductServiceImpl productService;
 
@@ -59,10 +64,12 @@ class ProductServiceImplTest {
         businessId = "biz-123";
         addProductRequest = new AddProductRequest(
                 "Test Product",
+                "PHARMACY",
                 "Test Description",
                 BigDecimal.valueOf(100.00),
                 BigDecimal.valueOf(90.00),
                 "SKU-123",
+                true,
                 50
         );
     }
@@ -114,15 +121,19 @@ class ProductServiceImplTest {
         Product savedProduct = Product.builder()
                 .businessId(businessId)
                 .name(addProductRequest.getName())
+                .category("PHARMACY")
                 .description(addProductRequest.getDescription())
                 .price(addProductRequest.getPrice())
                 .discountedPrice(addProductRequest.getDiscountedPrice())
                 .sku(addProductRequest.getSku())
+                .flashSale(true)
                 .quantity(addProductRequest.getQuantity())
                 .status(EntityStatus.ACTIVE)
                 .build();
         savedProduct.setReference("prod-ref-123");
 
+        when(categoryCatalogService.resolveCategory(BusinessCategory.PRODUCTS, addProductRequest.getCategory()))
+                .thenReturn("PHARMACY");
         when(productRepository.save(any(Product.class))).thenReturn(savedProduct);
 
         ProductDto result = productService.createProduct(businessId, addProductRequest, DEFAULT_PRODUCT_IMG_URL);
@@ -131,10 +142,12 @@ class ProductServiceImplTest {
         assertEquals("prod-ref-123", result.getId());
         assertEquals(businessId, result.getBusinessId());
         assertEquals("Test Product", result.getName());
+        assertEquals("PHARMACY", result.getCategory());
         assertEquals("Test Description", result.getDescription());
         assertEquals(BigDecimal.valueOf(100.00), result.getPrice());
         assertEquals(BigDecimal.valueOf(90.00), result.getDiscountedPrice());
         assertEquals("SKU-123", result.getSku());
+        assertTrue(result.isFlashSale());
         assertEquals(50, result.getQuantity());
         assertEquals(EntityStatus.ACTIVE, result.getStatus());
 
@@ -143,6 +156,8 @@ class ProductServiceImplTest {
         
         assertEquals(businessId, capturedProduct.getBusinessId());
         assertEquals("Test Product", capturedProduct.getName());
+        assertEquals("PHARMACY", capturedProduct.getCategory());
+        assertTrue(capturedProduct.isFlashSale());
         assertEquals(EntityStatus.ACTIVE, capturedProduct.getStatus());
     }
 
@@ -201,6 +216,48 @@ class ProductServiceImplTest {
         verify(productSpecification).getProducts(
                 businessId,
                 "shirt",
+                BigDecimal.valueOf(10),
+                BigDecimal.valueOf(100),
+                true,
+                EntityStatus.ACTIVE);
+    }
+
+    @Test
+    void getProducts_WithPublicFlags_Success() {
+        Specification<Product> mockSpec = (root, query, criteriaBuilder) -> null;
+
+        when(productSpecification.getProducts(
+                businessId,
+                "shirt",
+                "PHARMACY",
+                true,
+                BigDecimal.valueOf(10),
+                BigDecimal.valueOf(100),
+                true,
+                EntityStatus.ACTIVE))
+                .thenReturn(mockSpec);
+
+        Page<Product> productPage = new PageImpl<>(List.of(new Product()));
+        when(productRepository.findAll(eq(mockSpec), any(Pageable.class))).thenReturn(productPage);
+
+        var result = productService.getProducts(
+                businessId,
+                1,
+                10,
+                "shirt",
+                "PHARMACY",
+                true,
+                BigDecimal.valueOf(10),
+                BigDecimal.valueOf(100),
+                true,
+                EntityStatus.ACTIVE);
+
+        assertNotNull(result);
+        verify(productSpecification).getProducts(
+                businessId,
+                "shirt",
+                "PHARMACY",
+                true,
                 BigDecimal.valueOf(10),
                 BigDecimal.valueOf(100),
                 true,

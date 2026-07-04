@@ -68,10 +68,12 @@ class AddProductTest {
         businessId = "biz-123";
         request = new AddProductRequest(
                 "Test Product",
+                "PHARMACY",
                 "Description",
                 BigDecimal.valueOf(100),
                 BigDecimal.valueOf(90),
                 "SKU123",
+                true,
                 10
         );
 
@@ -83,6 +85,8 @@ class AddProductTest {
         expectedProductDto = ProductDto.builder()
                 .name("Test Product")
                 .sku("SKU123")
+                .category("PHARMACY")
+                .flashSale(true)
                 .build();
 
         lenient().doNothing().when(tenantContextResolver).ensureBusinessOwnership(httpServletRequest, businessId);
