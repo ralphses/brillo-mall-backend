@@ -4,6 +4,7 @@ import com.clickstechnology.Brillo.Mall.application.dto.product.ProductDto;
 import com.clickstechnology.Brillo.Mall.application.dto.request.product.AddProductRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.request.product.UpdateProductRequest;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.CategoryCatalogService;
+import com.clickstechnology.Brillo.Mall.application.api.contracts.PublicSearchIndexSync;
 import com.clickstechnology.Brillo.Mall.application.enums.BusinessCategory;
 import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
@@ -46,6 +47,9 @@ class ProductServiceImplTest {
 
     @Mock
     private CategoryCatalogService categoryCatalogService;
+
+    @Mock
+    private PublicSearchIndexSync publicSearchIndexSync;
 
     @InjectMocks
     private ProductServiceImpl productService;
@@ -159,6 +163,7 @@ class ProductServiceImplTest {
         assertEquals("PHARMACY", capturedProduct.getCategory());
         assertTrue(capturedProduct.isFlashSale());
         assertEquals(EntityStatus.ACTIVE, capturedProduct.getStatus());
+        verify(publicSearchIndexSync).syncProduct(savedProduct);
     }
 
     @Mock
@@ -318,6 +323,7 @@ class ProductServiceImplTest {
         Product product = new Product();
         product.setStatus(EntityStatus.ACTIVE);
         when(productRepository.findByReference("prod-123")).thenReturn(Optional.of(product));
+        when(productRepository.save(any(Product.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         // When
         productService.deleteProduct("prod-123");
@@ -325,6 +331,7 @@ class ProductServiceImplTest {
         // Then
         verify(productRepository).save(productCaptor.capture());
         assertEquals(EntityStatus.DELETED, productCaptor.getValue().getStatus());
+        verify(publicSearchIndexSync).syncProduct(productCaptor.getValue());
     }
 
     @Test
@@ -332,11 +339,13 @@ class ProductServiceImplTest {
         // Given
         Product product = new Product();
         product.setName("Old Name");
+        product.setFlashSale(false);
         when(productRepository.findByReference("prod-123")).thenReturn(Optional.of(product));
         when(productRepository.save(any(Product.class))).thenReturn(product);
 
         UpdateProductRequest request = new UpdateProductRequest();
         request.setName("New Name");
+        request.setFlashSale(true);
 
         // When
         ProductDto result = productService.updateProduct("prod-123", request);
@@ -344,6 +353,8 @@ class ProductServiceImplTest {
         // Then
         assertNotNull(result);
         assertEquals("New Name", result.getName());
+        assertTrue(result.isFlashSale());
+        verify(publicSearchIndexSync).syncProduct(product);
     }
 
     @Test

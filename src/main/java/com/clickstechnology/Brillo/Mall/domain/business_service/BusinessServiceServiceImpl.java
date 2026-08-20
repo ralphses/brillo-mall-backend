@@ -2,6 +2,7 @@ package com.clickstechnology.Brillo.Mall.domain.business_service;
 
 import com.clickstechnology.Brillo.Mall.application.api.contracts.BusinessServiceService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.CategoryCatalogService;
+import com.clickstechnology.Brillo.Mall.application.api.contracts.PublicSearchIndexSync;
 import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessServiceDto;
 import com.clickstechnology.Brillo.Mall.application.dto.request.business.AddBusinessServiceRequest;
@@ -31,6 +32,7 @@ class BusinessServiceServiceImpl implements BusinessServiceService {
     private final BusinessServiceRepository businessServiceRepository;
     private final BusinessServiceSpecification businessServiceSpecification;
     private final CategoryCatalogService categoryCatalogService;
+    private final PublicSearchIndexSync publicSearchIndexSync;
 
     @Override
     public BusinessServiceDto addService(AddBusinessServiceRequest request, UserDto userDto) {
@@ -55,7 +57,9 @@ class BusinessServiceServiceImpl implements BusinessServiceService {
                 .requiresSchedule(request.getRequiresSchedule())
                 .build();
 
-        return businessServiceRepository.save(newService).dto();
+        newService = businessServiceRepository.save(newService);
+        publicSearchIndexSync.syncBusinessService(newService);
+        return newService.dto();
     }
 
     @Override
@@ -90,7 +94,9 @@ class BusinessServiceServiceImpl implements BusinessServiceService {
            serviceToUpdate.setRequiresSchedule(request.getRequiresSchedule());
        }
 
-        return businessServiceRepository.save(serviceToUpdate).dto();
+        serviceToUpdate = businessServiceRepository.save(serviceToUpdate);
+        publicSearchIndexSync.syncBusinessService(serviceToUpdate);
+        return serviceToUpdate.dto();
     }
 
     @Override
@@ -177,7 +183,8 @@ class BusinessServiceServiceImpl implements BusinessServiceService {
     public void deleteBusinessService(String businessServiceId) {
         BusinessService businessService = findByBusinessId(businessServiceId);
         businessService.setStatus(EntityStatus.DELETED);
-        businessServiceRepository.save(businessService);
+        businessService = businessServiceRepository.save(businessService);
+        publicSearchIndexSync.syncBusinessService(businessService);
     }
 
     private BusinessService findByBusinessId(String businessServiceId) {

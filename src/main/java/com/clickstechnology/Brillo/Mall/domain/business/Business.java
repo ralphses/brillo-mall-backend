@@ -46,7 +46,7 @@ import java.util.Set;
                 @UniqueConstraint(name = "uk_brillo_business_phone", columnNames = {"phone_number"})
         }
 )
-class Business extends JpaAuditor implements Serializable {
+public class Business extends JpaAuditor implements Serializable {
 
     // points to the reference of user
     @Column(name = "owner_id", nullable = false)

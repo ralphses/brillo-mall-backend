@@ -42,7 +42,7 @@ import java.math.BigDecimal;
                 )
         }
 )
-class BusinessService extends JpaAuditor implements Serializable {
+public class BusinessService extends JpaAuditor implements Serializable {
 
     @Column(name = "business_id", nullable = false)
     private String businessId;

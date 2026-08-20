@@ -14,6 +14,8 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -25,20 +27,27 @@ class CustomerServiceImpl implements CustomerService {
     private final CustomerRepository customerRepository;
 
     @Override
+    @Transactional
     public CustomerDto resolveCustomer(CustomerDto customer, String userId, Set<String> businessIds) {
-
-        Customer foundCustomer = customerRepository.findByPhone(customer.getCustomerPhoneNumber())
+        String phoneNumber = customer.getCustomerPhoneNumber();
+        Customer foundCustomer = customerRepository.findByUserId(userId)
+                .or(() -> phoneNumber == null || phoneNumber.isBlank()
+                        ? Optional.empty()
+                        : customerRepository.findByPhone(phoneNumber))
                 .orElseGet(() -> {
                     Customer newCustomer = new Customer();
                     newCustomer.setAddress(customer.getAddress());
                     newCustomer.setUserId(userId);
-                    newCustomer.setRelatedBusinessIds(businessIds);
+                    newCustomer.setRelatedBusinessIds(new HashSet<>(businessIds));
                     newCustomer.setName(customer.getCustomerName());
                     newCustomer.setEmail(customer.getCustomerEmail());
                     newCustomer.setPhone(customer.getCustomerPhoneNumber());
                     return customerRepository.save(newCustomer);
                 });
-        Set<String> relatedBusinessIds = foundCustomer.getRelatedBusinessIds();
+        if ((foundCustomer.getUserId() == null || foundCustomer.getUserId().isBlank()) && userId != null && !userId.isBlank()) {
+            foundCustomer.setUserId(userId);
+        }
+        Set<String> relatedBusinessIds = new HashSet<>(foundCustomer.getRelatedBusinessIds());
         relatedBusinessIds.addAll(businessIds);
         foundCustomer.setRelatedBusinessIds(relatedBusinessIds);
         customerRepository.save(foundCustomer);

@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-interface BusinessRepository extends JpaRepository<Business, Long>, JpaSpecificationExecutor<Business> {
+public interface BusinessRepository extends JpaRepository<Business, Long>, JpaSpecificationExecutor<Business> {
     boolean existsByName(String name);
     Optional<Business> findByName(String name);
     Optional<Business> findByReference(String businessId);

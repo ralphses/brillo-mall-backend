@@ -1,11 +1,13 @@
 package com.clickstechnology.Brillo.Mall.application.features.payments;
 
 import com.clickstechnology.Brillo.Mall.application.api.contracts.BookedBusinessServiceService;
+import com.clickstechnology.Brillo.Mall.application.api.contracts.CustomerService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.OrderService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.PaymentProcessor;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.PaymentProcessorResolver;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.PaymentService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.TenantContextResolver;
+import com.clickstechnology.Brillo.Mall.application.dto.CustomerDto;
 import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.dto.business.BookedServiceDto;
 import com.clickstechnology.Brillo.Mall.application.dto.order.OrderDto;
@@ -43,6 +45,7 @@ public class ManagePayments {
     private final PaymentService paymentService;
     private final TenantContextResolver tenantContextResolver;
     private final BookedBusinessServiceService bookedBusinessServiceService;
+    private final CustomerService customerService;
     private final OrderService orderService;
     private final PaymentProcessorResolver paymentProcessorResolver;
     private final NotificationEventPublisher notificationEventPublisher;
@@ -92,6 +95,7 @@ public class ManagePayments {
                 .build();
 
         PaymentResponse processorResponse = processor.initializePayment(paymentRequest);
+        log.info(":::Payment response: {}", processorResponse);
         paymentService.updateInitialization(reference, processorResponse.getAuthorizationUrl(), processorResponse.getAccessCode(), PaymentStatus.PROCESSING);
 
         return PaymentResponse.builder()
@@ -159,7 +163,7 @@ public class ManagePayments {
             return;
         }
 
-        if (paymentLog.getPaymentStatus() != targetStatus && !paymentLog.getPaymentStatus().canTransitionTo(targetStatus)) {
+        if (!paymentLog.getPaymentStatus().canTransitionTo(targetStatus)) {
             throw new BusinessException("Invalid payment status transition.");
         }
 
@@ -229,20 +233,20 @@ public class ManagePayments {
                 .build();
     }
 
-    private PaymentContext resolvePaymentContext(PaymentInitializationRequest initializationRequest, HttpServletRequest httpServletRequest, UserDto user) {
+    private PaymentContext resolvePaymentContext(
+            final PaymentInitializationRequest initializationRequest,
+            final HttpServletRequest httpServletRequest,
+            final UserDto user) {
         String businessId;
         BigDecimal amount;
         List<String> userRoles = user.getRoles();
 
         if (initializationRequest.getPayableType() == PayableType.ORDER) {
-            OrderDto order = orderService.findOrderDetailsForCustomer(initializationRequest.getPayableId(), user.getId());
+            CustomerDto customer = resolveCustomerForUser(user);
+            OrderDto order = orderService.findOrderDetailsForCustomer(initializationRequest.getPayableId(), customer.getId());
             businessId = order.getBusinessId();
-            if (initializationRequest.isBusiness() && userRoles.contains(UserRole.ADMIN.name())) {
-                tenantContextResolver.ensureBusinessOwnership(httpServletRequest, businessId);
-            } else {
-                orderService.ensureOrderBelongsToUser(order, user.getId());
-            }
             amount = order.getTotalAmount();
+
         } else if (initializationRequest.getPayableType() == PayableType.BOOKING) {
             BookedServiceDto booking = bookedBusinessServiceService.findById(initializationRequest.getPayableId());
             businessId = booking.getBusiness().getId();
@@ -261,6 +265,10 @@ public class ManagePayments {
         }
 
         return new PaymentContext(businessId, amount);
+    }
+
+    private CustomerDto resolveCustomerForUser(final UserDto user) {
+        return customerService.findByUserId(user.getId());
     }
 
     private record PaymentContext(String businessId, BigDecimal amount) {

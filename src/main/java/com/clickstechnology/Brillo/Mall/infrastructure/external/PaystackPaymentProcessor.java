@@ -15,6 +15,7 @@ import com.clickstechnology.Brillo.Mall.infrastructure.external.dtos.PaystackVer
 import com.clickstechnology.Brillo.Mall.infrastructure.external.dtos.PaystackWebhookEvent;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -31,6 +32,8 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+
+import static com.clickstechnology.Brillo.Mall.infrastructure.external.DefaultPaymentProcessorResolver.paymentProcessorMap;
 
 @Slf4j
 @Service("paystackPaymentProcessor")
@@ -166,5 +169,10 @@ public class PaystackPaymentProcessor implements PaymentProcessor {
         } catch (JsonProcessingException e) {
             log.error("Error processing webhook event", e);
         }
+    }
+
+    @PostConstruct
+    void load() {
+        paymentProcessorMap.put(PaymentProcessorNames.PAYSTACK, this);
     }
 }

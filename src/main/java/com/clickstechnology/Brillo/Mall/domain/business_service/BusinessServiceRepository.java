@@ -7,12 +7,15 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
-interface BusinessServiceRepository extends JpaRepository<BusinessService, Long>, JpaSpecificationExecutor<BusinessService> {
+public interface BusinessServiceRepository extends JpaRepository<BusinessService, Long>, JpaSpecificationExecutor<BusinessService> {
     boolean existsByBusinessIdAndSlug(String businessId, String slug);
 
     Page<BusinessService> findByBusinessId(String businessId, Pageable pageable);
+
+    List<BusinessService> findAllByBusinessId(String businessId);
 
     @Query("SELECT b FROM BusinessService b WHERE b.reference = :ref")
     Optional<BusinessService> findByServiceId(@Param("ref") String businessId);

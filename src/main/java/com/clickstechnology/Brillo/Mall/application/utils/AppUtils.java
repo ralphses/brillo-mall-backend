@@ -47,6 +47,25 @@ public final class AppUtils {
         }
     }
 
+    public static String normalizeWhatsappPhoneNumber(String phoneNumber) {
+        if (phoneNumber == null || phoneNumber.isBlank()) {
+            throw new BusinessException("WhatsApp phone number is required");
+        }
+
+        String digitsOnly = phoneNumber.replaceAll("[^\\d]", "");
+        if (digitsOnly.matches("^234\\d{10}$")) {
+            return digitsOnly;
+        }
+        if (digitsOnly.matches("^0\\d{10}$")) {
+            return "234" + digitsOnly.substring(1);
+        }
+        if (digitsOnly.matches("^\\d{10}$")) {
+            return "234" + digitsOnly;
+        }
+
+        throw new BusinessException("WhatsApp phone number must be in the format 234XXXXXXXXXX");
+    }
+
     public static BusinessCategory validateBusinessCategory(String businessCategory) {
         try {
             if (businessCategory == null || businessCategory.isBlank()) {

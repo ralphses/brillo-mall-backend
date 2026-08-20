@@ -4,15 +4,18 @@ import com.clickstechnology.Brillo.Mall.application.api.contracts.CategoryCatalo
 import com.clickstechnology.Brillo.Mall.application.api.contracts.PublicSearchService;
 import com.clickstechnology.Brillo.Mall.application.dto.category.CategoryDto;
 import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessServiceDto;
+import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessDto;
 import com.clickstechnology.Brillo.Mall.application.dto.response.ResponseWrapper;
 import com.clickstechnology.Brillo.Mall.application.dto.search.PublicSearchResultDto;
 import com.clickstechnology.Brillo.Mall.application.dto.response.PaginatedResponse;
 import com.clickstechnology.Brillo.Mall.application.dto.product.ProductDto;
 import com.clickstechnology.Brillo.Mall.application.features.business.ListPublicServices;
 import com.clickstechnology.Brillo.Mall.application.features.product.ListPublicProducts;
+import com.clickstechnology.Brillo.Mall.application.features.publicread.PublicRead;
 import com.clickstechnology.Brillo.Mall.application.enums.PricingType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -31,6 +34,7 @@ public class PublicController {
     private final PublicSearchService publicSearchService;
     private final ListPublicProducts listPublicProducts;
     private final ListPublicServices listPublicServices;
+    private final PublicRead publicRead;
 
     @GetMapping("product-categories")
     public ResponseWrapper<List<CategoryDto>> getProductCategories() {
@@ -43,6 +47,12 @@ public class PublicController {
             @RequestParam(value = "page", defaultValue = "1") final Integer page,
             @RequestParam(value = "pageSize", defaultValue = "20") final Integer pageSize) {
         return success(publicSearchService.search(q, page, pageSize));
+    }
+
+    @GetMapping("products/{productId}")
+    public ResponseWrapper<ProductDto> getProduct(
+            @PathVariable final String productId) {
+        return success(publicRead.getProduct(productId));
     }
 
     @GetMapping("products")
@@ -87,5 +97,17 @@ public class PublicController {
                 pricingType,
                 negotiable,
                 requiresSchedule));
+    }
+
+    @GetMapping("services/{serviceId}")
+    public ResponseWrapper<BusinessServiceDto> getService(
+            @PathVariable final String serviceId) {
+        return success(publicRead.getService(serviceId));
+    }
+
+    @GetMapping("businesses/{businessId}")
+    public ResponseWrapper<BusinessDto> getBusiness(
+            @PathVariable final String businessId) {
+        return success(publicRead.getBusiness(businessId));
     }
 }

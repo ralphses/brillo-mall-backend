@@ -169,7 +169,7 @@ public class ManageOrder {
 
         // Fetch user orders
         if (user.getRoles().contains(UserRole.USER.name())) {
-            return orderService.findAllByUserId(user.getId(), page, pageSize);
+            return orderService.findAllByUserId(user.getUsername(), page, pageSize);
         }
 
         // Default case if no role matches
@@ -210,7 +210,7 @@ public class ManageOrder {
 
         OrderDto order = orderService.findOrderById(orderId);
 
-        if (!order.getUserId().equals(user.getId())) {
+        if (!order.getUserId().equals(user.getUsername())) {
             throw new BusinessException("You are not allowed to cancel this order.");
         }
 

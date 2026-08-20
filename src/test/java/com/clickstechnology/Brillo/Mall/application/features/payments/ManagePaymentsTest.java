@@ -1,11 +1,13 @@
 package com.clickstechnology.Brillo.Mall.application.features.payments;
 
 import com.clickstechnology.Brillo.Mall.application.api.contracts.BookedBusinessServiceService;
+import com.clickstechnology.Brillo.Mall.application.api.contracts.CustomerService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.OrderService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.PaymentProcessor;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.PaymentProcessorResolver;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.PaymentService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.TenantContextResolver;
+import com.clickstechnology.Brillo.Mall.application.dto.CustomerDto;
 import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.dto.business.BookedServiceDto;
 import com.clickstechnology.Brillo.Mall.application.dto.order.OrderDto;
@@ -19,6 +21,7 @@ import com.clickstechnology.Brillo.Mall.application.enums.OrderStatus;
 import com.clickstechnology.Brillo.Mall.application.enums.PayableType;
 import com.clickstechnology.Brillo.Mall.application.enums.PaymentStatus;
 import com.clickstechnology.Brillo.Mall.application.enums.UserRole;
+import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,6 +38,7 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -54,6 +58,9 @@ class ManagePaymentsTest {
 
     @Mock
     private BookedBusinessServiceService bookedBusinessServiceService;
+
+    @Mock
+    private CustomerService customerService;
 
     @Mock
     private OrderService orderService;
@@ -79,8 +86,13 @@ class ManagePaymentsTest {
     void initializePayment_shouldCreateLogAndReturnGatewayDetails() {
         UserDto user = UserDto.builder()
                 .id("user-1")
+                .username("user-1")
                 .email("customer@example.com")
                 .roles(List.of(UserRole.CUSTOMER.name()))
+                .build();
+        CustomerDto customer = CustomerDto.builder()
+                .id("customer-1")
+                .userId("user-1")
                 .build();
         OrderDto order = OrderDto.builder()
                 .id("order-1")
@@ -89,7 +101,8 @@ class ManagePaymentsTest {
                 .build();
 
         when(tenantContextResolver.currentUser(httpServletRequest)).thenReturn(user);
-        when(orderService.findOrderDetailsForCustomer("order-1", "user-1")).thenReturn(order);
+        when(customerService.findByUserId("user-1")).thenReturn(customer);
+        when(orderService.findOrderDetailsForCustomer("order-1", "customer-1")).thenReturn(order);
         when(paymentService.findByPayableTypeAndPayableId(PayableType.ORDER, "order-1")).thenReturn(Optional.empty());
         when(paymentService.findByPaymentReference(anyString())).thenAnswer(invocation -> {
             String reference = invocation.getArgument(0);
@@ -135,6 +148,52 @@ class ManagePaymentsTest {
 
         assertThat(response.getReference()).isEqualTo(requestCaptor.getValue().getReference());
         assertThat(response.getPaymentStatus()).isEqualTo(PaymentStatus.PROCESSING);
+    }
+
+    @Test
+    void initializePayment_shouldFail_whenCustomerRecordIsMissing() {
+        UserDto user = UserDto.builder()
+                .id("user-1")
+                .username("user-1")
+                .email("customer@example.com")
+                .roles(List.of(UserRole.CUSTOMER.name()))
+                .build();
+
+        when(tenantContextResolver.currentUser(httpServletRequest)).thenReturn(user);
+        when(customerService.findByUserId("user-1")).thenThrow(new BusinessException("Customer not found"));
+
+        assertThatThrownBy(() -> managePayments.initializePayment(
+                new PaymentInitializationRequest(PayableType.ORDER, "order-1", false),
+                httpServletRequest
+        ))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("Customer not found");
+    }
+
+    @Test
+    void initializePayment_shouldFail_whenOrderDoesNotBelongToCustomerRecord() {
+        UserDto user = UserDto.builder()
+                .id("user-1")
+                .username("user-1")
+                .email("customer@example.com")
+                .roles(List.of(UserRole.CUSTOMER.name()))
+                .build();
+        CustomerDto customer = CustomerDto.builder()
+                .id("customer-1")
+                .userId("user-1")
+                .build();
+
+        when(tenantContextResolver.currentUser(httpServletRequest)).thenReturn(user);
+        when(customerService.findByUserId("user-1")).thenReturn(customer);
+        when(orderService.findOrderDetailsForCustomer("order-1", "customer-1"))
+                .thenThrow(new BusinessException("Order not found or does not belong to the customer"));
+
+        assertThatThrownBy(() -> managePayments.initializePayment(
+                new PaymentInitializationRequest(PayableType.ORDER, "order-1", false),
+                httpServletRequest
+        ))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("Order not found or does not belong to the customer");
     }
 
     @Test

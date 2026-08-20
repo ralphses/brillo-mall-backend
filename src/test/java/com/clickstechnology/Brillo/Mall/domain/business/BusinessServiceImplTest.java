@@ -9,6 +9,7 @@ import com.clickstechnology.Brillo.Mall.application.dto.response.PaginatedRespon
 import com.clickstechnology.Brillo.Mall.application.enums.BusinessCategory;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
 import com.clickstechnology.Brillo.Mall.application.exception.UnauthorizedUserException;
+import com.clickstechnology.Brillo.Mall.application.api.contracts.PublicSearchIndexSync;
 import com.clickstechnology.Brillo.Mall.infrastructure.caching.CacheNames;
 import com.clickstechnology.Brillo.Mall.infrastructure.caching.CacheUtil;
 import org.junit.jupiter.api.BeforeEach;
@@ -42,6 +43,9 @@ class BusinessServiceImplTest {
 
     @Mock
     private CacheUtil cacheUtil;
+
+    @Mock
+    private PublicSearchIndexSync publicSearchIndexSync;
 
     @InjectMocks
     private BusinessServiceImpl businessService;
@@ -123,6 +127,7 @@ class BusinessServiceImplTest {
         OnboardBusinessRequest request = OnboardBusinessRequest.builder()
                 .businessName("New Biz")
                 .build();
+        when(businessRepository.save(any(Business.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         // When
         businessService.createNew(request, userDto, "logo.url", BusinessCategory.PRODUCTS);
@@ -135,6 +140,7 @@ class BusinessServiceImplTest {
         assertThat(savedBusiness.getName()).isEqualTo("New Biz");
         assertThat(savedBusiness.getOwnerId()).isEqualTo("user1");
         assertThat(savedBusiness.getSlug()).isEqualTo("new-biz");
+        verify(publicSearchIndexSync).syncBusiness(savedBusiness);
     }
 
     @Nested
@@ -178,6 +184,7 @@ class BusinessServiceImplTest {
         UpdateBusinessRequest request = new UpdateBusinessRequest();
         request.setBusinessEmail("new@email.com");
         when(cacheUtil.get(anyString(), eq(Business.class))).thenReturn(business);
+        when(businessRepository.save(any(Business.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         // When
         businessService.updateBusiness("biz1", request);
@@ -185,6 +192,7 @@ class BusinessServiceImplTest {
         // Then
         verify(businessRepository).save(business);
         assertThat(business.getEmail()).isEqualTo("new@email.com");
+        verify(publicSearchIndexSync).syncBusiness(business);
     }
 
     @Test
@@ -192,6 +200,7 @@ class BusinessServiceImplTest {
     void activateStorefront_shouldEnableStorefront() {
         // Given
         when(cacheUtil.get(anyString(), eq(Business.class))).thenReturn(business);
+        when(businessRepository.save(any(Business.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         // When
         businessService.activateStorefront("biz1");
@@ -200,6 +209,7 @@ class BusinessServiceImplTest {
         verify(businessRepository).save(business);
         assertThat(business.getStorefrontActive()).isTrue();
         assertThat(business.getSetupCompleted()).isTrue();
+        verify(publicSearchIndexSync).syncBusiness(business);
     }
 
     @Test

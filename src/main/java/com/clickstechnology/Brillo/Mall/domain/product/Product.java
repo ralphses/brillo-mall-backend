@@ -37,7 +37,7 @@ import java.math.BigDecimal;
                 @jakarta.persistence.UniqueConstraint(name = "uk_brillo_product_business_name", columnNames = {"business_id", "name"})
         }
 )
-class Product extends JpaAuditor implements Serializable {
+public class Product extends JpaAuditor implements Serializable {
 
     @Column(name = "business_id", length = 100, nullable = false)
     private String businessId;

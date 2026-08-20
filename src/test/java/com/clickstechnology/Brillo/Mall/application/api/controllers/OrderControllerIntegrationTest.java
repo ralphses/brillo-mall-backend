@@ -3,6 +3,7 @@ package com.clickstechnology.Brillo.Mall.application.api.controllers;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.BusinessService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.CustomerService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.ProductService;
+import com.clickstechnology.Brillo.Mall.application.api.contracts.OrderService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.UserService;
 import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessDto;
 import com.clickstechnology.Brillo.Mall.application.dto.CustomerDto;
@@ -69,6 +70,9 @@ class OrderControllerIntegrationTest {
     @Autowired
     private CustomerService customerService;
 
+    @Autowired
+    private OrderService orderService;
+
     @MockitoBean
     private CacheUtil cacheUtil;
 
@@ -114,7 +118,7 @@ class OrderControllerIntegrationTest {
         customerDto.setCustomerEmail(testUser.getEmail());
 
 
-        testCustomer = customerService.resolveCustomer(customerDto, testUser.getId(), new HashSet<>(Set.of(business.getId())));
+        testCustomer = customerService.resolveCustomer(customerDto, testUser.getUsername(), new HashSet<>(Set.of(business.getId())));
     }
 
     @Test
@@ -405,13 +409,8 @@ class OrderControllerIntegrationTest {
             placeOrderRequest.setItems(List.of(new OrderItemRequest(product.getId(), 1, product.getPrice())));
             placeOrderRequest.setPaymentMethod(PaymentMethod.PAY_ON_DELIVERY);
 
-            String responseString = mockMvc.perform(post("/api/v1/orders")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(placeOrderRequest)))
-                    .andExpect(status().isOk())
-                    .andReturn().getResponse().getContentAsString();
-
-            orderId = objectMapper.readTree(responseString).at("/data/order/id").asText();
+            String newOrderId = orderService.generateOrderId();
+            orderId = orderService.createNewOrder(newOrderId, placeOrderRequest, testUser.getUsername(), businessService.findByBusinessSlug("test-mart").getId()).getId();
         }
 
         @Test

@@ -35,11 +35,14 @@ public class OnboardUserBusiness {
     private final MediaAssetService mediaAssetService;
 
     @LoggableRequest
-    public OnboardBusinessResponse execute(final OnboardBusinessRequest request, final HttpServletRequest httpServletRequest) {
-        UserDto user = tenantContextResolver.currentUser(httpServletRequest);
+    public OnboardBusinessResponse execute(
+            final OnboardBusinessRequest request,
+            final HttpServletRequest httpServletRequest) {
+
+        final UserDto user = tenantContextResolver.currentUser(httpServletRequest);
 
         // Validate category
-        BusinessCategory businessCategory = AppUtils.validateBusinessCategory(request.getBusinessCategory());
+        final BusinessCategory businessCategory = AppUtils.validateBusinessCategory(request.getBusinessCategory());
 
         // validate business name
         businessService.ensureBusinessNameDoesNotExist(request.getBusinessName());

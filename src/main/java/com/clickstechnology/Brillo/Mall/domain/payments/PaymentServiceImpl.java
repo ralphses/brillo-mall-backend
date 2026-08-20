@@ -39,7 +39,7 @@ class PaymentServiceImpl implements PaymentService {
     @Transactional
     @Override
     public void updateInitialization(String paymentLogId, String authorizationUrl, String accessCode, PaymentStatus status) {
-        PaymentLog existingPaymentLog = findByReference(paymentLogId);
+        PaymentLog existingPaymentLog = findByPaymentReferenceInternal(paymentLogId);
         existingPaymentLog.setAuthorizationUrl(authorizationUrl);
         existingPaymentLog.setAccessCode(accessCode);
         existingPaymentLog.setPaymentStatus(status);
@@ -52,7 +52,7 @@ class PaymentServiceImpl implements PaymentService {
     @Transactional
     @Override
     public void updateStatus(String paymentLogId, PaymentStatus status) {
-        PaymentLog existingPaymentLog = findByReference(paymentLogId);
+        PaymentLog existingPaymentLog = findByPaymentReferenceInternal(paymentLogId);
         applyStatusTransition(existingPaymentLog, status);
         paymentLogRepository.save(existingPaymentLog);
     }
@@ -98,7 +98,7 @@ class PaymentServiceImpl implements PaymentService {
 
     @Override
     public PaymentLogDto findByPaymentReference(String reference) {
-        return findByReference(reference)
+        return findByPaymentReferenceInternal(reference)
                 .dto();
     }
 

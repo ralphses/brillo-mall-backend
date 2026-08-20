@@ -305,7 +305,7 @@ public class NotificationEventPublisher {
                 messageType,
                 status == ServiceRequestStatus.AGREED ? "service_request_agreed" : "service_request_update",
                 true,
-                metadata("status", status != null ? status.name() : null)
+                metadata("status", status.name())
         );
         publishBusiness(
                 "Service request update",
@@ -322,7 +322,7 @@ public class NotificationEventPublisher {
                 WhatsappMessageType.TEXT,
                 "service_request_update_business",
                 true,
-                metadata("status", status != null ? status.name() : null)
+                metadata("status", status.name())
         );
     }
 

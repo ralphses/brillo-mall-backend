@@ -1,6 +1,7 @@
 package com.clickstechnology.Brillo.Mall.domain.business;
 
 import com.clickstechnology.Brillo.Mall.application.api.contracts.BusinessService;
+import com.clickstechnology.Brillo.Mall.application.api.contracts.PublicSearchIndexSync;
 import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessDto;
 import com.clickstechnology.Brillo.Mall.application.dto.CustomerDto;
 import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
@@ -34,6 +35,7 @@ class BusinessServiceImpl implements BusinessService {
     private final BusinessRepository businessRepository;
     private final BusinessSpecification businessSpecification;
     private final CacheUtil cacheUtil;
+    private final PublicSearchIndexSync publicSearchIndexSync;
 
     @Override
     public void ensureBusinessNameDoesNotExist(String businessName) {
@@ -65,7 +67,8 @@ class BusinessServiceImpl implements BusinessService {
                 .storefrontName(request.getBusinessName())
                 .whatsappType(WhatsappType.SHARED)
                 .build();
-        businessRepository.save(business);
+        business = businessRepository.save(business);
+        publicSearchIndexSync.syncBusiness(business);
     }
 
     @Override
@@ -108,7 +111,8 @@ class BusinessServiceImpl implements BusinessService {
     public void addLogo(String businessId, String logoUrl) {
         Business business = getBusinessByReference(businessId);
         business.setLogoUrl(logoUrl);
-        businessRepository.save(business);
+        business = businessRepository.save(business);
+        publicSearchIndexSync.syncBusiness(business);
     }
 
     @Override
@@ -156,7 +160,8 @@ class BusinessServiceImpl implements BusinessService {
             }
         }
 
-        businessRepository.save(business);
+        business = businessRepository.save(business);
+        publicSearchIndexSync.syncBusiness(business);
     }
 
     @Override
@@ -164,7 +169,8 @@ class BusinessServiceImpl implements BusinessService {
         Business business = getBusinessByReference(businessId);
         business.setStorefrontActive(true);
         business.setSetupCompleted(true);
-        businessRepository.save(business);
+        business = businessRepository.save(business);
+        publicSearchIndexSync.syncBusiness(business);
     }
 
     @Override

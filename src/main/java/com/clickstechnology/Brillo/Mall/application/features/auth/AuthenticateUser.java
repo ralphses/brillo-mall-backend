@@ -6,6 +6,7 @@ import com.clickstechnology.Brillo.Mall.application.dto.request.LoginRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.response.DashboardData;
 import com.clickstechnology.Brillo.Mall.application.dto.response.LoginResponse;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
+import com.clickstechnology.Brillo.Mall.application.exception.UnauthorizedUserException;
 import com.clickstechnology.Brillo.Mall.infrastructure.authentication.JwtProvider;
 import com.clickstechnology.Brillo.Mall.infrastructure.config.AppPropertiesConfig;
 import com.clickstechnology.Brillo.Mall.infrastructure.logging.LoggableRequest;
@@ -14,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -57,22 +59,24 @@ public class AuthenticateUser {
                     .map(GrantedAuthority::getAuthority)
                     .toList();
 
-            Instant now = Instant.now();
-            long expiryMinutes = appPropertiesConfig.getJwt().getExpiryTime();
-            Instant expiresAt = now.plus(expiryMinutes, ChronoUnit.MINUTES);
+            final Instant now = Instant.now();
+            final long expiryMinutes = appPropertiesConfig.getJwt().getExpiryTime();
+            final Instant expiresAt = now.plus(expiryMinutes, ChronoUnit.MINUTES);
 
-            JwtEncoderParameters jwtEncoderParameters
+            final JwtEncoderParameters jwtEncoderParameters
                     = authenticationUtil.generateAccessToken(username, roles, now, expiresAt);
 
-            String token = jwtEncoder.encode(jwtEncoderParameters).getTokenValue();
+            final String token = jwtEncoder.encode(jwtEncoderParameters).getTokenValue();
 
-            long expiresIn = Duration.between(now, expiresAt).getSeconds();
+            final long expiresIn = Duration.between(now, expiresAt).getSeconds();
 
             // Fetch dashboard data
-            DashboardData dashboardData = dashboardService.getDashboardData(authentication);
+            final DashboardData dashboardData = dashboardService.getDashboardData(authentication);
             return new LoginResponse(token, expiresIn, dashboardData);
         } catch (BadCredentialsException e) {
             throw new BusinessException("Invalid username or password");
+        } catch (DisabledException e) {
+            throw new UnauthorizedUserException();
         }
     }
 

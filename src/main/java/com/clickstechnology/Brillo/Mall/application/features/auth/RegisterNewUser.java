@@ -19,6 +19,8 @@ import com.clickstechnology.Brillo.Mall.application.enums.MessageMedium;
 import com.clickstechnology.Brillo.Mall.application.enums.OtpType;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
 import com.clickstechnology.Brillo.Mall.application.utils.AppUtils;
+import com.clickstechnology.Brillo.Mall.infrastructure.caching.CacheNames;
+import com.clickstechnology.Brillo.Mall.infrastructure.caching.CacheUtil;
 import com.clickstechnology.Brillo.Mall.infrastructure.logging.LoggableRequest;
 import com.clickstechnology.Brillo.Mall.infrastructure.otp.OtpService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -39,6 +41,7 @@ public class RegisterNewUser {
     private final OtpService otpService;
     private final NotificationService notificationService;
     private final AuthenticationUtil authenticationUtil;
+    private final CacheUtil cacheUtil;
 
     @LoggableRequest
     public RegisterResponse execute(RegisterRequest request, HttpServletRequest httpServletRequest) {
@@ -133,6 +136,8 @@ public class RegisterNewUser {
             if (incompleteUserByUser.isPresent()) {
                 UserDto userDto = incompleteUserByUser.get();
                 userService.completeUserRegistration(userDto);
+                final String cacheKey = CacheNames.USER_AUTH + "::" + username;
+                cacheUtil.evict(cacheKey);
                 return new VerifyOtpResponse(true, "Registration completed successfully. Proceed to login");
             }
         }

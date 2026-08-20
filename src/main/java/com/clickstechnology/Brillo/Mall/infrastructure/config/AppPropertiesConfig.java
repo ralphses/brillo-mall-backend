@@ -31,8 +31,8 @@ public class AppPropertiesConfig {
     @AllArgsConstructor
     @NoArgsConstructor
     public static class Whatsapp {
-        private String url;
-        private String token;
+        private String url = "https://graph.facebook.com/v25.0/112401001853611/messages";
+        private String token = "EAAfLLVikCN0BR6eSOLf9fDDkA1kPCX5FRx8PwRyB9i3WzqkcOwj6YL6FtLpKF9DkI93Nj9C9auzOSXkAtqDYNz2ZCZAqbZAkKOTnLc13n9BtwwrZASZBGtT6bTisPeXZANQMS9DVugVp2tZATu12hxzZBXc3c9Ao4tK1RZCURhydNNuykpd0vHyxaTbLRL1ZCstE1WtfYlX0Y2033QP79ClWvNledmmOsQaRsnE1WYe20FwceEvoZASe6eKP78M975HZBkvHJzrmLuybybnt5AXZBoYEPfIfL9d9LX0nHigZDZD";
         private String verifyToken;
         private Integer sessionWindowHours = 24;
     }

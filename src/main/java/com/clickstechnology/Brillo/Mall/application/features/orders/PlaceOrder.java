@@ -5,9 +5,7 @@ import com.clickstechnology.Brillo.Mall.application.api.contracts.BusinessServic
 import com.clickstechnology.Brillo.Mall.application.api.contracts.CustomerService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.OrderService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.ProductService;
-import com.clickstechnology.Brillo.Mall.application.api.contracts.UserService;
 import com.clickstechnology.Brillo.Mall.application.dto.CustomerDto;
-import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.dto.order.OrderDto;
 import com.clickstechnology.Brillo.Mall.application.dto.order.OrderItemDto;
 import com.clickstechnology.Brillo.Mall.application.dto.order.OrderPlacedResponse;
@@ -15,7 +13,6 @@ import com.clickstechnology.Brillo.Mall.application.dto.product.ProductDto;
 import com.clickstechnology.Brillo.Mall.application.dto.order.OrderItemRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.order.PlaceOrderRequest;
 import com.clickstechnology.Brillo.Mall.application.exception.BusinessException;
-import com.clickstechnology.Brillo.Mall.application.exception.ResourceNotFoundException;
 import com.clickstechnology.Brillo.Mall.infrastructure.logging.LoggableRequest;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +22,6 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -39,7 +35,6 @@ public class PlaceOrder {
     private final ProductService productService;
     private final CustomerService customerService;
     private final AuthenticationUtil authenticationUtil;
-    private final UserService userService;
 
     @LoggableRequest
     public OrderPlacedResponse execute(PlaceOrderRequest request, HttpServletRequest httpServletRequest) {
@@ -47,8 +42,10 @@ public class PlaceOrder {
         String userId = resolveUserId(httpServletRequest, request.getCustomer());
 
         List<ProductDto> products = loadProducts(request);
+        Set<String> businessIds = products.stream()
+                .map(ProductDto::getBusinessId)
+                .collect(Collectors.toSet());
         String businessId = validateProductsAndGetBusinessId(products);
-        Set<String> businessIds = Set.of(businessId);
 
         CustomerDto customer = resolveCustomer(request, userId, businessIds);
 
@@ -70,17 +67,7 @@ public class PlaceOrder {
     }
 
     private String resolveUserId(final HttpServletRequest httpServletRequest, final CustomerDto customer) {
-        String authenticatedUsername = authenticationUtil.getAuthenticatedUsername(httpServletRequest);
-        UserDto userDto;
-        try {
-            userDto = userService.findByUsername(authenticatedUsername);
-        } catch (ResourceNotFoundException ex) {
-            log.debug("Authenticated user {} not found; falling back to customer phone number", authenticatedUsername);
-            userDto = null;
-        }
-
-        return Optional.ofNullable(userDto).map(UserDto::getId)
-                .orElse(customer.getCustomerPhoneNumber());
+        return authenticationUtil.getAuthenticatedUsername(httpServletRequest);
     }
 
     private void enrichOrderDto(final OrderDto order) {

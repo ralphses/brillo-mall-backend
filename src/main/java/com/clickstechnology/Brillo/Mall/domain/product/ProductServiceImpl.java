@@ -2,6 +2,7 @@ package com.clickstechnology.Brillo.Mall.domain.product;
 
 import com.clickstechnology.Brillo.Mall.application.api.contracts.ProductService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.CategoryCatalogService;
+import com.clickstechnology.Brillo.Mall.application.api.contracts.PublicSearchIndexSync;
 import com.clickstechnology.Brillo.Mall.application.dto.product.ProductDto;
 import com.clickstechnology.Brillo.Mall.application.dto.request.product.AddProductRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.request.product.UpdateProductRequest;
@@ -32,6 +33,7 @@ class ProductServiceImpl implements ProductService {
     private final ProductRepository productRepository;
     private final ProductSpecification productSpecification;
     private final CategoryCatalogService categoryCatalogService;
+    private final PublicSearchIndexSync publicSearchIndexSync;
 
     @Override
     public void ensureProductNameDoesNotExist(String businessId, String name) {
@@ -67,6 +69,7 @@ class ProductServiceImpl implements ProductService {
                 .build();
         
         product = productRepository.save(product);
+        publicSearchIndexSync.syncProduct(product);
         return product.dto();
     }
 
@@ -193,7 +196,8 @@ class ProductServiceImpl implements ProductService {
     public void deleteProduct(String productId) {
         Product product = getByReference(productId);
         product.setStatus(EntityStatus.DELETED);
-        productRepository.save(product);
+        product = productRepository.save(product);
+        publicSearchIndexSync.syncProduct(product);
     }
 
     @Override
@@ -233,7 +237,9 @@ class ProductServiceImpl implements ProductService {
         }
 
 
-        return productRepository.save(product).dto();
+        product = productRepository.save(product);
+        publicSearchIndexSync.syncProduct(product);
+        return product.dto();
     }
 
     @Override

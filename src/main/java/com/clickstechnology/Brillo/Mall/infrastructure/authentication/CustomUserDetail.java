@@ -31,6 +31,7 @@ record CustomUserDetail(AuthUser user, List<String> roles) implements UserDetail
 
     @Override
     public boolean isEnabled() {
+        System.out.println("user = " + user.getStatus());
         return EntityStatus.ACTIVE.equals(user.getStatus());
     }
 }

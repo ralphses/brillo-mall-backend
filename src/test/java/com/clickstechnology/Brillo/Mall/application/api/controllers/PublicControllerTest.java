@@ -3,6 +3,7 @@ package com.clickstechnology.Brillo.Mall.application.api.controllers;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.CategoryCatalogService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.PublicSearchService;
 import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessServiceDto;
+import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessDto;
 import com.clickstechnology.Brillo.Mall.application.dto.category.CategoryDto;
 import com.clickstechnology.Brillo.Mall.application.dto.product.ProductDto;
 import com.clickstechnology.Brillo.Mall.application.dto.response.PaginatedResponse;
@@ -12,6 +13,7 @@ import com.clickstechnology.Brillo.Mall.application.enums.PublicSearchResultType
 import com.clickstechnology.Brillo.Mall.application.enums.PricingType;
 import com.clickstechnology.Brillo.Mall.application.features.business.ListPublicServices;
 import com.clickstechnology.Brillo.Mall.application.features.product.ListPublicProducts;
+import com.clickstechnology.Brillo.Mall.application.features.publicread.PublicRead;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -45,6 +47,9 @@ class PublicControllerTest {
 
     @MockitoBean
     private ListPublicServices listPublicServices;
+
+    @MockitoBean
+    private PublicRead publicRead;
 
     @Test
     void getProductCategories_shouldReturnPublicCatalogWithoutJwt() throws Exception {
@@ -99,6 +104,53 @@ class PublicControllerTest {
                 .andExpect(jsonPath("$.data.items[0].name").value("Herbal Soap"))
                 .andExpect(jsonPath("$.data.items[1].type").value("BUSINESS"))
                 .andExpect(jsonPath("$.data.items[1].name").value("Herbal Store"));
+    }
+
+    @Test
+    void getProduct_shouldReturnSinglePublicProductWithoutJwt() throws Exception {
+        when(publicRead.getProduct("prod-1")).thenReturn(ProductDto.builder()
+                .id("prod-1")
+                .businessId("biz-1")
+                .name("Flash Product")
+                .flashSale(true)
+                .build());
+
+        mockMvc.perform(get("/api/v1/public/products/prod-1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.data.id").value("prod-1"))
+                .andExpect(jsonPath("$.data.flashSale").value(true));
+    }
+
+    @Test
+    void getService_shouldReturnSinglePublicServiceWithoutJwt() throws Exception {
+        when(publicRead.getService("service-1")).thenReturn(BusinessServiceDto.builder()
+                .id("service-1")
+                .businessId("biz-1")
+                .name("Home Delivery")
+                .slug("home-delivery")
+                .build());
+
+        mockMvc.perform(get("/api/v1/public/services/service-1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.data.id").value("service-1"))
+                .andExpect(jsonPath("$.data.slug").value("home-delivery"));
+    }
+
+    @Test
+    void getBusiness_shouldReturnSinglePublicBusinessWithoutJwt() throws Exception {
+        when(publicRead.getBusiness("biz-1")).thenReturn(BusinessDto.builder()
+                .id("biz-1")
+                .name("Herbal Store")
+                .slug("herbal-store")
+                .build());
+
+        mockMvc.perform(get("/api/v1/public/businesses/biz-1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.data.id").value("biz-1"))
+                .andExpect(jsonPath("$.data.slug").value("herbal-store"));
     }
 
     @Test

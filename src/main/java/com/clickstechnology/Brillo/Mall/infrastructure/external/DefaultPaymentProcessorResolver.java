@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.util.HashMap;
 import java.util.Map;
 
 @Slf4j
@@ -15,7 +16,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 class DefaultPaymentProcessorResolver implements PaymentProcessorResolver {
 
-    private static Map<PaymentProcessorNames, PaymentProcessor> paymentProcessorMap;
+    public static final Map<PaymentProcessorNames, PaymentProcessor> paymentProcessorMap = new HashMap<>();
 
     @Override
     public PaymentProcessor resolve(String processorName) {
