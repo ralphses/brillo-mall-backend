@@ -22,6 +22,8 @@ public interface BusinessService {
 
     BusinessDto findByBusinessSlug(String businessSlug);
 
+    Optional<BusinessDto> findOptionalByBusinessSlug(String businessSlug);
+
     boolean existsByBusinessId(String businessId);
 
     void addLogo(String businessId, String logoUrl);

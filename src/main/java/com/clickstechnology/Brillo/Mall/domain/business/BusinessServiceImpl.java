@@ -90,6 +90,24 @@ class BusinessServiceImpl implements BusinessService {
         return business.dto();
     }
 
+    @Override
+    public Optional<BusinessDto> findOptionalByBusinessSlug(String businessSlug) {
+        if (businessSlug == null || businessSlug.isBlank()) {
+            return Optional.empty();
+        }
+
+        Business business = cacheUtil.get(CacheNames.BUSINESS_SLUG + businessSlug, Business.class);
+        if (business != null) {
+            return Optional.of(business.dto());
+        }
+
+        return businessRepository.findBySlug(businessSlug)
+                .map(found -> {
+                    cacheUtil.set(CacheNames.BUSINESS_SLUG + businessSlug, found, Duration.ofMinutes(5));
+                    return found.dto();
+                });
+    }
+
     private Business getBusinessByReference(String businessId) {
         Business business = cacheUtil.get(CacheNames.BUSINESS_REFERENCE + businessId, Business.class);
 

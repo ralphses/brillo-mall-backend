@@ -33,7 +33,7 @@ import java.util.List;
 )
 public class Conversation extends JpaAuditor implements Serializable {
 
-    @Column(name = "business_id", nullable = false)
+    @Column(name = "business_id")
     private String businessId;
 
     @Column(name = "customer_id", nullable = false)
@@ -44,6 +44,19 @@ public class Conversation extends JpaAuditor implements Serializable {
 
     @Column(name = "whatsapp_business_number", length = 30)
     private String whatsappBusinessNumber;
+
+    @Column(name = "entry_business_id", length = 36)
+    private String entryBusinessId;
+
+    @Column(name = "active_business_id", length = 36)
+    private String activeBusinessId;
+
+    @Column(name = "entry_slug", length = 150)
+    private String entrySlug;
+
+    @Builder.Default
+    @Column(name = "marketplace_mode", nullable = false)
+    private Boolean marketplaceMode = Boolean.FALSE;
 
     @Builder.Default
     @Enumerated(EnumType.STRING)

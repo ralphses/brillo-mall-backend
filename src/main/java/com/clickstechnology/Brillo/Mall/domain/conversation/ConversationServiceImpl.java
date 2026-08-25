@@ -38,6 +38,10 @@ public class ConversationServiceImpl implements ConversationService {
         conversation.setBusinessId(request.getBusinessId());
         conversation.setCustomerId(request.getCustomerId());
         conversation.setWhatsappBusinessNumber(request.getWhatsappBusinessNumber());
+        conversation.setEntryBusinessId(request.getEntryBusinessId());
+        conversation.setActiveBusinessId(request.getActiveBusinessId());
+        conversation.setEntrySlug(request.getEntrySlug());
+        conversation.setMarketplaceMode(Boolean.TRUE.equals(request.getMarketplaceMode()));
         if (request.getStatus() != null) {
             conversation.setStatus(request.getStatus());
         }
@@ -87,6 +91,10 @@ public class ConversationServiceImpl implements ConversationService {
                 .customerId(conversation.getCustomerId())
                 .whatsappConversationId(conversation.getWhatsappConversationId())
                 .whatsappBusinessNumber(conversation.getWhatsappBusinessNumber())
+                .entryBusinessId(conversation.getEntryBusinessId())
+                .activeBusinessId(conversation.getActiveBusinessId())
+                .entrySlug(conversation.getEntrySlug())
+                .marketplaceMode(conversation.getMarketplaceMode())
                 .status(conversation.getStatus())
                 .lastIntent(conversation.getLastIntent())
                 .activeTaskKey(conversation.getActiveTaskKey())

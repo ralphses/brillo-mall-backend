@@ -23,6 +23,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -53,7 +57,9 @@ public class OnboardUserBusiness {
         // Add admin role to user
         userService.addRoleToUser(user.getUsername(), UserRole.ADMIN);
 
-        return new OnboardBusinessResponse("Your business has been created and is currently active.");
+        BusinessDto business = enrichBusinessLinks(
+                businessService.findByBusinessSlug(AppUtils.generateSlug(request.getBusinessName())));
+        return buildOnboardResponse("Your business has been created and is currently active.", business);
     }
 
     @LoggableRequest
@@ -66,7 +72,8 @@ public class OnboardUserBusiness {
         String logoUrl = mediaAssetService.uploadFile(FileType.LOGO, logoFile, businessId);
         businessService.addLogo(businessId, logoUrl);
 
-        return new OnboardBusinessResponse("Logo has been successfully uploaded.");
+        return buildOnboardResponse("Logo has been successfully uploaded.",
+                enrichBusinessLinks(businessService.findByBusinessId(businessId)));
     }
 
     @LoggableRequest
@@ -78,27 +85,66 @@ public class OnboardUserBusiness {
         tenantContextResolver.ensureBusinessOwnership(httpServletRequest, businessId);
         businessService.updateBusiness(businessId, updateBusinessRequest);
 
-        return new OnboardBusinessResponse("Business has been successfully updated.");
+        return buildOnboardResponse("Business has been successfully updated.",
+                enrichBusinessLinks(businessService.findByBusinessId(businessId)));
     }
 
     @LoggableRequest
     public OnboardBusinessResponse activateStorefront(final String businessId, final HttpServletRequest httpServletRequest) {
         tenantContextResolver.ensureBusinessOwnership(httpServletRequest, businessId);
         businessService.activateStorefront(businessId);
-        return new OnboardBusinessResponse("Storefront has been activated.");
+        return buildOnboardResponse("Storefront has been activated.",
+                enrichBusinessLinks(businessService.findByBusinessId(businessId)));
     }
 
     @LoggableRequest
     public PaginatedResponse<BusinessDto> getBusinesses(Integer page, Integer pageSize, HttpServletRequest httpServletRequest) {
         UserDto userDto = tenantContextResolver.currentUser(httpServletRequest);
-        return businessService.findAllByOwnerId(userDto.getId(), page, pageSize);
+        PaginatedResponse<BusinessDto> response = businessService.findAllByOwnerId(userDto.getId(), page, pageSize);
+        List<BusinessDto> items = response.getItems().stream()
+                .map(this::enrichBusinessLinks)
+                .toList();
+        response.setItems(items);
+        return response;
     }
 
     public BusinessDto getBusinessById(String businessId) {
-        return businessService.findByBusinessId(businessId);
+        return enrichBusinessLinks(businessService.findByBusinessId(businessId));
     }
 
     public BusinessDto getBusinessBySlug(String businessSlug) {
-        return businessService.findByBusinessSlug(businessSlug);
+        return enrichBusinessLinks(businessService.findByBusinessSlug(businessSlug));
+    }
+
+    private OnboardBusinessResponse buildOnboardResponse(String message, BusinessDto business) {
+        return OnboardBusinessResponse.builder()
+                .message(message)
+                .storefrontLink(business.getStorefrontLink())
+                .sharedWhatsappLink(business.getSharedWhatsappLink())
+                .build();
+    }
+
+    private BusinessDto enrichBusinessLinks(BusinessDto business) {
+        business.setStorefrontLink(buildStorefrontLink(business.getSlug()));
+        business.setSharedWhatsappLink(buildSharedWhatsappLink(business.getSlug()));
+        return business;
+    }
+
+    private String buildStorefrontLink(String businessSlug) {
+        return stripTrailingSlash(appPropertiesConfig.getPublicBaseUrl()) + "/api/v1/public/businesses/slug/" + businessSlug;
+    }
+
+    private String buildSharedWhatsappLink(String businessSlug) {
+        String message = "Hi, I'm interested in Brillo store " + businessSlug;
+        String encoded = URLEncoder.encode(message, StandardCharsets.UTF_8);
+        String sharedNumber = AppUtils.normalizeWhatsappPhoneNumber(appPropertiesConfig.getWhatsapp().getSharedNumber());
+        return "https://wa.me/" + sharedNumber + "?text=" + encoded;
+    }
+
+    private String stripTrailingSlash(String baseUrl) {
+        if (baseUrl == null || baseUrl.isBlank()) {
+            return "https://brillo.example";
+        }
+        return baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
     }
 }

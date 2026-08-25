@@ -17,6 +17,7 @@ public class AppPropertiesConfig {
     private Long otpDuration;
     private String defaultBusinessLogoUrl;
     private String defaultProductImageUrl = "https://test.png";
+    private String publicBaseUrl = "https://brillo.example";
 
     @Data
     @AllArgsConstructor
@@ -35,6 +36,7 @@ public class AppPropertiesConfig {
         private String token = "EAAfLLVikCN0BR6eSOLf9fDDkA1kPCX5FRx8PwRyB9i3WzqkcOwj6YL6FtLpKF9DkI93Nj9C9auzOSXkAtqDYNz2ZCZAqbZAkKOTnLc13n9BtwwrZASZBGtT6bTisPeXZANQMS9DVugVp2tZATu12hxzZBXc3c9Ao4tK1RZCURhydNNuykpd0vHyxaTbLRL1ZCstE1WtfYlX0Y2033QP79ClWvNledmmOsQaRsnE1WYe20FwceEvoZASe6eKP78M975HZBkvHJzrmLuybybnt5AXZBoYEPfIfL9d9LX0nHigZDZD";
         private String verifyToken;
         private Integer sessionWindowHours = 24;
+        private String sharedNumber = "2348000000000";
     }
 
     @Data

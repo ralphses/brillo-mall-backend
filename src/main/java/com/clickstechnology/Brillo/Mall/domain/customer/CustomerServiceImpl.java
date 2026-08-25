@@ -154,7 +154,9 @@ class CustomerServiceImpl implements CustomerService {
                         .build()));
 
         Set<String> relatedBusinessIds = customer.getRelatedBusinessIds();
-        relatedBusinessIds.add(businessId);
+        if (businessId != null && !businessId.isBlank()) {
+            relatedBusinessIds.add(businessId);
+        }
         customer.setRelatedBusinessIds(relatedBusinessIds);
 
         if ((customer.getName() == null || customer.getName().isBlank()) && displayName != null && !displayName.isBlank()) {

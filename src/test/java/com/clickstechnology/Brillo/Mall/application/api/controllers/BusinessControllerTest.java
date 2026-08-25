@@ -55,13 +55,19 @@ class BusinessControllerTest {
                 .name("Test Business")
                 .slug("test-business")
                 .category(BusinessCategory.PRODUCTS)
+                .storefrontLink("https://test.brillo.example/api/v1/public/businesses/slug/test-business")
+                .sharedWhatsappLink("https://wa.me/2348039999999?text=Hi")
                 .build();
     }
 
     @Test
     void onboard_ShouldReturn200_WhenRequestIsValid() throws Exception {
         OnboardBusinessRequest request = new OnboardBusinessRequest("Test Business", "PRODUCTS");
-        OnboardBusinessResponse response = new OnboardBusinessResponse("Business onboarded successfully");
+        OnboardBusinessResponse response = OnboardBusinessResponse.builder()
+                .message("Business onboarded successfully")
+                .storefrontLink("https://test.brillo.example/api/v1/public/businesses/slug/test-business")
+                .sharedWhatsappLink("https://wa.me/2348039999999?text=Hi")
+                .build();
 
         when(onboardUserBusiness.execute(any(OnboardBusinessRequest.class), any())).thenReturn(response);
 
@@ -70,6 +76,8 @@ class BusinessControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.message").value("Business onboarded successfully"))
+                .andExpect(jsonPath("$.data.storefrontLink").value("https://test.brillo.example/api/v1/public/businesses/slug/test-business"))
+                .andExpect(jsonPath("$.data.sharedWhatsappLink").value("https://wa.me/2348039999999?text=Hi"))
                 .andExpect(jsonPath("$.status").value(200));
     }
 
@@ -81,7 +89,11 @@ class BusinessControllerTest {
                 MediaType.IMAGE_PNG_VALUE,
                 "test image content".getBytes()
         );
-        OnboardBusinessResponse response = new OnboardBusinessResponse("Logo uploaded successfully");
+        OnboardBusinessResponse response = OnboardBusinessResponse.builder()
+                .message("Logo uploaded successfully")
+                .storefrontLink("https://test.brillo.example/api/v1/public/businesses/slug/test-business")
+                .sharedWhatsappLink("https://wa.me/2348039999999?text=Hi")
+                .build();
 
         when(onboardUserBusiness.uploadLogo(any(), eq("biz-123"), any())).thenReturn(response);
 
@@ -97,7 +109,11 @@ class BusinessControllerTest {
     void updateBusiness_ShouldReturn200_WhenRequestIsValid() throws Exception {
         UpdateBusinessRequest.BusinessLocation location = new UpdateBusinessRequest.BusinessLocation("123 Main St", "Lagos", "Lagos");
         UpdateBusinessRequest request = new UpdateBusinessRequest("New Name", "New Desc", location, "test@test.com", "1234567890");
-        OnboardBusinessResponse response = new OnboardBusinessResponse("Business updated successfully");
+        OnboardBusinessResponse response = OnboardBusinessResponse.builder()
+                .message("Business updated successfully")
+                .storefrontLink("https://test.brillo.example/api/v1/public/businesses/slug/test-business")
+                .sharedWhatsappLink("https://wa.me/2348039999999?text=Hi")
+                .build();
 
         when(onboardUserBusiness.updateBusiness(eq("biz-123"), any(UpdateBusinessRequest.class), any())).thenReturn(response);
 
@@ -143,6 +159,7 @@ class BusinessControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.id").value("biz-123"))
                 .andExpect(jsonPath("$.data.name").value("Test Business"))
+                .andExpect(jsonPath("$.data.storefrontLink").value("https://test.brillo.example/api/v1/public/businesses/slug/test-business"))
                 .andExpect(jsonPath("$.status").value(200));
     }
 
@@ -155,12 +172,17 @@ class BusinessControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.slug").value("test-business"))
                 .andExpect(jsonPath("$.data.name").value("Test Business"))
+                .andExpect(jsonPath("$.data.sharedWhatsappLink").value("https://wa.me/2348039999999?text=Hi"))
                 .andExpect(jsonPath("$.status").value(200));
     }
 
     @Test
     void activateStorefront_ShouldReturn200_WhenBusinessIsActivated() throws Exception {
-        OnboardBusinessResponse response = new OnboardBusinessResponse("Storefront has been activated.");
+        OnboardBusinessResponse response = OnboardBusinessResponse.builder()
+                .message("Storefront has been activated.")
+                .storefrontLink("https://test.brillo.example/api/v1/public/businesses/slug/test-business")
+                .sharedWhatsappLink("https://wa.me/2348039999999?text=Hi")
+                .build();
         when(onboardUserBusiness.activateStorefront(eq("biz-123"), any())).thenReturn(response);
 
         mockMvc.perform(post("/api/v1/businesses/{businessId}/activate-storefront", "biz-123")

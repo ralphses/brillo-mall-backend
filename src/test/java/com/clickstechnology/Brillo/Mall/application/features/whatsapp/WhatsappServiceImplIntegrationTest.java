@@ -140,6 +140,9 @@ class WhatsappServiceImplIntegrationTest {
 
         var conversation = conversationRepository.findByWhatsappConversationId("2348011111111").orElseThrow();
         assertThat(conversation.getBusinessId()).isEqualTo(business.getId());
+        assertThat(conversation.getEntryBusinessId()).isEqualTo(business.getId());
+        assertThat(conversation.getActiveBusinessId()).isEqualTo(business.getId());
+        assertThat(conversation.getMarketplaceMode()).isFalse();
         assertThat(conversation.getStatus()).isEqualTo(ConversationStatus.AWAITING_USER);
         assertThat(conversation.getLastIntent()).isEqualTo("GREETING");
         assertThat(conversation.getActiveTaskKey()).isEqualTo("MENU");
@@ -189,6 +192,117 @@ class WhatsappServiceImplIntegrationTest {
 
         var conversation = conversationRepository.findByWhatsappConversationId("2348012222222").orElseThrow();
         assertThat(messageRepository.count()).isEqualTo(2);
+        verify(messageSendService, times(1)).sendMessage(any());
+    }
+
+    @Test
+    @DisplayName("Shared WhatsApp entry slug resolves entry and active business context")
+    void sharedEntrySlug_resolvesBusinessContext() throws Exception {
+        UpdateBusinessRequest updateBusinessRequest = new UpdateBusinessRequest();
+        updateBusinessRequest.setWhatsappNumber(null);
+        updateBusinessRequest.setWhatsappType(WhatsappType.SHARED);
+        businessService.updateBusiness(business.getId(), updateBusinessRequest);
+        business = businessService.findByBusinessId(business.getId());
+
+        JsonNode payload = objectMapper.readTree("""
+                {
+                  "entry": [
+                    {
+                      "changes": [
+                        {
+                          "value": {
+                            "metadata": {
+                              "display_phone_number": "2348039999999",
+                              "phone_number_id": "shared-123"
+                            },
+                            "contacts": [
+                              {
+                                "profile": { "name": "Tolu" },
+                                "wa_id": "2348014444444"
+                              }
+                            ],
+                            "messages": [
+                              {
+                                "from": "2348014444444",
+                                "id": "wamid.shared.slug",
+                                "timestamp": "1719830400",
+                                "type": "text",
+                                "text": { "body": "Hi, I'm interested in Brillo store whatsapp-test-mart" }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+                """);
+
+        whatsappService.processWebhookPayload(payload);
+
+        var conversation = conversationRepository.findByWhatsappConversationId("2348014444444").orElseThrow();
+        assertThat(conversation.getBusinessId()).isEqualTo(business.getId());
+        assertThat(conversation.getEntryBusinessId()).isEqualTo(business.getId());
+        assertThat(conversation.getActiveBusinessId()).isEqualTo(business.getId());
+        assertThat(conversation.getEntrySlug()).isEqualTo("whatsapp-test-mart");
+        assertThat(conversation.getMarketplaceMode()).isFalse();
+        assertThat(messageRepository.findByWhatsappMessageId("wamid.shared.slug")).isPresent();
+        verify(messageSendService, times(1)).sendMessage(any());
+    }
+
+    @Test
+    @DisplayName("Unresolved shared entry falls back to marketplace mode")
+    void unresolvedSharedEntry_entersMarketplaceMode() throws Exception {
+        UpdateBusinessRequest updateBusinessRequest = new UpdateBusinessRequest();
+        updateBusinessRequest.setWhatsappNumber(null);
+        updateBusinessRequest.setWhatsappType(WhatsappType.SHARED);
+        businessService.updateBusiness(business.getId(), updateBusinessRequest);
+        business = businessService.findByBusinessId(business.getId());
+
+        JsonNode payload = objectMapper.readTree("""
+                {
+                  "entry": [
+                    {
+                      "changes": [
+                        {
+                          "value": {
+                            "metadata": {
+                              "display_phone_number": "2348039999999",
+                              "phone_number_id": "shared-123"
+                            },
+                            "contacts": [
+                              {
+                                "profile": { "name": "Bola" },
+                                "wa_id": "2348015555555"
+                              }
+                            ],
+                            "messages": [
+                              {
+                                "from": "2348015555555",
+                                "id": "wamid.shared.marketplace",
+                                "timestamp": "1719830400",
+                                "type": "text",
+                                "text": { "body": "Hi there" }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+                """);
+
+        whatsappService.processWebhookPayload(payload);
+
+        var conversation = conversationRepository.findByWhatsappConversationId("2348015555555").orElseThrow();
+        assertThat(conversation.getBusinessId()).isNull();
+        assertThat(conversation.getEntryBusinessId()).isNull();
+        assertThat(conversation.getActiveBusinessId()).isNull();
+        assertThat(conversation.getEntrySlug()).isNull();
+        assertThat(conversation.getMarketplaceMode()).isTrue();
+        assertThat(conversation.getLastIntent()).isEqualTo("MARKETPLACE_ENTRY");
+        assertThat(messageRepository.findByWhatsappMessageId("wamid.shared.marketplace")).isPresent();
         verify(messageSendService, times(1)).sendMessage(any());
     }
 

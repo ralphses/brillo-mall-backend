@@ -44,9 +44,13 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
@@ -59,6 +63,8 @@ class WhatsappServiceImpl implements WhatsappService {
     private static final String TASK_TRACKING = "TRACKING";
     private static final String TASK_BUSINESS_ONBOARDING = "BUSINESS_ONBOARDING";
     private static final String TASK_SUPPORT = "SUPPORT";
+    private static final Pattern BRILLO_STORE_SLUG_PATTERN = Pattern.compile("\\bbrillo\\s+store\\s+([a-z0-9]+(?:-[a-z0-9]+)+)\\b");
+    private static final Pattern STORE_SLUG_PATTERN = Pattern.compile("\\bstore\\s+([a-z0-9]+(?:-[a-z0-9]+)+)\\b");
 
     private final ConversationService conversationService;
     private final BusinessService businessService;
@@ -106,28 +112,34 @@ class WhatsappServiceImpl implements WhatsappService {
             return;
         }
         Optional<ConversationDto> existingConversation = conversationService.findByWhatsappId(event.whatsappConversationId());
+        Instant now = event.occurredAt() != null ? event.occurredAt() : Instant.now();
+        SharedEntryResolution sharedEntry = resolveSharedEntry(event, existingConversation.orElse(null));
 
         Optional<BusinessDto> dedicatedBusiness = resolveDedicatedBusiness(event);
         Optional<BusinessDto> conversationBusiness = existingConversation
-                .map(conversation -> businessService.findByBusinessId(conversation.getBusinessId()));
+                .flatMap(this::resolveConversationBusiness);
         Optional<BusinessDto> selectedBusiness = resolveBusinessSelection(event);
-        BusinessDto business = dedicatedBusiness
+        BusinessDto business = sharedEntry.business()
+                .or(() -> dedicatedBusiness)
                 .or(() -> conversationBusiness)
                 .or(() -> selectedBusiness)
                 .orElse(null);
 
         if (business == null) {
-            sendBusinessSelection(event);
+            handleMarketplaceEntry(event, existingConversation.orElse(null), sharedEntry, now);
             return;
         }
 
         CustomerDto customer = customerService.resolveWhatsappCustomer(event.senderPhone(), event.senderName(), business.getId());
-        Instant now = event.occurredAt() != null ? event.occurredAt() : Instant.now();
         ConversationDto baselineConversation = conversationService.upsertConversation(ConversationUpsertRequest.builder()
                 .businessId(business.getId())
                 .customerId(customer.getId())
                 .whatsappConversationId(event.whatsappConversationId())
                 .whatsappBusinessNumber(normalizePhoneNumber(event.businessPhoneNumber()))
+                .entryBusinessId(resolveEntryBusinessId(existingConversation.orElse(null), sharedEntry, business))
+                .activeBusinessId(business.getId())
+                .entrySlug(resolveEntrySlug(existingConversation.orElse(null), sharedEntry))
+                .marketplaceMode(false)
                 .status(resolveConversationStatus(existingConversation.orElse(null), now))
                 .lastIntent(existingConversation.map(ConversationDto::getLastIntent).orElse(null))
                 .activeTaskKey(existingConversation.map(ConversationDto::getActiveTaskKey).orElse(null))
@@ -167,6 +179,10 @@ class WhatsappServiceImpl implements WhatsappService {
                     .customerId(customer.getId())
                     .whatsappConversationId(event.whatsappConversationId())
                     .whatsappBusinessNumber(normalizePhoneNumber(event.businessPhoneNumber()))
+                    .entryBusinessId(baselineConversation.getEntryBusinessId())
+                    .activeBusinessId(business.getId())
+                    .entrySlug(baselineConversation.getEntrySlug())
+                    .marketplaceMode(false)
                     .status(ConversationStatus.HUMAN_TAKEOVER)
                     .lastIntent(baselineConversation.getLastIntent())
                     .activeTaskKey(baselineConversation.getActiveTaskKey())
@@ -194,6 +210,10 @@ class WhatsappServiceImpl implements WhatsappService {
                 .customerId(customer.getId())
                 .whatsappConversationId(event.whatsappConversationId())
                 .whatsappBusinessNumber(normalizePhoneNumber(event.businessPhoneNumber()))
+                .entryBusinessId(baselineConversation.getEntryBusinessId())
+                .activeBusinessId(business.getId())
+                .entrySlug(baselineConversation.getEntrySlug())
+                .marketplaceMode(false)
                 .status(turnResult.conversationStatus())
                 .lastIntent(turnResult.intentKey())
                 .activeTaskKey("SHOW_MENU".equals(turnResult.taskKey()) ? TASK_MENU : turnResult.taskKey())
@@ -239,6 +259,20 @@ class WhatsappServiceImpl implements WhatsappService {
         return businessService.findByWhatsappNumber(businessNumber);
     }
 
+    private Optional<BusinessDto> resolveConversationBusiness(ConversationDto conversation) {
+        String businessId = conversation.getActiveBusinessId() != null && !conversation.getActiveBusinessId().isBlank()
+                ? conversation.getActiveBusinessId()
+                : conversation.getBusinessId();
+        if (businessId == null || businessId.isBlank()) {
+            return Optional.empty();
+        }
+        try {
+            return Optional.of(businessService.findByBusinessId(businessId));
+        } catch (BusinessException ex) {
+            return Optional.empty();
+        }
+    }
+
     private Optional<BusinessDto> resolveBusinessSelection(WhatsappInboundEvent event) {
         String routeKey = event.interactiveReplyId() != null ? event.interactiveReplyId() : event.content();
         if (routeKey == null) {
@@ -257,16 +291,71 @@ class WhatsappServiceImpl implements WhatsappService {
         }
     }
 
-    private void sendBusinessSelection(WhatsappInboundEvent event) {
+    private void handleMarketplaceEntry(
+            WhatsappInboundEvent event,
+            ConversationDto existingConversation,
+            SharedEntryResolution sharedEntry,
+            Instant now) {
+        CustomerDto customer = customerService.resolveWhatsappCustomer(event.senderPhone(), event.senderName(), null);
+        ConversationDto conversation = conversationService.upsertConversation(ConversationUpsertRequest.builder()
+                .businessId(null)
+                .customerId(customer.getId())
+                .whatsappConversationId(event.whatsappConversationId())
+                .whatsappBusinessNumber(normalizePhoneNumber(event.businessPhoneNumber()))
+                .entryBusinessId(existingConversation != null ? existingConversation.getEntryBusinessId() : null)
+                .activeBusinessId(null)
+                .entrySlug(resolveEntrySlug(existingConversation, sharedEntry))
+                .marketplaceMode(true)
+                .status(ConversationStatus.AWAITING_USER)
+                .lastIntent("MARKETPLACE_ENTRY")
+                .activeTaskKey(TASK_MENU)
+                .humanTakeover(existingConversation != null ? existingConversation.getHumanTakeover() : Boolean.FALSE)
+                .lastInteractionAt(now)
+                .sessionExpiresAt(now.plus(appPropertiesConfig.getWhatsapp().getSessionWindowHours(), ChronoUnit.HOURS))
+                .build());
+
+        conversationService.addMessage(MessageCreateRequest.builder()
+                .conversationReference(conversation.getReference())
+                .content(resolveInboundContent(event))
+                .messageType(MessageType.INBOUND)
+                .intent(conversation.getLastIntent())
+                .whatsappMessageId(event.whatsappMessageId())
+                .transportType(event.inboundType())
+                .sourceEventId(event.sourceEventId())
+                .metadata(event.metadata())
+                .build());
+
+        MarketplaceReplyPlan replyPlan = buildMarketplaceReplyPlan(event);
+        WhatsappResponse response = messageSendService.sendMessage(replyPlan.outboundMessage());
+        String outboundMessageId = response != null && response.getMessages() != null && !response.getMessages().isEmpty()
+                ? response.getMessages().getFirst().getId()
+                : null;
+
+        conversationService.addMessage(MessageCreateRequest.builder()
+                .conversationReference(conversation.getReference())
+                .content(replyPlan.replyText())
+                .messageType(MessageType.OUTBOUND)
+                .intent("MARKETPLACE_ENTRY")
+                .whatsappMessageId(outboundMessageId)
+                .transportType(replyPlan.presentationType().getValue())
+                .sourceEventId(event.whatsappMessageId())
+                .metadata(event.metadata())
+                .build());
+    }
+
+    private MarketplaceReplyPlan buildMarketplaceReplyPlan(WhatsappInboundEvent event) {
         List<BusinessDto> businesses = businessService.findWhatsappRouteCandidates();
         if (businesses.isEmpty()) {
             TextMessageRequest message = WhatsappMessageGenerator.createTextMessage(
                     event.senderPhone(),
-                    "Welcome to Brillo. No businesses are available on this WhatsApp route yet.",
+                    "Welcome to Brillo Marketplace. No businesses are available on this WhatsApp route yet.",
                     false
             );
-            messageSendService.sendMessage(message);
-            return;
+            return new MarketplaceReplyPlan(
+                    "Welcome to Brillo Marketplace. No businesses are available on this WhatsApp route yet.",
+                    WhatsappMessageType.TEXT,
+                    message
+            );
         }
 
         List<Section> sections = List.of(WhatsappMessageGenerator.createSection(
@@ -281,13 +370,17 @@ class WhatsappServiceImpl implements WhatsappService {
 
         InteractiveMessageRequest request = WhatsappMessageGenerator.createListMessage(
                 event.senderPhone(),
-                WhatsappMessageGenerator.createTextHeader("Choose a business"),
-                Body.builder().text("Select the business you want to continue with.").build(),
-                Footer.builder().text("Brillo routing").build(),
-                "Choose business",
+                WhatsappMessageGenerator.createTextHeader("Welcome to Brillo Marketplace"),
+                Body.builder().text("Choose a store to continue, or tell me what you need.").build(),
+                Footer.builder().text("Brillo shared marketplace").build(),
+                "Browse stores",
                 sections
         );
-        messageSendService.sendMessage(request);
+        return new MarketplaceReplyPlan(
+                "Welcome to Brillo Marketplace. Choose a store to continue, or tell me what you need.",
+                WhatsappMessageType.LIST,
+                request
+        );
     }
 
     private WhatsappReplyPlan planReply(WhatsappInboundEvent event, BusinessDto business, ConversationDto conversation, Instant now) {
@@ -560,6 +653,44 @@ class WhatsappServiceImpl implements WhatsappService {
         return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
     }
 
+    private SharedEntryResolution resolveSharedEntry(WhatsappInboundEvent event, ConversationDto existingConversation) {
+        if (event.interactiveReplyId() != null) {
+            return new SharedEntryResolution(Optional.empty(), existingConversation != null ? existingConversation.getEntrySlug() : null);
+        }
+
+        if (existingConversation != null
+                && ((existingConversation.getEntryBusinessId() != null && !existingConversation.getEntryBusinessId().isBlank())
+                || (existingConversation.getActiveBusinessId() != null && !existingConversation.getActiveBusinessId().isBlank()))) {
+            return new SharedEntryResolution(Optional.empty(), existingConversation.getEntrySlug());
+        }
+
+        String content = normalizeText(event.content());
+        if (content.isBlank()) {
+            return new SharedEntryResolution(Optional.empty(), null);
+        }
+
+        Set<String> slugCandidates = extractSlugCandidates(content);
+        if (slugCandidates.size() != 1) {
+            return new SharedEntryResolution(Optional.empty(), slugCandidates.size() == 1 ? slugCandidates.iterator().next() : null);
+        }
+
+        String slug = slugCandidates.iterator().next();
+        return new SharedEntryResolution(businessService.findOptionalByBusinessSlug(slug), slug);
+    }
+
+    private Set<String> extractSlugCandidates(String content) {
+        Set<String> candidates = new LinkedHashSet<>();
+        collectSlugCandidates(BRILLO_STORE_SLUG_PATTERN.matcher(content), candidates);
+        collectSlugCandidates(STORE_SLUG_PATTERN.matcher(content), candidates);
+        return candidates;
+    }
+
+    private void collectSlugCandidates(Matcher matcher, Set<String> candidates) {
+        while (matcher.find()) {
+            candidates.add(matcher.group(1));
+        }
+    }
+
     private String normalizePhoneNumber(String phoneNumber) {
         if (phoneNumber == null || phoneNumber.isBlank()) {
             return null;
@@ -571,6 +702,26 @@ class WhatsappServiceImpl implements WhatsappService {
         return business.getWhatsappNumber() != null && !business.getWhatsappNumber().isBlank()
                 ? business.getWhatsappNumber()
                 : business.getPhoneNumber();
+    }
+
+    private String resolveEntryBusinessId(ConversationDto existingConversation, SharedEntryResolution sharedEntry, BusinessDto business) {
+        if (existingConversation != null && existingConversation.getEntryBusinessId() != null && !existingConversation.getEntryBusinessId().isBlank()) {
+            return existingConversation.getEntryBusinessId();
+        }
+        if (existingConversation != null && Boolean.TRUE.equals(existingConversation.getMarketplaceMode())) {
+            return existingConversation.getEntryBusinessId();
+        }
+        if (sharedEntry.business().isPresent()) {
+            return sharedEntry.business().get().getId();
+        }
+        return business.getId();
+    }
+
+    private String resolveEntrySlug(ConversationDto existingConversation, SharedEntryResolution sharedEntry) {
+        if (existingConversation != null && existingConversation.getEntrySlug() != null && !existingConversation.getEntrySlug().isBlank()) {
+            return existingConversation.getEntrySlug();
+        }
+        return sharedEntry.entrySlug();
     }
 
     private List<WhatsappInboundEvent> extractInboundEvents(JsonNode payload) {
@@ -746,4 +897,12 @@ class WhatsappServiceImpl implements WhatsappService {
             return null;
         }
     }
+
+    private record SharedEntryResolution(Optional<BusinessDto> business, String entrySlug) { }
+
+    private record MarketplaceReplyPlan(
+            String replyText,
+            WhatsappMessageType presentationType,
+            WhatsAppMessageRequest outboundMessage
+    ) { }
 }

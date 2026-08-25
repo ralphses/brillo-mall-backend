@@ -20,6 +20,10 @@ public class ConversationDto {
     private String customerId;
     private String whatsappConversationId;
     private String whatsappBusinessNumber;
+    private String entryBusinessId;
+    private String activeBusinessId;
+    private String entrySlug;
+    private Boolean marketplaceMode;
     private ConversationStatus status;
     private String lastIntent;
     private String activeTaskKey;

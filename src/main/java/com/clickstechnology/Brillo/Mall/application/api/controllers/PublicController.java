@@ -110,4 +110,10 @@ public class PublicController {
             @PathVariable final String businessId) {
         return success(publicRead.getBusiness(businessId));
     }
+
+    @GetMapping("businesses/slug/{businessSlug}")
+    public ResponseWrapper<BusinessDto> getBusinessBySlug(
+            @PathVariable final String businessSlug) {
+        return success(publicRead.getBusinessBySlug(businessSlug));
+    }
 }

@@ -35,6 +35,8 @@ public class BusinessDto {
     private Boolean storefrontActive;
     private Boolean isActive;
     private Boolean setupCompleted;
+    private String storefrontLink;
+    private String sharedWhatsappLink;
     private Instant createdAt;
     private Instant updatedAt;
 }

@@ -40,6 +40,16 @@ public class PublicRead {
         return business;
     }
 
+    public BusinessDto getBusinessBySlug(String businessSlug) {
+        try {
+            BusinessDto business = businessService.findByBusinessSlug(businessSlug);
+            ensurePublicBusiness(business, "Business not found");
+            return business;
+        } catch (BusinessException ex) {
+            throw new ResourceNotFoundException("Business not found");
+        }
+    }
+
     private ProductDto resolveProduct(String productId) {
         try {
             ProductDto product = productService.findProductByProductId(productId);
