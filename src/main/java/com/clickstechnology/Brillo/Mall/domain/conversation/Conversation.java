@@ -1,6 +1,7 @@
 package com.clickstechnology.Brillo.Mall.domain.conversation;
 
 import com.clickstechnology.Brillo.Mall.application.enums.ConversationStatus;
+import com.clickstechnology.Brillo.Mall.application.enums.ConversationMode;
 import com.clickstechnology.Brillo.Mall.infrastructure.persistence.JpaAuditor;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -28,7 +29,9 @@ import java.util.List;
 @Table(
         name = "conversations",
         uniqueConstraints = {
-                @jakarta.persistence.UniqueConstraint(name = "uk_conversations_whatsapp_conversation_id", columnNames = {"whatsapp_conversation_id"})
+                @jakarta.persistence.UniqueConstraint(
+                        name = "uk_conversations_channel_context",
+                        columnNames = {"whatsapp_conversation_id", "channel_key", "conversation_mode"})
         }
 )
 public class Conversation extends JpaAuditor implements Serializable {
@@ -44,6 +47,14 @@ public class Conversation extends JpaAuditor implements Serializable {
 
     @Column(name = "whatsapp_business_number", length = 30)
     private String whatsappBusinessNumber;
+
+    @Column(name = "channel_key", nullable = false, length = 30)
+    private String channelKey;
+
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "conversation_mode", nullable = false, length = 30)
+    private ConversationMode conversationMode = ConversationMode.SHARED_MARKETPLACE;
 
     @Column(name = "entry_business_id", length = 36)
     private String entryBusinessId;

@@ -1,6 +1,7 @@
 package com.clickstechnology.Brillo.Mall.application.dto.conversation;
 
 import com.clickstechnology.Brillo.Mall.application.enums.ConversationStatus;
+import com.clickstechnology.Brillo.Mall.application.enums.ConversationMode;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -13,10 +14,13 @@ import java.time.Instant;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ConversationUpsertRequest {
+    private String reference;
     private String businessId;
     private String customerId;
     private String whatsappConversationId;
     private String whatsappBusinessNumber;
+    private String channelKey;
+    private ConversationMode conversationMode;
     private String entryBusinessId;
     private String activeBusinessId;
     private String entrySlug;
