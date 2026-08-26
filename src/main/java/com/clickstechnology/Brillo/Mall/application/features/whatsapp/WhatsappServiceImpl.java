@@ -65,6 +65,7 @@ class WhatsappServiceImpl implements WhatsappService {
     private static final String TASK_TRACKING = "TRACKING";
     private static final String TASK_BUSINESS_ONBOARDING = "BUSINESS_ONBOARDING";
     private static final String TASK_SUPPORT = "SUPPORT";
+    private static final String ROUTE_MARKETPLACE_BROWSE = "marketplace:browse";
     private static final Pattern BRILLO_STORE_SLUG_PATTERN = Pattern.compile("\\bbrillo\\s+store\\s+([a-z0-9]+(?:-[a-z0-9]+)+)\\b");
     private static final Pattern STORE_SLUG_PATTERN = Pattern.compile("\\bstore\\s+([a-z0-9]+(?:-[a-z0-9]+)+)\\b");
 
@@ -125,6 +126,14 @@ class WhatsappServiceImpl implements WhatsappService {
         }
 
         CustomerDto customer = customerService.resolveWhatsappCustomer(event.senderPhone(), event.senderName(), business.getId());
+        if (route.sharedMarketplaceBrowse()) {
+            handleMarketplaceBrowse(event, route, customer, channelKey, now);
+            return;
+        }
+        if (route.explicitStoreSelection()) {
+            handleSharedStoreSelection(event, route, business, customer, channelKey, now);
+            return;
+        }
         ConversationDto baselineConversation = conversationService.upsertConversation(buildConversationUpsertRequest(
                 route,
                 customer.getId(),
@@ -171,7 +180,10 @@ class WhatsappServiceImpl implements WhatsappService {
                             baselineConversation.getEntryBusinessId(),
                             baselineConversation.getActiveBusinessId(),
                             baselineConversation.getEntrySlug(),
-                            baselineConversation.getConversationMode() == ConversationMode.SHARED_MARKETPLACE
+                            baselineConversation.getConversationMode() == ConversationMode.SHARED_MARKETPLACE,
+                            false,
+                            false,
+                            false
                     ),
                     customer.getId(),
                     event.whatsappConversationId(),
@@ -205,7 +217,10 @@ class WhatsappServiceImpl implements WhatsappService {
                         baselineConversation.getEntryBusinessId(),
                         business.getId(),
                         baselineConversation.getEntrySlug(),
-                        baselineConversation.getConversationMode() == ConversationMode.SHARED_MARKETPLACE
+                        baselineConversation.getConversationMode() == ConversationMode.SHARED_MARKETPLACE,
+                        false,
+                        false,
+                        false
                 ),
                 customer.getId(),
                 event.whatsappConversationId(),
@@ -334,6 +349,101 @@ class WhatsappServiceImpl implements WhatsappService {
                 .build());
     }
 
+    private void handleMarketplaceBrowse(
+            WhatsappInboundEvent event,
+            ConversationRoute route,
+            CustomerDto customer,
+            String channelKey,
+            Instant now) {
+        ConversationDto conversation = conversationService.upsertConversation(buildConversationUpsertRequest(
+                route,
+                customer.getId(),
+                event.whatsappConversationId(),
+                channelKey,
+                ConversationStatus.AWAITING_USER,
+                "MARKETPLACE_BROWSE",
+                TASK_MENU,
+                route.existingConversation() != null ? route.existingConversation().getHumanTakeover() : Boolean.FALSE,
+                now
+        ));
+
+        conversationService.addMessage(MessageCreateRequest.builder()
+                .conversationReference(conversation.getReference())
+                .content(resolveInboundContent(event))
+                .messageType(MessageType.INBOUND)
+                .intent("MARKETPLACE_BROWSE")
+                .whatsappMessageId(event.whatsappMessageId())
+                .transportType(event.inboundType())
+                .sourceEventId(event.sourceEventId())
+                .metadata(event.metadata())
+                .build());
+
+        MarketplaceReplyPlan replyPlan = buildMarketplaceReplyPlan(event);
+        WhatsappResponse response = messageSendService.sendMessage(replyPlan.outboundMessage());
+        String outboundMessageId = response != null && response.getMessages() != null && !response.getMessages().isEmpty()
+                ? response.getMessages().getFirst().getId()
+                : null;
+
+        conversationService.addMessage(MessageCreateRequest.builder()
+                .conversationReference(conversation.getReference())
+                .content(replyPlan.replyText())
+                .messageType(MessageType.OUTBOUND)
+                .intent("MARKETPLACE_BROWSE")
+                .whatsappMessageId(outboundMessageId)
+                .transportType(replyPlan.presentationType().getValue())
+                .sourceEventId(event.whatsappMessageId())
+                .metadata(event.metadata())
+                .build());
+    }
+
+    private void handleSharedStoreSelection(
+            WhatsappInboundEvent event,
+            ConversationRoute route,
+            BusinessDto business,
+            CustomerDto customer,
+            String channelKey,
+            Instant now) {
+        ConversationDto conversation = conversationService.upsertConversation(buildConversationUpsertRequest(
+                route,
+                customer.getId(),
+                event.whatsappConversationId(),
+                channelKey,
+                ConversationStatus.AWAITING_USER,
+                route.sharedLinkEntry() ? "SHARED_STORE_ENTRY" : "SHARED_STORE_SWITCH",
+                TASK_MENU,
+                route.existingConversation() != null ? route.existingConversation().getHumanTakeover() : Boolean.FALSE,
+                now
+        ));
+
+        conversationService.addMessage(MessageCreateRequest.builder()
+                .conversationReference(conversation.getReference())
+                .content(resolveInboundContent(event))
+                .messageType(MessageType.INBOUND)
+                .intent(route.sharedLinkEntry() ? "SHARED_STORE_ENTRY" : "SHARED_STORE_SWITCH")
+                .whatsappMessageId(event.whatsappMessageId())
+                .transportType(event.inboundType())
+                .sourceEventId(event.sourceEventId())
+                .metadata(event.metadata())
+                .build());
+
+        SharedStoreReplyPlan replyPlan = buildSharedStoreReplyPlan(event, route, business);
+        WhatsappResponse response = messageSendService.sendMessage(replyPlan.outboundMessage());
+        String outboundMessageId = response != null && response.getMessages() != null && !response.getMessages().isEmpty()
+                ? response.getMessages().getFirst().getId()
+                : null;
+
+        conversationService.addMessage(MessageCreateRequest.builder()
+                .conversationReference(conversation.getReference())
+                .content(replyPlan.replyText())
+                .messageType(MessageType.OUTBOUND)
+                .intent(route.sharedLinkEntry() ? "SHARED_STORE_ENTRY" : "SHARED_STORE_SWITCH")
+                .whatsappMessageId(outboundMessageId)
+                .transportType(replyPlan.presentationType().getValue())
+                .sourceEventId(event.whatsappMessageId())
+                .metadata(event.metadata())
+                .build());
+    }
+
     private MarketplaceReplyPlan buildMarketplaceReplyPlan(WhatsappInboundEvent event) {
         List<BusinessDto> businesses = businessService.findWhatsappRouteCandidates();
         if (businesses.isEmpty()) {
@@ -374,6 +484,41 @@ class WhatsappServiceImpl implements WhatsappService {
         );
     }
 
+    private SharedStoreReplyPlan buildSharedStoreReplyPlan(
+            WhatsappInboundEvent event,
+            ConversationRoute route,
+            BusinessDto business) {
+        String storeName = business.getStorefrontName() != null && !business.getStorefrontName().isBlank()
+                ? business.getStorefrontName()
+                : business.getName();
+        String bodyText = route.sharedLinkEntry()
+                ? "Brillo for " + storeName + ". You can shop here now or browse other stores without losing your original entry attribution."
+                : "Brillo for " + storeName + ". You are now browsing this store, and your original entry attribution is still preserved.";
+
+        List<Section> sections = List.of(WhatsappMessageGenerator.createSection(List.of(
+                WhatsappMessageGenerator.createRow("Buy something", "Products from " + storeName, "menu:buy"),
+                WhatsappMessageGenerator.createRow("Find services", "Service requests and bookings", "menu:services"),
+                WhatsappMessageGenerator.createRow("My orders & bookings", "Track an existing request", "menu:track"),
+                WhatsappMessageGenerator.createRow("Browse other stores", "Return to Brillo Marketplace", ROUTE_MARKETPLACE_BROWSE),
+                WhatsappMessageGenerator.createRow("Support", "Talk to support or a human agent", "menu:support")
+        ), "Store menu"));
+
+        InteractiveMessageRequest request = WhatsappMessageGenerator.createListMessage(
+                event.senderPhone(),
+                WhatsappMessageGenerator.createTextHeader("Brillo for " + storeName),
+                WhatsappMessageGenerator.createBody(bodyText),
+                WhatsappMessageGenerator.createFooter("Shared Brillo marketplace"),
+                "Open store menu",
+                sections
+        );
+
+        return new SharedStoreReplyPlan(
+                bodyText,
+                WhatsappMessageType.LIST,
+                request
+        );
+    }
+
     private ConversationRoute resolveConversationRoute(WhatsappInboundEvent event, String channelKey) {
         Optional<BusinessDto> dedicatedBusiness = resolveDedicatedBusiness(event);
         if (dedicatedBusiness.isPresent()) {
@@ -390,6 +535,9 @@ class WhatsappServiceImpl implements WhatsappService {
                     resolveEntryBusinessId(existingDedicatedConversation, null, dedicatedBusiness.get()),
                     dedicatedBusiness.get().getId(),
                     existingDedicatedConversation != null ? existingDedicatedConversation.getEntrySlug() : null,
+                    false,
+                    false,
+                    false,
                     false
             );
         }
@@ -406,6 +554,7 @@ class WhatsappServiceImpl implements WhatsappService {
                 ? resolveSharedEntry(event, latestSharedConversation)
                 : new SharedEntryResolution(Optional.empty(), latestSharedConversation != null ? latestSharedConversation.getEntrySlug() : null);
         Optional<BusinessDto> selectedBusiness = resolveBusinessSelection(event);
+        boolean sharedMarketplaceBrowse = isBrowseStoresRequest(event);
 
         if (sharedEntry.business().isPresent()) {
             BusinessDto entryBusiness = sharedEntry.business().get();
@@ -422,7 +571,10 @@ class WhatsappServiceImpl implements WhatsappService {
                     resolveEntryBusinessId(existingSharedBusinessConversation, sharedEntry, entryBusiness),
                     entryBusiness.getId(),
                     resolveEntrySlug(existingSharedBusinessConversation, sharedEntry),
-                    false
+                    false,
+                    true,
+                    false,
+                    true
             );
         }
 
@@ -438,7 +590,27 @@ class WhatsappServiceImpl implements WhatsappService {
                     latestSharedConversation != null ? latestSharedConversation.getEntryBusinessId() : null,
                     selectedBusiness.get().getId(),
                     latestSharedConversation != null ? latestSharedConversation.getEntrySlug() : sharedEntry.entrySlug(),
-                    conversationMode == ConversationMode.SHARED_MARKETPLACE
+                    conversationMode == ConversationMode.SHARED_MARKETPLACE,
+                    true,
+                    false,
+                    false
+            );
+        }
+
+        if (sharedMarketplaceBrowse && latestSharedConversation != null) {
+            return new ConversationRoute(
+                    latestSharedConversation,
+                    resolveConversationBusiness(latestSharedConversation).orElse(null),
+                    latestSharedConversation.getConversationMode() != null
+                            ? latestSharedConversation.getConversationMode()
+                            : ConversationMode.SHARED_MARKETPLACE,
+                    latestSharedConversation.getEntryBusinessId(),
+                    latestSharedConversation.getActiveBusinessId(),
+                    latestSharedConversation.getEntrySlug(),
+                    latestSharedConversation.getConversationMode() == ConversationMode.SHARED_MARKETPLACE,
+                    false,
+                    true,
+                    false
             );
         }
 
@@ -452,7 +624,10 @@ class WhatsappServiceImpl implements WhatsappService {
                     latestSharedConversation.getEntryBusinessId(),
                     latestSharedConversation.getActiveBusinessId(),
                     latestSharedConversation.getEntrySlug(),
-                    latestSharedConversation.getConversationMode() == ConversationMode.SHARED_MARKETPLACE
+                    latestSharedConversation.getConversationMode() == ConversationMode.SHARED_MARKETPLACE,
+                    false,
+                    false,
+                    false
             );
         }
 
@@ -463,7 +638,10 @@ class WhatsappServiceImpl implements WhatsappService {
                 null,
                 null,
                 sharedEntry.entrySlug(),
-                true
+                true,
+                false,
+                false,
+                false
         );
     }
 
@@ -496,6 +674,18 @@ class WhatsappServiceImpl implements WhatsappService {
                 .lastInteractionAt(now)
                 .sessionExpiresAt(now.plus(appPropertiesConfig.getWhatsapp().getSessionWindowHours(), ChronoUnit.HOURS))
                 .build();
+    }
+
+    private boolean isBrowseStoresRequest(WhatsappInboundEvent event) {
+        String routeKey = event.interactiveReplyId() != null ? event.interactiveReplyId() : event.content();
+        if (routeKey == null) {
+            return false;
+        }
+
+        String normalized = normalizeText(routeKey);
+        return ROUTE_MARKETPLACE_BROWSE.equals(normalized)
+                || "browse stores".equals(normalized)
+                || "browse other stores".equals(normalized);
     }
 
     private WhatsappReplyPlan planReply(WhatsappInboundEvent event, BusinessDto business, ConversationDto conversation, Instant now) {
@@ -1018,10 +1208,19 @@ class WhatsappServiceImpl implements WhatsappService {
             String entryBusinessId,
             String activeBusinessId,
             String entrySlug,
-            Boolean marketplaceMode
+            Boolean marketplaceMode,
+            Boolean explicitStoreSelection,
+            Boolean sharedMarketplaceBrowse,
+            Boolean sharedLinkEntry
     ) { }
 
     private record MarketplaceReplyPlan(
+            String replyText,
+            WhatsappMessageType presentationType,
+            WhatsAppMessageRequest outboundMessage
+    ) { }
+
+    private record SharedStoreReplyPlan(
             String replyText,
             WhatsappMessageType presentationType,
             WhatsAppMessageRequest outboundMessage

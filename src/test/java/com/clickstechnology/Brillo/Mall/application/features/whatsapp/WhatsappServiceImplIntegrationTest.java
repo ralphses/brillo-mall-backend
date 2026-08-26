@@ -2,21 +2,29 @@ package com.clickstechnology.Brillo.Mall.application.features.whatsapp;
 
 import com.clickstechnology.Brillo.Mall.application.api.contracts.BusinessService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.MessageSendService;
+import com.clickstechnology.Brillo.Mall.application.api.contracts.OrderService;
+import com.clickstechnology.Brillo.Mall.application.api.contracts.ProductService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.UserService;
 import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessDto;
+import com.clickstechnology.Brillo.Mall.application.dto.request.product.AddProductRequest;
+import com.clickstechnology.Brillo.Mall.application.dto.product.ProductDto;
 import com.clickstechnology.Brillo.Mall.application.dto.request.RegisterRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.request.business.OnboardBusinessRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.request.business.UpdateBusinessRequest;
 import com.clickstechnology.Brillo.Mall.application.enums.ConversationMode;
+import com.clickstechnology.Brillo.Mall.application.dto.whatsapp.TextMessageRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.whatsapp.WhatsappResponse;
 import com.clickstechnology.Brillo.Mall.application.enums.BusinessCategory;
 import com.clickstechnology.Brillo.Mall.application.enums.ConversationStatus;
 import com.clickstechnology.Brillo.Mall.application.enums.FlowSessionStatus;
 import com.clickstechnology.Brillo.Mall.application.enums.WhatsappType;
+import com.clickstechnology.Brillo.Mall.application.dto.whatsapp.WhatsAppMessageRequest;
+import com.clickstechnology.Brillo.Mall.application.dto.whatsapp.InteractiveMessageRequest;
 import com.clickstechnology.Brillo.Mall.domain.conversation.ConversationRepository;
 import com.clickstechnology.Brillo.Mall.domain.conversation.MessageRepository;
 import com.clickstechnology.Brillo.Mall.domain.conversation.flow.ConversationFlowSessionRepository;
+import com.clickstechnology.Brillo.Mall.domain.conversation.task.ConversationTaskSessionRepository;
 import com.clickstechnology.Brillo.Mall.infrastructure.caching.CacheUtil;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,11 +36,14 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import org.mockito.ArgumentCaptor;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -57,6 +68,12 @@ class WhatsappServiceImplIntegrationTest {
     private BusinessService businessService;
 
     @Autowired
+    private ProductService productService;
+
+    @Autowired
+    private OrderService orderService;
+
+    @Autowired
     private ConversationRepository conversationRepository;
 
     @Autowired
@@ -64,6 +81,9 @@ class WhatsappServiceImplIntegrationTest {
 
     @Autowired
     private ConversationFlowSessionRepository flowSessionRepository;
+
+    @Autowired
+    private ConversationTaskSessionRepository taskSessionRepository;
 
     @MockitoBean
     private MessageSendService messageSendService;
@@ -252,6 +272,15 @@ class WhatsappServiceImplIntegrationTest {
         assertThat(conversation.getEntrySlug()).isEqualTo("whatsapp-test-mart");
         assertThat(conversation.getMarketplaceMode()).isFalse();
         assertThat(conversation.getConversationMode()).isEqualTo(ConversationMode.SHARED_BUSINESS);
+        assertThat(conversation.getLastIntent()).isEqualTo("SHARED_STORE_ENTRY");
+        assertThat(conversation.getActiveTaskKey()).isEqualTo("MENU");
+        ArgumentCaptor<WhatsAppMessageRequest> requestCaptor = ArgumentCaptor.forClass(WhatsAppMessageRequest.class);
+        verify(messageSendService, atLeastOnce()).sendMessage(requestCaptor.capture());
+        assertThat(requestCaptor.getAllValues())
+                .filteredOn(InteractiveMessageRequest.class::isInstance)
+                .map(InteractiveMessageRequest.class::cast)
+                .extracting(request -> request.getInteractive().getHeader().getText())
+                .contains("Brillo for Whatsapp Test Mart");
         assertThat(messageRepository.findByWhatsappMessageId("wamid.shared.slug")).isPresent();
         verify(messageSendService, times(1)).sendMessage(any());
     }
@@ -484,7 +513,180 @@ class WhatsappServiceImplIntegrationTest {
         assertThat(conversation.getActiveBusinessId()).isEqualTo(business.getId());
         assertThat(conversation.getBusinessId()).isEqualTo(business.getId());
         assertThat(conversation.getMarketplaceMode()).isTrue();
+        assertThat(conversation.getLastIntent()).isEqualTo("SHARED_STORE_SWITCH");
         assertThat(conversationRepository.findAllByWhatsappConversationId("2348017777777")).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("Shared business customers can browse other stores without losing entry attribution")
+    void sharedBusinessBrowseOtherStores_preservesEntryAttribution() throws Exception {
+        UpdateBusinessRequest updateBusinessRequest = new UpdateBusinessRequest();
+        updateBusinessRequest.setWhatsappNumber(null);
+        updateBusinessRequest.setWhatsappType(WhatsappType.SHARED);
+        businessService.updateBusiness(business.getId(), updateBusinessRequest);
+        business = businessService.findByBusinessId(business.getId());
+
+        JsonNode entryPayload = objectMapper.readTree("""
+                {
+                  "entry": [
+                    {
+                      "changes": [
+                        {
+                          "value": {
+                            "metadata": {
+                              "display_phone_number": "2348039999999"
+                            },
+                            "contacts": [
+                              {
+                                "profile": { "name": "Mira" },
+                                "wa_id": "2348019999999"
+                              }
+                            ],
+                            "messages": [
+                              {
+                                "from": "2348019999999",
+                                "id": "wamid.shared.entry.phase3",
+                                "timestamp": "1719830400",
+                                "type": "text",
+                                "text": { "body": "Hi, I'm interested in Brillo store whatsapp-test-mart" }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+                """);
+        JsonNode browsePayload = objectMapper.readTree("""
+                {
+                  "entry": [
+                    {
+                      "changes": [
+                        {
+                          "value": {
+                            "metadata": {
+                              "display_phone_number": "2348039999999"
+                            },
+                            "contacts": [
+                              {
+                                "profile": { "name": "Mira" },
+                                "wa_id": "2348019999999"
+                              }
+                            ],
+                            "messages": [
+                              {
+                                "from": "2348019999999",
+                                "id": "wamid.shared.browse.phase3",
+                                "timestamp": "1719830500",
+                                "type": "interactive",
+                                "interactive": {
+                                  "type": "list_reply",
+                                  "list_reply": {
+                                    "id": "marketplace:browse",
+                                    "title": "Browse other stores"
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+                """);
+
+        whatsappService.processWebhookPayload(entryPayload);
+        whatsappService.processWebhookPayload(browsePayload);
+
+        var conversation = findConversation("2348019999999", SHARED_NUMBER, ConversationMode.SHARED_BUSINESS);
+        assertThat(conversation.getEntryBusinessId()).isEqualTo(business.getId());
+        assertThat(conversation.getActiveBusinessId()).isEqualTo(business.getId());
+        assertThat(conversation.getLastIntent()).isEqualTo("MARKETPLACE_BROWSE");
+        ArgumentCaptor<WhatsAppMessageRequest> requestCaptor = ArgumentCaptor.forClass(WhatsAppMessageRequest.class);
+        verify(messageSendService, atLeastOnce()).sendMessage(requestCaptor.capture());
+        assertThat(requestCaptor.getAllValues())
+                .filteredOn(InteractiveMessageRequest.class::isInstance)
+                .map(InteractiveMessageRequest.class::cast)
+                .extracting(request -> request.getInteractive().getHeader().getText())
+                .contains("Welcome to Brillo Marketplace");
+    }
+
+    @Test
+    @DisplayName("Shared product orders execute against the active store and tracking does not rewrite attribution")
+    void sharedStoreSwitch_productOrderUsesActiveBusinessAndTrackingKeepsAttribution() throws Exception {
+        UpdateBusinessRequest sharedUpdate = new UpdateBusinessRequest();
+        sharedUpdate.setWhatsappNumber(null);
+        sharedUpdate.setWhatsappType(WhatsappType.SHARED);
+        businessService.updateBusiness(business.getId(), sharedUpdate);
+        business = businessService.findByBusinessId(business.getId());
+
+        ProductDto entryStoreProduct = createProduct(business.getId(), "Entry Store Soap", "ENTRY-SOAP");
+
+        OnboardBusinessRequest secondBusinessRequest = new OnboardBusinessRequest();
+        secondBusinessRequest.setBusinessName("Switch Store Mart");
+        UserDto user = userService.findByUsername("07000000001");
+        businessService.createNew(secondBusinessRequest, user, "logo-switch.png", BusinessCategory.PRODUCTS);
+        BusinessDto switchedBusiness = businessService.findByBusinessSlug("switch-store-mart");
+        UpdateBusinessRequest switchedBusinessUpdate = new UpdateBusinessRequest();
+        switchedBusinessUpdate.setWhatsappNumber(null);
+        switchedBusinessUpdate.setWhatsappType(WhatsappType.SHARED);
+        businessService.updateBusiness(switchedBusiness.getId(), switchedBusinessUpdate);
+        switchedBusiness = businessService.findByBusinessId(switchedBusiness.getId());
+        ProductDto switchedStoreProduct = createProduct(switchedBusiness.getId(), "Switch Store Detergent", "SWITCH-DETERGENT");
+
+        whatsappService.processWebhookPayload(textPayload("2348021234567", SHARED_NUMBER, "wamid.phase4.entry", "Hi, I'm interested in Brillo store whatsapp-test-mart"));
+        whatsappService.processWebhookPayload(interactivePayload("2348021234567", SHARED_NUMBER, "wamid.phase4.browse", "marketplace:browse", "Browse other stores"));
+        whatsappService.processWebhookPayload(interactivePayload("2348021234567", SHARED_NUMBER, "wamid.phase4.select.b", "business:" + switchedBusiness.getId(), switchedBusiness.getName()));
+        whatsappService.processWebhookPayload(interactivePayload("2348021234567", SHARED_NUMBER, "wamid.phase4.buy", "menu:buy", "Buy something"));
+        whatsappService.processWebhookPayload(textPayload("2348021234567", SHARED_NUMBER, "wamid.phase4.invalid.product", "product:" + entryStoreProduct.getId()));
+        whatsappService.processWebhookPayload(textPayload("2348021234567", SHARED_NUMBER, "wamid.phase4.valid.product", "product:" + switchedStoreProduct.getId()));
+        whatsappService.processWebhookPayload(textPayload("2348021234567", SHARED_NUMBER, "wamid.phase4.quantity", "2"));
+        whatsappService.processWebhookPayload(textPayload("2348021234567", SHARED_NUMBER, "wamid.phase4.address", "Delivery address: 12 Allen Avenue, Ikeja"));
+        whatsappService.processWebhookPayload(textPayload("2348021234567", SHARED_NUMBER, "wamid.phase4.payment", "pay on delivery"));
+
+        var conversation = findConversation("2348021234567", SHARED_NUMBER, ConversationMode.SHARED_BUSINESS);
+        assertThat(conversation.getEntryBusinessId()).isEqualTo(business.getId());
+        assertThat(conversation.getActiveBusinessId()).isEqualTo(switchedBusiness.getId());
+        var taskSession = taskSessionRepository.findByConversation_Reference(conversation.getReference()).orElseThrow();
+        assertThat(taskSession.getCurrentStateKey()).isEqualTo("COMPLETED");
+        assertThat(taskSession.getSlotsJson()).contains("created_order_id");
+
+        var customerOrders = orderService.findAllByCustomerId(conversation.getCustomerId(), 1, 10).getItems();
+        assertThat(customerOrders).hasSize(1);
+        var createdOrder = customerOrders.getFirst();
+        assertThat(createdOrder.getBusinessId()).isEqualTo(switchedBusiness.getId());
+        assertThat(createdOrder.getItems()).hasSize(1);
+        assertThat(createdOrder.getItems().getFirst().getProduct().getId()).isEqualTo(switchedStoreProduct.getId());
+
+        whatsappService.processWebhookPayload(interactivePayload("2348021234567", SHARED_NUMBER, "wamid.phase4.browse.again", "marketplace:browse", "Browse other stores"));
+        whatsappService.processWebhookPayload(interactivePayload("2348021234567", SHARED_NUMBER, "wamid.phase4.select.a", "business:" + business.getId(), business.getName()));
+        whatsappService.processWebhookPayload(interactivePayload("2348021234567", SHARED_NUMBER, "wamid.phase4.track", "menu:track", "My orders & bookings"));
+        whatsappService.processWebhookPayload(textPayload("2348021234567", SHARED_NUMBER, "wamid.phase4.track.order", "order:" + createdOrder.getId()));
+
+        conversation = findConversation("2348021234567", SHARED_NUMBER, ConversationMode.SHARED_BUSINESS);
+        assertThat(conversation.getEntryBusinessId()).isEqualTo(business.getId());
+        assertThat(conversation.getActiveBusinessId()).isEqualTo(business.getId());
+
+        String switchedStoreName = switchedBusiness.getName();
+        String entryStoreName = business.getName();
+
+        ArgumentCaptor<WhatsAppMessageRequest> requestCaptor = ArgumentCaptor.forClass(WhatsAppMessageRequest.class);
+        verify(messageSendService, atLeastOnce()).sendMessage(requestCaptor.capture());
+        assertThat(requestCaptor.getAllValues())
+                .filteredOn(TextMessageRequest.class::isInstance)
+                .map(TextMessageRequest.class::cast)
+                .extracting(request -> request.getText().getBody())
+                .anySatisfy(body -> {
+                    assertThat(body).contains("That product does not belong to " + switchedStoreName);
+                    assertThat(body).contains("Products from " + switchedStoreName);
+                })
+                .anySatisfy(body -> {
+                    assertThat(body).contains("Order " + createdOrder.getId());
+                    assertThat(body).contains(switchedStoreName);
+                    assertThat(body).contains("currently browsing " + entryStoreName);
+                });
     }
 
     @Test
@@ -907,5 +1109,94 @@ class WhatsappServiceImplIntegrationTest {
                 channelKey,
                 conversationMode
         ).orElseThrow();
+    }
+
+    private JsonNode textPayload(String waId, String businessPhoneNumber, String messageId, String body) throws Exception {
+        return objectMapper.readTree("""
+                {
+                  "entry": [
+                    {
+                      "changes": [
+                        {
+                          "value": {
+                            "metadata": {
+                              "display_phone_number": "%s"
+                            },
+                            "contacts": [
+                              {
+                                "profile": { "name": "Phase Four User" },
+                                "wa_id": "%s"
+                              }
+                            ],
+                            "messages": [
+                              {
+                                "from": "%s",
+                                "id": "%s",
+                                "timestamp": "1719830400",
+                                "type": "text",
+                                "text": { "body": "%s" }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+                """.formatted(businessPhoneNumber, waId, waId, messageId, body));
+    }
+
+    private JsonNode interactivePayload(String waId, String businessPhoneNumber, String messageId, String replyId, String title) throws Exception {
+        return objectMapper.readTree("""
+                {
+                  "entry": [
+                    {
+                      "changes": [
+                        {
+                          "value": {
+                            "metadata": {
+                              "display_phone_number": "%s"
+                            },
+                            "contacts": [
+                              {
+                                "profile": { "name": "Phase Four User" },
+                                "wa_id": "%s"
+                              }
+                            ],
+                            "messages": [
+                              {
+                                "from": "%s",
+                                "id": "%s",
+                                "timestamp": "1719830500",
+                                "type": "interactive",
+                                "interactive": {
+                                  "type": "list_reply",
+                                  "list_reply": {
+                                    "id": "%s",
+                                    "title": "%s"
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+                """.formatted(businessPhoneNumber, waId, waId, messageId, replyId, title));
+    }
+
+    private ProductDto createProduct(String businessId, String productName, String sku) {
+        AddProductRequest request = new AddProductRequest();
+        request.setName(productName);
+        request.setCategory("PHARMACY");
+        request.setDescription(productName + " description");
+        request.setPrice(BigDecimal.valueOf(1500));
+        request.setDiscountedPrice(BigDecimal.valueOf(1200));
+        request.setSku(sku);
+        request.setFlashSale(false);
+        request.setQuantity(25);
+        return productService.createProduct(businessId, request, "product.png");
     }
 }

@@ -4,6 +4,7 @@ import com.clickstechnology.Brillo.Mall.application.dto.StorefrontData;
 import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessDto;
 import com.clickstechnology.Brillo.Mall.application.dto.response.DashboardData;
+import com.clickstechnology.Brillo.Mall.application.features.business.OwnerBusinessViewAssembler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
@@ -19,10 +20,12 @@ public class DashboardService {
 
     private final UserService userService;
     private final BusinessService businessService;
+    private final OwnerBusinessViewAssembler ownerBusinessViewAssembler;
 
     public DashboardData getDashboardData(Authentication authentication) {
         UserDto userDto = userService.findByUsername(authentication.getName());
-        List<BusinessDto> businesses = businessService.findAllByOwnerId(userDto.getId());
+        List<BusinessDto> businesses = ownerBusinessViewAssembler.enrichAll(
+                businessService.findAllByOwnerId(userDto.getId()));
 
         BusinessDto currentBusiness = businesses.stream()
                 .filter(business -> Boolean.TRUE.equals(business.getIsActive()))
@@ -44,23 +47,29 @@ public class DashboardService {
     }
 
     private StorefrontData toStorefrontData(BusinessDto businessDto) {
-        return new StorefrontData(
-                businessDto.getCategory(),
-                businessDto.getId(),
-                businessDto.getEmail(),
-                businessDto.getStorefrontName() != null ? businessDto.getStorefrontName() : businessDto.getName(),
-                businessDto.getPhoneNumber(),
-                businessDto.getAddress(),
-                businessDto.getWhatsappNumber(),
-                businessDto.getWhatsappType(),
-                businessDto.getSetupCompleted(),
-                businessDto.getStorefrontActive(),
-                businessDto.getDescription(),
-                businessDto.getLogoUrl(),
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of()
-        );
+        StorefrontData storefrontData = new StorefrontData();
+        storefrontData.setCategory(businessDto.getCategory());
+        storefrontData.setId(businessDto.getId());
+        storefrontData.setEmail(businessDto.getEmail());
+        storefrontData.setName(businessDto.getStorefrontName() != null ? businessDto.getStorefrontName() : businessDto.getName());
+        storefrontData.setPhoneNumber(businessDto.getPhoneNumber());
+        storefrontData.setAddress(businessDto.getAddress());
+        storefrontData.setWhatsappNumber(businessDto.getWhatsappNumber());
+        storefrontData.setWhatsappType(businessDto.getWhatsappType());
+        storefrontData.setSetUpCompleted(businessDto.getSetupCompleted());
+        storefrontData.setActive(businessDto.getStorefrontActive());
+        storefrontData.setDescription(businessDto.getDescription());
+        storefrontData.setLogoUrl(businessDto.getLogoUrl());
+        storefrontData.setStorefrontLink(businessDto.getStorefrontLink());
+        storefrontData.setSharedWhatsappLink(businessDto.getSharedWhatsappLink());
+        storefrontData.setWhatsappEntryMode(businessDto.getWhatsappEntryMode());
+        storefrontData.setDedicatedNumberReady(businessDto.getDedicatedNumberReady());
+        storefrontData.setSharedWhatsappManagedByBrillo(businessDto.getSharedWhatsappManagedByBrillo());
+        storefrontData.setSharedConversationAttribution(businessDto.getSharedConversationAttribution());
+        storefrontData.setOrders(List.of());
+        storefrontData.setTransactions(List.of());
+        storefrontData.setMembers(List.of());
+        storefrontData.setCustomers(List.of());
+        return storefrontData;
     }
 }

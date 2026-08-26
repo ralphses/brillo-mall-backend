@@ -2,6 +2,7 @@ package com.clickstechnology.Brillo.Mall.application.dto;
 
 import com.clickstechnology.Brillo.Mall.application.enums.BusinessCategory;
 import com.clickstechnology.Brillo.Mall.application.enums.WhatsappType;
+import com.clickstechnology.Brillo.Mall.application.dto.business.SharedConversationAttributionDto;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -24,6 +25,12 @@ public class StorefrontData {
     private Boolean active;
     private String description;
     private String logoUrl;
+    private String storefrontLink;
+    private String sharedWhatsappLink;
+    private String whatsappEntryMode;
+    private Boolean dedicatedNumberReady;
+    private Boolean sharedWhatsappManagedByBrillo;
+    private SharedConversationAttributionDto sharedConversationAttribution;
 
     private List<StoreOrderDto> orders;
     private List<StoreTransactionDto> transactions;

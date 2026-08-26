@@ -37,6 +37,10 @@ public class BusinessDto {
     private Boolean setupCompleted;
     private String storefrontLink;
     private String sharedWhatsappLink;
+    private String whatsappEntryMode;
+    private Boolean dedicatedNumberReady;
+    private Boolean sharedWhatsappManagedByBrillo;
+    private SharedConversationAttributionDto sharedConversationAttribution;
     private Instant createdAt;
     private Instant updatedAt;
 }

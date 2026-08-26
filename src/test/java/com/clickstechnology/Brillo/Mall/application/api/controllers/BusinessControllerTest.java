@@ -1,6 +1,8 @@
 package com.clickstechnology.Brillo.Mall.application.api.controllers;
 
 import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessDto;
+import com.clickstechnology.Brillo.Mall.application.dto.business.SharedConversationAttributionDto;
+import com.clickstechnology.Brillo.Mall.application.dto.StorefrontData;
 import com.clickstechnology.Brillo.Mall.application.dto.response.DashboardData;
 import com.clickstechnology.Brillo.Mall.application.dto.request.business.OnboardBusinessRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.request.business.UpdateBusinessRequest;
@@ -57,6 +59,13 @@ class BusinessControllerTest {
                 .category(BusinessCategory.PRODUCTS)
                 .storefrontLink("https://test.brillo.example/api/v1/public/businesses/slug/test-business")
                 .sharedWhatsappLink("https://wa.me/2348039999999?text=Hi")
+                .whatsappEntryMode("SHARED")
+                .dedicatedNumberReady(false)
+                .sharedWhatsappManagedByBrillo(true)
+                .sharedConversationAttribution(SharedConversationAttributionDto.builder()
+                        .entryAttributedCustomersCount(3L)
+                        .activeSharedConversationsCount(2L)
+                        .build())
                 .build();
     }
 
@@ -160,6 +169,9 @@ class BusinessControllerTest {
                 .andExpect(jsonPath("$.data.id").value("biz-123"))
                 .andExpect(jsonPath("$.data.name").value("Test Business"))
                 .andExpect(jsonPath("$.data.storefrontLink").value("https://test.brillo.example/api/v1/public/businesses/slug/test-business"))
+                .andExpect(jsonPath("$.data.whatsappEntryMode").value("SHARED"))
+                .andExpect(jsonPath("$.data.sharedWhatsappManagedByBrillo").value(true))
+                .andExpect(jsonPath("$.data.sharedConversationAttribution.entryAttributedCustomersCount").value(3))
                 .andExpect(jsonPath("$.status").value(200));
     }
 
@@ -173,6 +185,7 @@ class BusinessControllerTest {
                 .andExpect(jsonPath("$.data.slug").value("test-business"))
                 .andExpect(jsonPath("$.data.name").value("Test Business"))
                 .andExpect(jsonPath("$.data.sharedWhatsappLink").value("https://wa.me/2348039999999?text=Hi"))
+                .andExpect(jsonPath("$.data.dedicatedNumberReady").value(false))
                 .andExpect(jsonPath("$.status").value(200));
     }
 
@@ -194,12 +207,43 @@ class BusinessControllerTest {
 
     @Test
     void getDashboard_ShouldReturn200_WithDashboardData() throws Exception {
-        DashboardData dashboardData = DashboardData.builder().build();
+        DashboardData dashboardData = DashboardData.builder()
+                .currentStorefrontData(new StorefrontData(
+                        BusinessCategory.PRODUCTS,
+                        "biz-123",
+                        "owner@test.com",
+                        "Test Store",
+                        "1234567890",
+                        "123 Main Street",
+                        "2348039999999",
+                        com.clickstechnology.Brillo.Mall.application.enums.WhatsappType.SHARED,
+                        true,
+                        true,
+                        "Test description",
+                        "logo.png",
+                        "https://test.brillo.example/api/v1/public/businesses/slug/test-business",
+                        "https://wa.me/2348039999999?text=Hi",
+                        "SHARED",
+                        false,
+                        true,
+                        SharedConversationAttributionDto.builder()
+                                .entryAttributedCustomersCount(5L)
+                                .activeSharedConversationsCount(3L)
+                                .build(),
+                        List.of(),
+                        List.of(),
+                        List.of(),
+                        List.of()
+                ))
+                .build();
         when(dashboardService.getDashboardData(any())).thenReturn(dashboardData);
 
         mockMvc.perform(get("/api/v1/businesses/dashboard")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.currentStorefrontData.whatsappEntryMode").value("SHARED"))
+                .andExpect(jsonPath("$.data.currentStorefrontData.sharedWhatsappManagedByBrillo").value(true))
+                .andExpect(jsonPath("$.data.currentStorefrontData.sharedConversationAttribution.activeSharedConversationsCount").value(3))
                 .andExpect(jsonPath("$.status").value(200));
     }
 
