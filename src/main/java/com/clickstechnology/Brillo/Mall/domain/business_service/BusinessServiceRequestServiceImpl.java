@@ -39,7 +39,7 @@ class BusinessServiceRequestServiceImpl implements BusinessServiceRequestService
 
     @Override
     @Transactional
-    public void create(
+    public BusinessServiceRequestDto create(
             final PlaceBusinessServiceRequestPayload request,
             final CustomerDto customer,
             final BusinessServiceDto businessService) {
@@ -61,13 +61,15 @@ class BusinessServiceRequestServiceImpl implements BusinessServiceRequestService
                 .build();
 
         BusinessServiceRequest saved = businessServiceRequestRepository.save(newBusinessServiceRequest);
+        BusinessServiceRequestDto savedDto = enrich(saved);
         if (notificationEventPublisher != null) {
             notificationEventPublisher.publishServiceRequestCreated(
-                    enrich(saved),
+                    savedDto,
                     resolveCustomer(customer.getId()),
                     resolveBusiness(saved.getBusinessId())
             );
         }
+        return savedDto;
     }
 
     private BigDecimal resolveInitialPrice(BusinessServiceDto businessService) {

@@ -1,19 +1,28 @@
 package com.clickstechnology.Brillo.Mall.application.features.runtime;
 
 import com.clickstechnology.Brillo.Mall.application.api.contracts.BusinessService;
+import com.clickstechnology.Brillo.Mall.application.api.contracts.BookedBusinessServiceService;
+import com.clickstechnology.Brillo.Mall.application.api.contracts.BusinessServiceRequestService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.BusinessServiceService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.OrderService;
 import com.clickstechnology.Brillo.Mall.application.api.contracts.ProductService;
 import com.clickstechnology.Brillo.Mall.application.dto.CustomerDto;
+import com.clickstechnology.Brillo.Mall.application.dto.UserDto;
 import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessDto;
+import com.clickstechnology.Brillo.Mall.application.dto.business.BookedServiceDto;
 import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessServiceDto;
+import com.clickstechnology.Brillo.Mall.application.dto.business.BusinessServiceRequestDto;
 import com.clickstechnology.Brillo.Mall.application.dto.conversation.ConversationDto;
 import com.clickstechnology.Brillo.Mall.application.dto.order.OrderDto;
 import com.clickstechnology.Brillo.Mall.application.dto.order.OrderItemRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.order.PlaceOrderRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.product.ProductDto;
+import com.clickstechnology.Brillo.Mall.application.dto.request.business.BookAServiceRequest;
+import com.clickstechnology.Brillo.Mall.application.dto.request.business.PlaceBusinessServiceRequestPayload;
+import com.clickstechnology.Brillo.Mall.application.enums.BookingStatus;
 import com.clickstechnology.Brillo.Mall.application.dto.response.PaginatedResponse;
 import com.clickstechnology.Brillo.Mall.application.enums.PaymentMethod;
+import com.clickstechnology.Brillo.Mall.application.enums.ServiceRequestStatus;
 import com.clickstechnology.Brillo.Mall.application.dto.whatsapp.InteractiveMessageRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.whatsapp.TextMessageRequest;
 import com.clickstechnology.Brillo.Mall.application.dto.whatsapp.WhatsAppMessageRequest;
@@ -36,6 +45,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -60,6 +71,8 @@ public class ConversationTurnProcessor {
     private final ProductService productService;
     private final BusinessService businessService;
     private final BusinessServiceService businessServiceService;
+    private final BusinessServiceRequestService businessServiceRequestService;
+    private final BookedBusinessServiceService bookedBusinessServiceService;
     private final OrderService orderService;
 
     @Transactional
@@ -95,6 +108,19 @@ public class ConversationTurnProcessor {
         allowedSlots.addAll(catalogLoader.globalSlots(taskKey));
         if ("ORDER_TRACKING_TASK".equals(taskKey) || "ORDER_STATUS_QUERY_TASK".equals(taskKey)) {
             allowedSlots.add("order_id");
+            allowedSlots.add("request_id");
+            allowedSlots.add("booking_id");
+        }
+        if ("SERVICE_REQUEST_TASK".equals(taskKey)) {
+            allowedSlots.add("service_request_id");
+            allowedSlots.add("booking_id");
+            allowedSlots.add("scheduled_date");
+            allowedSlots.add("total_price");
+            allowedSlots.add("notes");
+            allowedSlots.add("price");
+            allowedSlots.add("book_now");
+            allowedSlots.add("request_status");
+            allowedSlots.add("booking_status");
         }
 
         Map<String, Object> extractedSlots = extractSlots(rawInput, normalizedInput, taskKey, stateKey, allowedSlots, conversation, business, customer, session, slots, event);
@@ -104,7 +130,8 @@ public class ConversationTurnProcessor {
         List<String> missingSlots = requiredSlots.stream()
                 .filter(slot -> isEmptyValue(slots.get(slot)))
                 .toList();
-        if ("ORDER_TRACKING_TASK".equals(taskKey) && slots.get("order_id") != null) {
+        if ("ORDER_TRACKING_TASK".equals(taskKey)
+                && (slots.get("order_id") != null || slots.get("request_id") != null || slots.get("booking_id") != null)) {
             missingSlots = List.of();
         }
 
@@ -258,6 +285,11 @@ public class ConversationTurnProcessor {
             return new RouteResolution("GREETING", "SHOW_MENU", TaskDecisionSource.RULE, 1.0d, false, "Greeting detected", null, TaskSessionStatus.ACTIVE);
         }
 
+        RouteResolution explicitReferenceRoute = resolveExplicitReferenceRoute(normalizedInput);
+        if (explicitReferenceRoute != null) {
+            return explicitReferenceRoute;
+        }
+
         if (shouldContinueCurrentTask(session)) {
             return new RouteResolution(
                     Optional.ofNullable(session.getCurrentIntent()).orElse(conversation.getLastIntent()),
@@ -339,6 +371,19 @@ public class ConversationTurnProcessor {
         return new RouteResolution(null, "SHOW_MENU", TaskDecisionSource.FALLBACK, 0.0d, true, "No reliable route", null, TaskSessionStatus.FALLBACK);
     }
 
+    private RouteResolution resolveExplicitReferenceRoute(String normalizedInput) {
+        if (normalizedInput.contains("product:")) {
+            return new RouteResolution("PRODUCT_PURCHASE", "PRODUCT_PURCHASE_TASK", TaskDecisionSource.RULE, 1.0d, false, "Explicit product reference detected", null, TaskSessionStatus.ACTIVE);
+        }
+        if (normalizedInput.contains("service:")) {
+            return new RouteResolution("SERVICE_BOOKING", "SERVICE_REQUEST_TASK", TaskDecisionSource.RULE, 1.0d, false, "Explicit service reference detected", null, TaskSessionStatus.ACTIVE);
+        }
+        if (normalizedInput.contains("order:") || normalizedInput.contains("request:") || normalizedInput.contains("booking:")) {
+            return new RouteResolution("ORDER_TRACKING", "ORDER_TRACKING_TASK", TaskDecisionSource.RULE, 1.0d, false, "Explicit tracking reference detected", null, TaskSessionStatus.ACTIVE);
+        }
+        return null;
+    }
+
     private RouteResolution resolveMenuRoute(String routeKey, ConversationTaskSession session, ConversationDto conversation) {
         String normalizedRoute = routeKey.trim().toLowerCase(Locale.ROOT);
         return switch (normalizedRoute) {
@@ -364,6 +409,18 @@ public class ConversationTurnProcessor {
 
     private List<RouteCandidate> findRuleCandidates(String normalizedInput, String selectedText) {
         Set<RouteCandidate> matches = new LinkedHashSet<>();
+        if (normalizedInput.contains("product:")) {
+            matches.add(new RouteCandidate("PRODUCT_PURCHASE", "PRODUCT_PURCHASE_TASK"));
+            return new ArrayList<>(matches);
+        }
+        if (normalizedInput.contains("service:")) {
+            matches.add(new RouteCandidate("SERVICE_BOOKING", "SERVICE_REQUEST_TASK"));
+            return new ArrayList<>(matches);
+        }
+        if (normalizedInput.contains("order:") || normalizedInput.contains("request:") || normalizedInput.contains("booking:")) {
+            matches.add(new RouteCandidate("ORDER_TRACKING", "ORDER_TRACKING_TASK"));
+            return new ArrayList<>(matches);
+        }
         for (String intentKey : catalogLoader.knownIntentKeys()) {
             List<String> examples = catalogLoader.intentExamples(intentKey);
             for (String example : examples) {
@@ -497,21 +554,37 @@ public class ConversationTurnProcessor {
                 case "product_id" -> findReference(rawInput, "product").ifPresent(value -> values.put("product_id", value));
                 case "service_id" -> findReference(rawInput, "service").ifPresent(value -> values.put("service_id", value));
                 case "order_id" -> findReference(rawInput, "order").ifPresent(value -> values.put("order_id", value));
+                case "booking_id" -> findReference(rawInput, "booking").ifPresent(value -> values.put("booking_id", value));
                 case "request_id" -> findReference(rawInput, "request").ifPresent(value -> values.put("request_id", value));
                 case "selected_order_id" -> findReference(rawInput, "order").ifPresent(value -> values.put("selected_order_id", value));
                 case "selected_request_id" -> findReference(rawInput, "request").ifPresent(value -> values.put("selected_request_id", value));
                 case "payment_method" -> extractPaymentMethod(normalizedInput).ifPresent(value -> values.put("payment_method", value));
+                case "price" -> extractPrice(rawInput).ifPresent(value -> values.put("price", value));
                 case "quantity" -> {
                     boolean referenceSelectionInput = rawInput.contains("product:")
                             || rawInput.contains("service:")
                             || rawInput.contains("order:")
-                            || rawInput.contains("request:");
+                            || rawInput.contains("request:")
+                            || rawInput.contains("booking:");
                     if ((!currentSlots.containsKey("quantity") || isEmptyValue(currentSlots.get("quantity"))) && !referenceSelectionInput) {
                         extractQuantity(normalizedInput).ifPresent(value -> values.put("quantity", value));
                     }
                 }
+                case "scheduled_date" -> extractScheduledDate(rawInput).ifPresent(value -> values.put("scheduled_date", value));
                 case "delivery_address" -> extractLocation(rawInput).ifPresent(value -> values.put("delivery_address", value));
                 case "location" -> extractLocation(rawInput).ifPresent(value -> values.put("location", value));
+                case "notes" -> {
+                    if (!findReference(rawInput, "service").isPresent()
+                            && !findReference(rawInput, "request").isPresent()
+                            && !findReference(rawInput, "booking").isPresent()) {
+                        values.put("notes", rawInput);
+                    }
+                }
+                case "book_now" -> {
+                    if (normalizedInput.contains("book")) {
+                        values.put("book_now", Boolean.TRUE);
+                    }
+                }
                 case "message" -> values.put("message", rawInput);
                 case "user_id" -> {
                     if (customer.getUserId() != null) {
@@ -578,6 +651,18 @@ public class ConversationTurnProcessor {
         return Optional.empty();
     }
 
+    private Optional<BigDecimal> extractPrice(String input) {
+        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("(\\d+(?:\\.\\d{1,2})?)").matcher(input);
+        if (matcher.find()) {
+            try {
+                return Optional.of(new BigDecimal(matcher.group(1)));
+            } catch (NumberFormatException ex) {
+                return Optional.empty();
+            }
+        }
+        return Optional.empty();
+    }
+
     private Optional<String> extractPaymentMethod(String input) {
         if (input.contains("pay on delivery") || input.contains("delivery")) {
             return Optional.of("PAY_ON_DELIVERY");
@@ -601,7 +686,45 @@ public class ConversationTurnProcessor {
         if (input.contains("at ")) {
             return Optional.of(input.substring(input.indexOf("at ") + 3).trim());
         }
+        String normalized = input.trim().toLowerCase(Locale.ROOT);
+        boolean addressLike = normalized.matches(".*\\d.*")
+                || normalized.contains(",")
+                || normalized.contains("street")
+                || normalized.contains("st ")
+                || normalized.contains("road")
+                || normalized.contains("rd ")
+                || normalized.contains("avenue")
+                || normalized.contains("ave ")
+                || normalized.contains("close")
+                || normalized.contains("lane")
+                || normalized.contains("drive")
+                || normalized.contains("way")
+                || normalized.contains("estate")
+                || normalized.contains("apartment")
+                || normalized.contains("flat");
+        if (addressLike
+                && !normalized.contains("product:")
+                && !normalized.contains("service:")
+                && !normalized.contains("order:")
+                && !normalized.contains("request:")
+                && !normalized.contains("booking:")
+                && !normalized.startsWith("menu:")) {
+            return Optional.of(input.trim());
+        }
         return Optional.empty();
+    }
+
+    private Optional<LocalDateTime> extractScheduledDate(String input) {
+        String candidate = input.trim()
+                .replace("scheduled date:", "")
+                .replace("schedule:", "")
+                .trim()
+                .replace(' ', 'T');
+        try {
+            return Optional.of(LocalDateTime.parse(candidate));
+        } catch (DateTimeParseException ex) {
+            return Optional.empty();
+        }
     }
 
     private void mergeSlots(Map<String, Object> target, Map<String, Object> source) {
@@ -631,6 +754,9 @@ public class ConversationTurnProcessor {
     private StateAdvance advanceState(String taskKey, String stateKey, Map<String, Object> slots, String to, BusinessDto business, CustomerDto customer) {
         if ("PRODUCT_PURCHASE_TASK".equals(taskKey)) {
             return advanceProductPurchase(stateKey, slots, to, business, customer);
+        }
+        if ("SERVICE_REQUEST_TASK".equals(taskKey)) {
+            return advanceServiceRequest(stateKey, slots, to, business, customer);
         }
         if ("ORDER_TRACKING_TASK".equals(taskKey) || "ORDER_STATUS_QUERY_TASK".equals(taskKey)) {
             return advanceOrderTracking(stateKey, slots, to, business, customer);
@@ -687,9 +813,9 @@ public class ConversationTurnProcessor {
             case "SHOW_MENU" -> menuReply(to);
             case "PRODUCT_SEARCH_TASK" -> searchProductsReply(to, business, slots);
             case "PRODUCT_PURCHASE_TASK" -> productPurchaseReply(stateKey, slots, to, business, customer);
-            case "SERVICE_SEARCH_TASK" -> searchServicesReply(to, business.getId(), slots);
+            case "SERVICE_SEARCH_TASK" -> searchServicesReply(to, business, slots);
             case "ORDER_TRACKING_TASK", "ORDER_STATUS_QUERY_TASK" -> orderTrackingReply(to, customer.getId(), business, slots);
-            case "SERVICE_REQUEST_TASK" -> serviceRequestReply(to, business.getId(), slots);
+            case "SERVICE_REQUEST_TASK" -> serviceRequestTaskReply(stateKey, slots, to, business, customer);
             case "NEGOTIATION_TASK" -> negotiationReply(to, slots);
             case "PAYMENT_TASK" -> paymentReply(to, slots);
             case "SUPPORT_TASK" -> supportReply(to);
@@ -734,15 +860,19 @@ public class ConversationTurnProcessor {
         return genericTextReply(to, reply);
     }
 
-    private ReplyPlan searchServicesReply(String to, String businessId, Map<String, Object> slots) {
+    private ReplyPlan searchServicesReply(String to, BusinessDto business, Map<String, Object> slots) {
         String query = Optional.ofNullable(slots.get("query")).map(Object::toString).orElse("");
-        PaginatedResponse<BusinessServiceDto> services = businessServiceService.listServices(businessId, PageRequest.of(0, DEFAULT_PAGE_SIZE));
+        PaginatedResponse<BusinessServiceDto> services = businessServiceService.listServices(business.getId(), PageRequest.of(0, DEFAULT_PAGE_SIZE));
         List<BusinessServiceDto> matches = services.getItems().stream()
                 .filter(service -> matchesQuery(service, query))
                 .toList();
+        String storeName = resolveStoreName(business);
         String reply = matches.isEmpty()
-                ? "No matching services were found. Try another search term."
-                : "I found " + matches.size() + " service(s): " + matches.stream().map(BusinessServiceDto::getName).collect(Collectors.joining(", "));
+                ? "No matching services were found in " + storeName + ". Try another search term or browse other stores."
+                : "Services from " + storeName + ": " + matches.stream()
+                .map(service -> service.getName() + " (" + serviceReference(service) + ", " + describeServicePricing(service) + ")")
+                .collect(Collectors.joining(", "))
+                + ". Reply with " + serviceReferenceFormat() + " to continue.";
         return genericTextReply(to, reply);
     }
 
@@ -768,6 +898,30 @@ public class ConversationTurnProcessor {
             }
             return genericTextReply(to, reply);
         }
+        String requestId = Optional.ofNullable(slots.get("request_id")).map(Object::toString).orElse(null);
+        if (requestId != null && !requestId.isBlank()) {
+            BusinessServiceRequestDto request = businessServiceRequestService.findById(requestId);
+            ensureServiceObjectBelongsToCustomer(request.getCustomer(), customerId, "service request");
+            String requestStoreName = resolveBusinessName(request.getBusiness().getId());
+            String reply = "Service request " + request.getId() + " with " + requestStoreName + " is currently " + request.getRequestStatus() + ".";
+            String currentStoreName = currentBusiness != null ? resolveStoreName(currentBusiness) : null;
+            if (currentStoreName != null && !currentStoreName.equals(requestStoreName)) {
+                reply += " You are currently browsing " + currentStoreName + ", and tracking this request will not change your store context.";
+            }
+            return genericTextReply(to, reply);
+        }
+        String bookingId = Optional.ofNullable(slots.get("booking_id")).map(Object::toString).orElse(null);
+        if (bookingId != null && !bookingId.isBlank()) {
+            BookedServiceDto booking = bookedBusinessServiceService.findById(bookingId);
+            ensureServiceObjectBelongsToCustomer(booking.getCustomer(), customerId, "booking");
+            String bookingStoreName = resolveBusinessName(booking.getBusiness().getId());
+            String reply = "Booking " + booking.getId() + " with " + bookingStoreName + " is currently " + booking.getBookingStatus() + ".";
+            String currentStoreName = currentBusiness != null ? resolveStoreName(currentBusiness) : null;
+            if (currentStoreName != null && !currentStoreName.equals(bookingStoreName)) {
+                reply += " You are currently browsing " + currentStoreName + ", and tracking this booking will not change your store context.";
+            }
+            return genericTextReply(to, reply);
+        }
         return genericTextReply(to, "Send your order reference and I will check the status.");
     }
 
@@ -789,8 +943,17 @@ public class ConversationTurnProcessor {
                 default -> genericTextReply(to, buildSlotPrompt(taskKey, stateKey, missingSlots, "", validationError));
             };
         }
+        if ("SERVICE_REQUEST_TASK".equals(taskKey)) {
+            String missingSlot = missingSlots.getFirst();
+            return switch (missingSlot) {
+                case "service_id" -> serviceDiscoveryReply(to, business, validationError);
+                case "location" -> serviceLocationPromptReply(to, business, slots);
+                case "scheduled_date" -> serviceSchedulePromptReply(to, business, slots);
+                default -> genericTextReply(to, buildSlotPrompt(taskKey, stateKey, missingSlots, "", validationError));
+            };
+        }
         if ("ORDER_TRACKING_TASK".equals(taskKey) || "ORDER_STATUS_QUERY_TASK".equals(taskKey)) {
-            return genericTextReply(to, "Send your order reference and I will check the status.");
+            return genericTextReply(to, "Send your order, request, or booking reference and I will check the status.");
         }
         String replyText = buildSlotPrompt(taskKey, stateKey, missingSlots, "", validationError);
         return new ReplyPlan(replyText, WhatsappMessageType.BUTTON, buildFallbackButtons(to, replyText), TaskSessionStatus.PAUSED, ConversationStatus.AWAITING_USER, false, TaskDecisionSource.RULE, 1.0d, "Awaiting required slot");
@@ -819,6 +982,32 @@ public class ConversationTurnProcessor {
                 .collect(Collectors.joining(", "))
                 + ". Reply with " + productReferenceFormat() + " to choose one, or say browse other stores.";
         return genericTextReply(to, reply);
+    }
+
+    private ReplyPlan serviceDiscoveryReply(String to, BusinessDto business, String validationError) {
+        if (business == null || business.getId() == null || business.getId().isBlank()) {
+            return genericTextReply(to, "Choose a store first before requesting a service. Use the marketplace store list to continue.");
+        }
+        PaginatedResponse<BusinessServiceDto> services = businessServiceService.listServices(business.getId(), PageRequest.of(0, DEFAULT_PAGE_SIZE));
+        String prefix = validationError != null && !validationError.isBlank() ? validationError + " " : "";
+        String storeName = resolveStoreName(business);
+        String reply = services.getItems().isEmpty()
+                ? prefix + "There are no active services in " + storeName + " yet. You can browse other stores instead."
+                : prefix + "Services from " + storeName + ": " + services.getItems().stream()
+                .map(service -> service.getName() + " (" + serviceReference(service) + ", " + describeServicePricing(service) + ")")
+                .collect(Collectors.joining(", "))
+                + ". Reply with " + serviceReferenceFormat() + " to continue, or say browse other stores.";
+        return genericTextReply(to, reply);
+    }
+
+    private ReplyPlan serviceLocationPromptReply(String to, BusinessDto business, Map<String, Object> slots) {
+        String serviceName = Optional.ofNullable(slots.get("service_name")).map(Object::toString).orElse("that service");
+        return genericTextReply(to, serviceName + " is available from " + resolveStoreName(business) + ". Send the location or address for this service.");
+    }
+
+    private ReplyPlan serviceSchedulePromptReply(String to, BusinessDto business, Map<String, Object> slots) {
+        String serviceName = Optional.ofNullable(slots.get("service_name")).map(Object::toString).orElse("that service");
+        return genericTextReply(to, serviceName + " with " + resolveStoreName(business) + " requires a scheduled date. Send it in ISO format like 2026-08-30T10:00.");
     }
 
     private ReplyPlan quantityPromptReply(String to, BusinessDto business, Map<String, Object> slots) {
@@ -886,10 +1075,80 @@ public class ConversationTurnProcessor {
         return new StateAdvance("COMPLETED", plan.replyText(), plan.type(), TaskSessionStatus.COMPLETED, ConversationStatus.ACTIVE, false, TaskDecisionSource.RULE, 1.0d, plan.message(), "Order created from active business context", null);
     }
 
+    private StateAdvance advanceServiceRequest(String stateKey, Map<String, Object> slots, String to, BusinessDto business, CustomerDto customer) {
+        if (business == null || business.getId() == null || business.getId().isBlank()) {
+            ReplyPlan plan = genericTextReply(to, "Choose a store first before requesting a service. Use the marketplace store list to continue.");
+            return new StateAdvance("DISCOVERY", plan.replyText(), plan.type(), TaskSessionStatus.PAUSED, ConversationStatus.AWAITING_USER, false, TaskDecisionSource.RULE, 1.0d, plan.message(), "Missing active business context", null);
+        }
+
+        BusinessServiceDto service = resolveValidatedService(slots, business);
+        if (service == null) {
+            ReplyPlan plan = serviceDiscoveryReply(to, business, null);
+            return new StateAdvance("DISCOVERY", plan.replyText(), plan.type(), TaskSessionStatus.PAUSED, ConversationStatus.AWAITING_USER, false, TaskDecisionSource.RULE, 1.0d, plan.message(), "Awaiting service selection", null);
+        }
+
+        String location = Optional.ofNullable(slots.get("location")).map(Object::toString).orElse(null);
+        if (location == null || location.isBlank()) {
+            ReplyPlan plan = serviceLocationPromptReply(to, business, slots);
+            return new StateAdvance("BOOKING_DETAILS", plan.replyText(), plan.type(), TaskSessionStatus.PAUSED, ConversationStatus.AWAITING_USER, false, TaskDecisionSource.RULE, 1.0d, plan.message(), "Awaiting service location", null);
+        }
+
+        LocalDateTime scheduledDate = resolveScheduledDate(slots);
+        if (service.isRequiresSchedule() && scheduledDate == null) {
+            ReplyPlan plan = serviceSchedulePromptReply(to, business, slots);
+            return new StateAdvance("BOOKING_DETAILS", plan.replyText(), plan.type(), TaskSessionStatus.PAUSED, ConversationStatus.AWAITING_USER, false, TaskDecisionSource.RULE, 1.0d, plan.message(), "Awaiting service schedule", null);
+        }
+
+        if (!service.isNegotiable()) {
+            if (slots.get("booking_id") != null) {
+                String existingBookingId = slots.get("booking_id").toString();
+                ReplyPlan plan = genericTextReply(to, "Your booking " + existingBookingId + " with " + resolveStoreName(business) + " has already been created.");
+                return new StateAdvance("COMPLETED", plan.replyText(), plan.type(), TaskSessionStatus.COMPLETED, ConversationStatus.ACTIVE, false, TaskDecisionSource.RULE, 1.0d, plan.message(), "Existing booking reused", null);
+            }
+            BookedServiceDto booking = createStoreScopedBooking(service, null, location, scheduledDate, business, customer);
+            slots.put("booking_id", booking.getId());
+            ReplyPlan plan = genericTextReply(to, "Booking " + booking.getId() + " has been created with " + resolveStoreName(business) + " for " + service.getName() + ".");
+            return new StateAdvance("COMPLETED", plan.replyText(), plan.type(), TaskSessionStatus.COMPLETED, ConversationStatus.ACTIVE, false, TaskDecisionSource.RULE, 1.0d, plan.message(), "Direct booking created from active business context", null);
+        }
+
+        BusinessServiceRequestDto request = ensureNegotiableRequest(service, location, business, customer, slots);
+        slots.put("service_request_id", request.getId());
+        slots.put("request_status", request.getRequestStatus() != null ? request.getRequestStatus().name() : null);
+
+        if (slots.get("price") instanceof BigDecimal price && request.getRequestStatus() == ServiceRequestStatus.NEGOTIATING) {
+            BigDecimal previousOffer = request.getLastOfferedPrice();
+            if (previousOffer == null || previousOffer.compareTo(price) != 0) {
+                request = updateNegotiableRequestOffer(request.getId(), price, customer, slots);
+                slots.put("request_status", request.getRequestStatus() != null ? request.getRequestStatus().name() : null);
+            }
+        }
+
+        if (request.getRequestStatus() == ServiceRequestStatus.AGREED && Boolean.TRUE.equals(slots.get("book_now"))) {
+            if (slots.get("booking_id") != null) {
+                String existingBookingId = slots.get("booking_id").toString();
+                ReplyPlan plan = genericTextReply(to, "Your booking " + existingBookingId + " with " + resolveStoreName(business) + " has already been created.");
+                return new StateAdvance("COMPLETED", plan.replyText(), plan.type(), TaskSessionStatus.COMPLETED, ConversationStatus.ACTIVE, false, TaskDecisionSource.RULE, 1.0d, plan.message(), "Existing booking reused", null);
+            }
+            BookedServiceDto booking = createStoreScopedBooking(service, request.getId(), location, scheduledDate, business, customer);
+            slots.put("booking_id", booking.getId());
+            slots.put("request_status", ServiceRequestStatus.BOOKED.name());
+            ReplyPlan plan = genericTextReply(to, "Booking " + booking.getId() + " has been created with " + resolveStoreName(business) + " for " + service.getName() + ".");
+            return new StateAdvance("COMPLETED", plan.replyText(), plan.type(), TaskSessionStatus.COMPLETED, ConversationStatus.ACTIVE, false, TaskDecisionSource.RULE, 1.0d, plan.message(), "Negotiated booking created from active business context", null);
+        }
+
+        ReplyPlan plan = negotiableServiceReply(to, business, service, request);
+        String nextState = request.getRequestStatus() == ServiceRequestStatus.NEGOTIATING ? "NEGOTIATION" : "AWAITING_ADMIN_DECISION";
+        return new StateAdvance(nextState, plan.replyText(), plan.type(), TaskSessionStatus.PAUSED, ConversationStatus.AWAITING_USER, false, TaskDecisionSource.RULE, 1.0d, plan.message(), "Negotiable service request active", null);
+    }
+
     private StateAdvance advanceOrderTracking(String stateKey, Map<String, Object> slots, String to, BusinessDto business, CustomerDto customer) {
         String orderId = Optional.ofNullable(slots.get("order_id")).map(Object::toString).orElse(null);
-        if (orderId == null || orderId.isBlank()) {
-            ReplyPlan plan = genericTextReply(to, "Send your order reference and I will check the status.");
+        String requestId = Optional.ofNullable(slots.get("request_id")).map(Object::toString).orElse(null);
+        String bookingId = Optional.ofNullable(slots.get("booking_id")).map(Object::toString).orElse(null);
+        if ((orderId == null || orderId.isBlank())
+                && (requestId == null || requestId.isBlank())
+                && (bookingId == null || bookingId.isBlank())) {
+            ReplyPlan plan = genericTextReply(to, "Send your order, request, or booking reference and I will check the status.");
             return new StateAdvance("SHOW_ORDER_LIST", plan.replyText(), plan.type(), TaskSessionStatus.PAUSED, ConversationStatus.AWAITING_USER, false, TaskDecisionSource.RULE, 1.0d, plan.message(), "Awaiting order reference", null);
         }
 
@@ -907,8 +1166,26 @@ public class ConversationTurnProcessor {
         };
     }
 
+    private ReplyPlan serviceRequestTaskReply(String stateKey, Map<String, Object> slots, String to, BusinessDto business, CustomerDto customer) {
+        return switch (stateKey) {
+            case "BOOKING_DETAILS" -> serviceLocationPromptReply(to, business, slots);
+            case "NEGOTIATION", "AWAITING_ADMIN_DECISION" -> {
+                BusinessServiceRequestDto request = resolveExistingServiceRequest(slots);
+                BusinessServiceDto service = resolveValidatedService(slots, business);
+                yield request != null && service != null
+                        ? negotiableServiceReply(to, business, service, request)
+                        : serviceDiscoveryReply(to, business, null);
+            }
+            case "COMPLETED" -> genericTextReply(to, "Your service flow is complete.");
+            default -> serviceDiscoveryReply(to, business, null);
+        };
+    }
+
     private String validateAndEnrichTaskSlots(String taskKey, Map<String, Object> slots, BusinessDto business) {
         if (!"PRODUCT_PURCHASE_TASK".equals(taskKey)) {
+            if ("SERVICE_REQUEST_TASK".equals(taskKey)) {
+                return validateAndEnrichServiceTaskSlots(slots, business);
+            }
             return null;
         }
 
@@ -931,6 +1208,28 @@ public class ConversationTurnProcessor {
         return null;
     }
 
+    private String validateAndEnrichServiceTaskSlots(Map<String, Object> slots, BusinessDto business) {
+        BusinessServiceDto service = resolveValidatedService(slots, business);
+        if (slots.get("service_id") != null && service == null) {
+            clearServiceSelection(slots);
+            return "That service does not belong to " + resolveStoreName(business) + ".";
+        }
+
+        if (service != null) {
+            slots.put("service_name", service.getName());
+            slots.put("description", service.getDescription());
+            slots.put("price", service.getBasePrice());
+            slots.put("total_price", service.getBasePrice());
+            slots.put("requires_schedule", service.isRequiresSchedule());
+            slots.put("service_negotiable", service.isNegotiable());
+            slots.put("validated_service_business_id", service.getBusinessId());
+        }
+        if (slots.get("scheduledDate") != null && slots.get("scheduled_date") == null) {
+            slots.put("scheduled_date", slots.get("scheduledDate"));
+        }
+        return null;
+    }
+
     private ProductDto resolveValidatedProduct(Map<String, Object> slots, BusinessDto business) {
         String productId = Optional.ofNullable(slots.get("product_id")).map(Object::toString).orElse(null);
         if (productId == null || productId.isBlank() || business == null || business.getId() == null || business.getId().isBlank()) {
@@ -947,6 +1246,22 @@ public class ConversationTurnProcessor {
         }
     }
 
+    private BusinessServiceDto resolveValidatedService(Map<String, Object> slots, BusinessDto business) {
+        String serviceId = Optional.ofNullable(slots.get("service_id")).map(Object::toString).orElse(null);
+        if (serviceId == null || serviceId.isBlank() || business == null || business.getId() == null || business.getId().isBlank()) {
+            return null;
+        }
+        try {
+            BusinessServiceDto service = businessServiceService.findById(serviceId);
+            if (!business.getId().equals(service.getBusinessId())) {
+                return null;
+            }
+            return service;
+        } catch (BusinessException ex) {
+            return null;
+        }
+    }
+
     private void clearProductSelection(Map<String, Object> slots) {
         slots.remove("product_id");
         slots.remove("product_name");
@@ -954,6 +1269,17 @@ public class ConversationTurnProcessor {
         slots.remove("unit_price");
         slots.remove("total_price");
         slots.remove("validated_product_business_id");
+    }
+
+    private void clearServiceSelection(Map<String, Object> slots) {
+        slots.remove("service_id");
+        slots.remove("service_name");
+        slots.remove("description");
+        slots.remove("price");
+        slots.remove("total_price");
+        slots.remove("validated_service_business_id");
+        slots.remove("service_negotiable");
+        slots.remove("requires_schedule");
     }
 
     private OrderDto createStoreScopedOrder(
@@ -1013,6 +1339,142 @@ public class ConversationTurnProcessor {
         return product.getPrice();
     }
 
+    private LocalDateTime resolveScheduledDate(Map<String, Object> slots) {
+        Object rawValue = slots.get("scheduled_date");
+        if (rawValue instanceof LocalDateTime localDateTime) {
+            return localDateTime;
+        }
+        if (rawValue == null) {
+            return null;
+        }
+        try {
+            return LocalDateTime.parse(rawValue.toString().replace(' ', 'T'));
+        } catch (DateTimeParseException ex) {
+            return null;
+        }
+    }
+
+    private BusinessServiceRequestDto ensureNegotiableRequest(
+            BusinessServiceDto service,
+            String location,
+            BusinessDto business,
+            CustomerDto customer,
+            Map<String, Object> slots) {
+        BusinessServiceRequestDto existingRequest = resolveExistingServiceRequest(slots);
+        if (existingRequest != null) {
+            return existingRequest;
+        }
+
+        PlaceBusinessServiceRequestPayload payload = new PlaceBusinessServiceRequestPayload();
+        payload.setBusinessServiceId(service.getId());
+        payload.setWhatsappConversationId(customer.getId());
+        payload.setNotes(buildServiceNotes(location, Optional.ofNullable(slots.get("notes")).map(Object::toString).orElse(null)));
+        payload.setCustomer(buildRuntimeCustomer(customer, location));
+        BusinessServiceRequestDto request = businessServiceRequestService.create(payload, runtimeCustomer(customer, location), service);
+        if (request.getBusiness() != null && request.getBusiness().getId() == null) {
+            request.setBusiness(business);
+        }
+        return request;
+    }
+
+    private BusinessServiceRequestDto updateNegotiableRequestOffer(
+            String requestId,
+            BigDecimal offeredPrice,
+            CustomerDto customer,
+            Map<String, Object> slots) {
+        PlaceBusinessServiceRequestPayload payload = new PlaceBusinessServiceRequestPayload();
+        payload.setLastOfferedPrice(offeredPrice);
+        payload.setNotes(Optional.ofNullable(slots.get("notes")).map(Object::toString).orElse(null));
+        payload.setWhatsappConversationId(customer.getId());
+        payload.setCustomer(runtimeCustomer(customer, Optional.ofNullable(slots.get("location")).map(Object::toString).orElse(customer.getAddress())));
+        return businessServiceRequestService.updateRequest(requestId, payload, false);
+    }
+
+    private BookedServiceDto createStoreScopedBooking(
+            BusinessServiceDto service,
+            String serviceRequestId,
+            String location,
+            LocalDateTime scheduledDate,
+            BusinessDto business,
+            CustomerDto customer) {
+        businessService.validateBusinessIsActive(Set.of(business.getId()));
+        BookAServiceRequest request = new BookAServiceRequest();
+        request.setServiceRequestId(serviceRequestId);
+        request.setServiceId(service.getId());
+        request.setLocation(location);
+        request.setHuman(false);
+        request.setCustomer(runtimeCustomer(customer, location));
+        request.setTotalPrice(serviceRequestId == null ? service.getBasePrice() : null);
+        request.setScheduledDate(scheduledDate);
+        return bookedBusinessServiceService.book(
+                request,
+                UserDto.builder().id(resolveRuntimeActorUserId(customer)).build(),
+                service,
+                runtimeCustomer(customer, location)
+        );
+    }
+
+    private BusinessServiceRequestDto resolveExistingServiceRequest(Map<String, Object> slots) {
+        String requestId = Optional.ofNullable(slots.get("service_request_id")).map(Object::toString)
+                .or(() -> Optional.ofNullable(slots.get("request_id")).map(Object::toString))
+                .orElse(null);
+        if (requestId == null || requestId.isBlank()) {
+            return null;
+        }
+        try {
+            return businessServiceRequestService.findById(requestId);
+        } catch (BusinessException ex) {
+            return null;
+        }
+    }
+
+    private ReplyPlan negotiableServiceReply(String to, BusinessDto business, BusinessServiceDto service, BusinessServiceRequestDto request) {
+        String storeName = resolveStoreName(business);
+        return switch (request.getRequestStatus()) {
+            case NEGOTIATING -> genericTextReply(to, "Service request " + request.getId() + " for " + service.getName() + " is active with " + storeName + ". Send your offer amount if you want to negotiate, or wait for the merchant to respond.");
+            case AGREED -> genericTextReply(to, "Service request " + request.getId() + " with " + storeName + " has been agreed at " + request.getAgreedPrice() + ". Reply with book now to create the booking.");
+            case BOOKED -> genericTextReply(to, "Service request " + request.getId() + " with " + storeName + " has already been booked.");
+            default -> genericTextReply(to, "Service request " + request.getId() + " with " + storeName + " is currently " + request.getRequestStatus() + ".");
+        };
+    }
+
+    private String buildServiceNotes(String location, String notes) {
+        if (notes == null || notes.isBlank()) {
+            return location;
+        }
+        if (location == null || location.isBlank()) {
+            return notes;
+        }
+        return "Location: " + location + " | " + notes;
+    }
+
+    private CustomerDto runtimeCustomer(CustomerDto customer, String location) {
+        return CustomerDto.builder()
+                .id(customer.getId())
+                .userId(resolveRuntimeActorUserId(customer))
+                .customerName(customer.getCustomerName())
+                .customerPhoneNumber(customer.getCustomerPhoneNumber())
+                .customerEmail(customer.getCustomerEmail())
+                .address(location != null && !location.isBlank() ? location : customer.getAddress())
+                .build();
+    }
+
+    private CustomerDto buildRuntimeCustomer(CustomerDto customer, String location) {
+        return runtimeCustomer(customer, location);
+    }
+
+    private String resolveRuntimeActorUserId(CustomerDto customer) {
+        return customer.getUserId() != null && !customer.getUserId().isBlank()
+                ? customer.getUserId()
+                : customer.getId();
+    }
+
+    private void ensureServiceObjectBelongsToCustomer(CustomerDto serviceCustomer, String customerId, String label) {
+        if (serviceCustomer == null || serviceCustomer.getId() == null || !serviceCustomer.getId().equals(customerId)) {
+            throw new BusinessException("The selected " + label + " does not belong to this customer.");
+        }
+    }
+
     private String resolveBusinessName(String businessId) {
         try {
             return resolveStoreName(businessService.findByBusinessId(businessId));
@@ -1039,22 +1501,22 @@ public class ConversationTurnProcessor {
         return "product:{id}";
     }
 
-    private ReplyPlan serviceRequestReply(String to, String businessId, Map<String, Object> slots) {
-        String serviceId = Optional.ofNullable(slots.get("service_id")).map(Object::toString).orElse(null);
-        if (serviceId != null && !serviceId.isBlank()) {
-            try {
-                BusinessServiceDto service = businessServiceService.findById(serviceId);
-                if (!businessId.equals(service.getBusinessId())) {
-                    throw new BusinessException("This service does not belong to the current business context.");
-                }
-                businessServiceService.validateForRequests(service);
-                String reply = "I am ready to collect the remaining booking details for " + service.getName() + ".";
-                return genericTextReply(to, reply);
-            } catch (BusinessException ex) {
-                return genericTextReply(to, ex.getMessage());
-            }
+    private String serviceReference(BusinessServiceDto service) {
+        return "service:" + service.getId();
+    }
+
+    private String serviceReferenceFormat() {
+        return "service:{id}";
+    }
+
+    private String describeServicePricing(BusinessServiceDto service) {
+        if (service.isNegotiable()) {
+            return "negotiable";
         }
-        return genericTextReply(to, "Share the service you need and I will continue the request flow.");
+        if (service.getBasePrice() != null) {
+            return "from " + service.getBasePrice();
+        }
+        return "fixed";
     }
 
     private ReplyPlan negotiationReply(String to, Map<String, Object> slots) {

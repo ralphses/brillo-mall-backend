@@ -11,7 +11,7 @@ import org.springframework.data.domain.Pageable;
 import java.util.Set;
 
 public interface BusinessServiceRequestService {
-    void create(PlaceBusinessServiceRequestPayload request, CustomerDto customer, BusinessServiceDto businessService);
+    BusinessServiceRequestDto create(PlaceBusinessServiceRequestPayload request, CustomerDto customer, BusinessServiceDto businessService);
 
     BusinessServiceRequestDto findById(String requestId);
 
