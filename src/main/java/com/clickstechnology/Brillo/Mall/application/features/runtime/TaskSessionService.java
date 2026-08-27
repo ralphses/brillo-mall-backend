@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -117,6 +118,29 @@ public class TaskSessionService {
     public void storeSlots(ConversationTaskSession session, Map<String, Object> slots) {
         session.setSlotsJson(serialize(slots));
         taskSessionRepository.save(session);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<ConversationTaskSession> findByConversationReference(String conversationReference) {
+        return taskSessionRepository.findByConversation_Reference(conversationReference);
+    }
+
+    @Transactional
+    public void setHumanTakeover(String conversationReference, boolean humanTakeover) {
+        taskSessionRepository.findByConversation_Reference(conversationReference).ifPresent(session -> {
+            session.setHumanTakeover(humanTakeover);
+            if (humanTakeover) {
+                session.setTaskStatus(TaskSessionStatus.ESCALATED);
+            } else if (session.getCurrentTaskKey() == null || session.getCurrentTaskKey().isBlank() || "SHOW_MENU".equals(session.getCurrentTaskKey())) {
+                session.setTaskStatus(TaskSessionStatus.ACTIVE);
+                session.setCurrentTaskKey("SHOW_MENU");
+                session.setCurrentStateKey("SHOW_MENU");
+            } else if (session.getTaskStatus() == TaskSessionStatus.ESCALATED) {
+                session.setTaskStatus(TaskSessionStatus.PAUSED);
+            }
+            session.setLastTurnAt(Instant.now());
+            taskSessionRepository.save(session);
+        });
     }
 
     private String serialize(Map<String, Object> slots) {

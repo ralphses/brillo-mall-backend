@@ -143,6 +143,10 @@ class WhatsappServiceImpl implements WhatsappService {
                 existingConversation != null ? existingConversation.getLastIntent() : null,
                 existingConversation != null ? existingConversation.getActiveTaskKey() : null,
                 existingConversation != null ? existingConversation.getHumanTakeover() : Boolean.FALSE,
+                now,
+                resolveReopenCount(existingConversation, now),
+                resolveLastReopenedAt(existingConversation, now),
+                resolveSessionEvent(existingConversation, route, now),
                 now
         ));
 
@@ -192,6 +196,10 @@ class WhatsappServiceImpl implements WhatsappService {
                     baselineConversation.getLastIntent(),
                     baselineConversation.getActiveTaskKey(),
                     true,
+                    now,
+                    baselineConversation.getReopenCount(),
+                    baselineConversation.getLastReopenedAt(),
+                    "HUMAN_TAKEOVER_ACTIVE",
                     now
             ));
             return;
@@ -229,6 +237,10 @@ class WhatsappServiceImpl implements WhatsappService {
                 turnResult.intentKey(),
                 "SHOW_MENU".equals(turnResult.taskKey()) ? TASK_MENU : turnResult.taskKey(),
                 turnResult.humanTakeover(),
+                now,
+                resolveReopenCount(route.existingConversation(), now),
+                resolveLastReopenedAt(route.existingConversation(), now),
+                turnResult.humanTakeover() ? "HUMAN_TAKEOVER_REQUESTED" : resolvePostTurnSessionEvent(route, baselineConversation),
                 now
         ));
 
@@ -317,6 +329,10 @@ class WhatsappServiceImpl implements WhatsappService {
                 "MARKETPLACE_ENTRY",
                 TASK_MENU,
                 route.existingConversation() != null ? route.existingConversation().getHumanTakeover() : Boolean.FALSE,
+                now,
+                resolveReopenCount(route.existingConversation(), now),
+                resolveLastReopenedAt(route.existingConversation(), now),
+                resolveSessionEvent(route.existingConversation(), route, now),
                 now
         ));
 
@@ -364,6 +380,10 @@ class WhatsappServiceImpl implements WhatsappService {
                 "MARKETPLACE_BROWSE",
                 TASK_MENU,
                 route.existingConversation() != null ? route.existingConversation().getHumanTakeover() : Boolean.FALSE,
+                now,
+                resolveReopenCount(route.existingConversation(), now),
+                resolveLastReopenedAt(route.existingConversation(), now),
+                resolveSessionEvent(route.existingConversation(), route, now),
                 now
         ));
 
@@ -412,6 +432,10 @@ class WhatsappServiceImpl implements WhatsappService {
                 route.sharedLinkEntry() ? "SHARED_STORE_ENTRY" : "SHARED_STORE_SWITCH",
                 TASK_MENU,
                 route.existingConversation() != null ? route.existingConversation().getHumanTakeover() : Boolean.FALSE,
+                now,
+                resolveReopenCount(route.existingConversation(), now),
+                resolveLastReopenedAt(route.existingConversation(), now),
+                resolveSessionEvent(route.existingConversation(), route, now),
                 now
         ));
 
@@ -654,7 +678,11 @@ class WhatsappServiceImpl implements WhatsappService {
             String lastIntent,
             String activeTaskKey,
             Boolean humanTakeover,
-            Instant now) {
+            Instant now,
+            Integer reopenCount,
+            Instant lastReopenedAt,
+            String lastSessionEvent,
+            Instant lastSessionEventAt) {
         return ConversationUpsertRequest.builder()
                 .reference(route.existingConversation() != null ? route.existingConversation().getReference() : null)
                 .businessId(route.activeBusinessId())
@@ -673,7 +701,64 @@ class WhatsappServiceImpl implements WhatsappService {
                 .humanTakeover(Boolean.TRUE.equals(humanTakeover))
                 .lastInteractionAt(now)
                 .sessionExpiresAt(now.plus(appPropertiesConfig.getWhatsapp().getSessionWindowHours(), ChronoUnit.HOURS))
+                .reopenCount(reopenCount)
+                .lastReopenedAt(lastReopenedAt)
+                .lastSessionEvent(lastSessionEvent)
+                .lastSessionEventAt(lastSessionEventAt)
                 .build();
+    }
+
+    private Integer resolveReopenCount(ConversationDto existingConversation, Instant now) {
+        if (existingConversation == null) {
+            return 0;
+        }
+        int currentCount = existingConversation.getReopenCount() != null ? existingConversation.getReopenCount() : 0;
+        if (existingConversation.getSessionExpiresAt() != null && existingConversation.getSessionExpiresAt().isBefore(now)) {
+            return currentCount + 1;
+        }
+        return currentCount;
+    }
+
+    private Instant resolveLastReopenedAt(ConversationDto existingConversation, Instant now) {
+        if (existingConversation != null
+                && existingConversation.getSessionExpiresAt() != null
+                && existingConversation.getSessionExpiresAt().isBefore(now)) {
+            return now;
+        }
+        return existingConversation != null ? existingConversation.getLastReopenedAt() : null;
+    }
+
+    private String resolveSessionEvent(ConversationDto existingConversation, ConversationRoute route, Instant now) {
+        if (existingConversation != null
+                && existingConversation.getSessionExpiresAt() != null
+                && existingConversation.getSessionExpiresAt().isBefore(now)) {
+            return "REOPENED_AFTER_EXPIRY";
+        }
+        if (route.sharedLinkEntry()) {
+            return "ENTERED_SHARED_SLUG";
+        }
+        if (route.explicitStoreSelection()) {
+            return "ACTIVE_STORE_SWITCHED";
+        }
+        if (route.sharedMarketplaceBrowse()) {
+            return "ENTERED_SHARED_MARKETPLACE";
+        }
+        if (existingConversation != null) {
+            return "RESUMED_WITHIN_WINDOW";
+        }
+        return route.conversationMode() == ConversationMode.SHARED_MARKETPLACE
+                ? "ENTERED_SHARED_MARKETPLACE"
+                : "CONVERSATION_OPENED";
+    }
+
+    private String resolvePostTurnSessionEvent(ConversationRoute route, ConversationDto baselineConversation) {
+        if (route.explicitStoreSelection()) {
+            return "ACTIVE_STORE_SWITCHED";
+        }
+        if (route.sharedLinkEntry()) {
+            return "ENTERED_SHARED_SLUG";
+        }
+        return baselineConversation.getLastSessionEvent();
     }
 
     private boolean isBrowseStoresRequest(WhatsappInboundEvent event) {

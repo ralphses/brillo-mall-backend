@@ -30,6 +30,13 @@ public class ConversationServiceImpl implements ConversationService {
     public ConversationDto upsertConversation(ConversationUpsertRequest request) {
         Conversation conversation = resolveConversation(request)
                 .orElseGet(Conversation::new);
+        Instant interactionAt = request.getLastInteractionAt() != null ? request.getLastInteractionAt() : Instant.now();
+        boolean reopeningExpiredSession = conversation.getId() != null
+                && conversation.getSessionExpiresAt() != null
+                && conversation.getSessionExpiresAt().isBefore(interactionAt)
+                && request.getSessionExpiresAt() != null
+                && request.getSessionExpiresAt().isAfter(interactionAt);
+        int currentReopenCount = conversation.getReopenCount() != null ? conversation.getReopenCount() : 0;
 
         if (conversation.getId() == null) {
             conversation.setReference(request.getReference());
@@ -53,8 +60,25 @@ public class ConversationServiceImpl implements ConversationService {
         conversation.setLastIntent(request.getLastIntent());
         conversation.setActiveTaskKey(request.getActiveTaskKey());
         conversation.setHumanTakeover(Boolean.TRUE.equals(request.getHumanTakeover()));
-        conversation.setLastInteractionAt(request.getLastInteractionAt() != null ? request.getLastInteractionAt() : Instant.now());
+        conversation.setLastInteractionAt(interactionAt);
         conversation.setSessionExpiresAt(request.getSessionExpiresAt());
+        if (request.getReopenCount() != null) {
+            conversation.setReopenCount(request.getReopenCount());
+        }
+        if (reopeningExpiredSession && (request.getReopenCount() == null || request.getReopenCount() <= currentReopenCount)) {
+            conversation.setReopenCount(currentReopenCount + 1);
+        }
+        if (request.getLastReopenedAt() != null) {
+            conversation.setLastReopenedAt(request.getLastReopenedAt());
+        } else if (reopeningExpiredSession) {
+            conversation.setLastReopenedAt(interactionAt);
+        }
+        if (request.getLastSessionEvent() != null) {
+            conversation.setLastSessionEvent(request.getLastSessionEvent());
+        }
+        if (request.getLastSessionEventAt() != null) {
+            conversation.setLastSessionEventAt(request.getLastSessionEventAt());
+        }
 
         return mapToDto(conversationRepository.save(conversation));
     }
@@ -146,6 +170,10 @@ public class ConversationServiceImpl implements ConversationService {
                 .humanTakeover(conversation.getHumanTakeover())
                 .lastInteractionAt(conversation.getLastInteractionAt())
                 .sessionExpiresAt(conversation.getSessionExpiresAt())
+                .reopenCount(conversation.getReopenCount())
+                .lastReopenedAt(conversation.getLastReopenedAt())
+                .lastSessionEvent(conversation.getLastSessionEvent())
+                .lastSessionEventAt(conversation.getLastSessionEventAt())
                 .createdAt(conversation.getCreatedAt())
                 .updatedAt(conversation.getUpdatedAt())
                 .messages(conversation.getMessages() != null ? 

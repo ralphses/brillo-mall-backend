@@ -36,6 +36,7 @@ import com.clickstechnology.Brillo.Mall.domain.conversation.task.ConversationTas
 import com.clickstechnology.Brillo.Mall.infrastructure.caching.CacheUtil;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -45,6 +46,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -101,6 +104,9 @@ class WhatsappServiceImplIntegrationTest {
 
     @Autowired
     private ConversationTaskSessionRepository taskSessionRepository;
+
+    @Autowired
+    private EntityManager entityManager;
 
     @MockitoBean
     private MessageSendService messageSendService;
@@ -1041,6 +1047,53 @@ class WhatsappServiceImplIntegrationTest {
     }
 
     @Test
+    @DisplayName("Expired shared conversations reopen in place and preserve attribution context")
+    void expiredSharedConversation_reopensWithoutLosingContext() throws Exception {
+        UpdateBusinessRequest sharedUpdate = new UpdateBusinessRequest();
+        sharedUpdate.setWhatsappNumber(null);
+        sharedUpdate.setWhatsappType(WhatsappType.SHARED);
+        businessService.updateBusiness(business.getId(), sharedUpdate);
+        business = businessService.findByBusinessId(business.getId());
+
+        whatsappService.processWebhookPayload(textPayload(
+                "2348031110000",
+                SHARED_NUMBER,
+                "wamid.phase6.entry",
+                "Hi, I'm interested in Brillo store whatsapp-test-mart"
+        ));
+
+        var existingConversation = findConversation("2348031110000", SHARED_NUMBER, ConversationMode.SHARED_BUSINESS);
+        String existingReference = existingConversation.getReference();
+        existingConversation.setSessionExpiresAt(Instant.now().minus(2, ChronoUnit.HOURS));
+        existingConversation.setStatus(ConversationStatus.AWAITING_USER);
+        conversationRepository.save(existingConversation);
+        entityManager.flush();
+        entityManager.clear();
+
+        whatsappService.processWebhookPayload(textPayload(
+                "2348031110000",
+                SHARED_NUMBER,
+                "wamid.phase6.reopen",
+                "Hi again",
+                Instant.now()
+        ));
+
+        entityManager.flush();
+        entityManager.clear();
+        var reopenedConversation = findConversation("2348031110000", SHARED_NUMBER, ConversationMode.SHARED_BUSINESS);
+        assertThat(reopenedConversation.getReference()).isEqualTo(existingReference);
+        assertThat(reopenedConversation.getConversationMode()).isEqualTo(ConversationMode.SHARED_BUSINESS);
+        assertThat(reopenedConversation.getEntryBusinessId()).isEqualTo(business.getId());
+        assertThat(reopenedConversation.getActiveBusinessId()).isEqualTo(business.getId());
+        assertThat(reopenedConversation.getReopenCount()).isEqualTo(1);
+        assertThat(reopenedConversation.getLastReopenedAt()).isNotNull();
+        assertThat(reopenedConversation.getLastSessionEvent()).isEqualTo("REOPENED_AFTER_EXPIRY");
+        assertThat(reopenedConversation.getLastSessionEventAt()).isNotNull();
+        assertThat(reopenedConversation.getSessionExpiresAt()).isAfter(Instant.now());
+        assertThat(conversationRepository.findAllByWhatsappConversationId("2348031110000")).hasSize(1);
+    }
+
+    @Test
     @DisplayName("Business onboarding launches a WhatsApp Flow and persists flow session state")
     void onboardingLaunchesFlow() throws Exception {
         JsonNode greeting = objectMapper.readTree("""
@@ -1266,6 +1319,10 @@ class WhatsappServiceImplIntegrationTest {
     }
 
     private JsonNode textPayload(String waId, String businessPhoneNumber, String messageId, String body) throws Exception {
+        return textPayload(waId, businessPhoneNumber, messageId, body, Instant.ofEpochSecond(1719830400L));
+    }
+
+    private JsonNode textPayload(String waId, String businessPhoneNumber, String messageId, String body, Instant occurredAt) throws Exception {
         return objectMapper.readTree("""
                 {
                   "entry": [
@@ -1286,7 +1343,7 @@ class WhatsappServiceImplIntegrationTest {
                               {
                                 "from": "%s",
                                 "id": "%s",
-                                "timestamp": "1719830400",
+                                "timestamp": "%s",
                                 "type": "text",
                                 "text": { "body": "%s" }
                               }
@@ -1297,7 +1354,7 @@ class WhatsappServiceImplIntegrationTest {
                     }
                   ]
                 }
-                """.formatted(businessPhoneNumber, waId, waId, messageId, body));
+                """.formatted(businessPhoneNumber, waId, waId, messageId, occurredAt.getEpochSecond(), body));
     }
 
     private JsonNode interactivePayload(String waId, String businessPhoneNumber, String messageId, String replyId, String title) throws Exception {

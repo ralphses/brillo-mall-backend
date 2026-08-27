@@ -91,6 +91,19 @@ public class Conversation extends JpaAuditor implements Serializable {
     private Instant sessionExpiresAt;
 
     @Builder.Default
+    @Column(name = "reopen_count", nullable = false)
+    private Integer reopenCount = 0;
+
+    @Column(name = "last_reopened_at")
+    private Instant lastReopenedAt;
+
+    @Column(name = "last_session_event", length = 50)
+    private String lastSessionEvent;
+
+    @Column(name = "last_session_event_at")
+    private Instant lastSessionEventAt;
+
+    @Builder.Default
     @OneToMany(mappedBy = "conversation", cascade = jakarta.persistence.CascadeType.ALL, orphanRemoval = true)
     private List<Message> messages = new ArrayList<>();
 }

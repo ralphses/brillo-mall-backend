@@ -31,4 +31,8 @@ public class ConversationUpsertRequest {
     private Boolean humanTakeover;
     private Instant lastInteractionAt;
     private Instant sessionExpiresAt;
+    private Integer reopenCount;
+    private Instant lastReopenedAt;
+    private String lastSessionEvent;
+    private Instant lastSessionEventAt;
 }

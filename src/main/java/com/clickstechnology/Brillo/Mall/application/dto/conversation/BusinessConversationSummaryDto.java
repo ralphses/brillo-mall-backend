@@ -1,43 +1,42 @@
 package com.clickstechnology.Brillo.Mall.application.dto.conversation;
 
-import com.clickstechnology.Brillo.Mall.application.enums.ConversationStatus;
+import com.clickstechnology.Brillo.Mall.application.enums.ConversationBusinessAttribution;
 import com.clickstechnology.Brillo.Mall.application.enums.ConversationMode;
+import com.clickstechnology.Brillo.Mall.application.enums.ConversationStatus;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 import java.time.Instant;
-import java.util.List;
 
 @Data
-@Builder
+@SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ConversationDto {
-    private String id;
+public class BusinessConversationSummaryDto {
     private String reference;
-    private String businessId;
     private String customerId;
     private String whatsappConversationId;
-    private String whatsappBusinessNumber;
     private String channelKey;
     private ConversationMode conversationMode;
+    private ConversationStatus status;
     private String entryBusinessId;
     private String activeBusinessId;
     private String entrySlug;
     private Boolean marketplaceMode;
-    private ConversationStatus status;
+    private Boolean humanTakeover;
     private String lastIntent;
     private String activeTaskKey;
-    private Boolean humanTakeover;
     private Instant lastInteractionAt;
     private Instant sessionExpiresAt;
     private Integer reopenCount;
     private Instant lastReopenedAt;
     private String lastSessionEvent;
     private Instant lastSessionEventAt;
-    private List<MessageDto> messages;
-    private Instant createdAt;
-    private Instant updatedAt;
+    private String lastInboundMessage;
+    private String lastOutboundMessage;
+    private Instant lastInboundAt;
+    private Instant lastOutboundAt;
+    private ConversationBusinessAttribution attribution;
 }
