@@ -8,6 +8,9 @@ import com.clickstechnology.Brillo.Mall.application.dto.response.ResponseWrapper
 import com.clickstechnology.Brillo.Mall.application.enums.BookingStatus;
 import com.clickstechnology.Brillo.Mall.application.features.business.BookAService;
 import com.clickstechnology.Brillo.Mall.application.features.business.ManageBookings;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -27,12 +30,15 @@ import static com.clickstechnology.Brillo.Mall.application.dto.response.Response
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("api/v1/booked-services")
+@Tag(name = "Bookings", description = "Service booking and booking lifecycle APIs")
+@SecurityRequirement(name = "bearerAuth")
 public class BookedBusinessServiceController {
 
     private final BookAService bookAService;
     private final ManageBookings manageBookings;
 
     @PostMapping
+    @Operation(summary = "Create booking")
     public ResponseWrapper<BookedServiceDto> book(
             @Valid @RequestBody final BookAServiceRequest bookAServiceRequest,
             final HttpServletRequest httpServletRequest) {
@@ -41,6 +47,7 @@ public class BookedBusinessServiceController {
     }
 
     @GetMapping
+    @Operation(summary = "List bookings")
     public ResponseWrapper<PaginatedResponse<BookedServiceDto>> getBookings(
             final HttpServletRequest httpServletRequest,
             @RequestParam(required = false) final String businessId,
@@ -55,6 +62,7 @@ public class BookedBusinessServiceController {
     }
 
     @GetMapping("{bookingId}")
+    @Operation(summary = "Get booking")
     public ResponseWrapper<BookedServiceDto> getBooking(
             @PathVariable final String bookingId,
             final HttpServletRequest httpServletRequest) {
@@ -63,6 +71,7 @@ public class BookedBusinessServiceController {
     }
 
     @PostMapping("{bookingId}/cancel")
+    @Operation(summary = "Cancel booking")
     public ResponseWrapper<String> cancelBooking(
             @PathVariable final String bookingId,
             final HttpServletRequest httpServletRequest) {
@@ -71,6 +80,7 @@ public class BookedBusinessServiceController {
     }
 
     @PutMapping("{bookingId}")
+    @Operation(summary = "Update booking")
     public ResponseWrapper<BookedServiceDto> updateBooking(
             @PathVariable final String bookingId,
             @Valid @RequestBody final UpdateBookingRequest updateBookingRequest,
@@ -80,6 +90,7 @@ public class BookedBusinessServiceController {
     }
 
     @DeleteMapping("{bookingId}")
+    @Operation(summary = "Delete booking")
     public ResponseWrapper<String> deleteBooking(
             @PathVariable final String bookingId,
             final HttpServletRequest httpServletRequest) {

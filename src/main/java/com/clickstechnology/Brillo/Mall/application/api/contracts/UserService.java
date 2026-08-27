@@ -28,6 +28,8 @@ public interface UserService {
 
     AuthUser findUserByUsername(String username);
 
+    UserDto findById(String userId);
+
     Optional<UserDto> getIncompleteUserByUser(String username);
 
     void updateUserDetails(RegisterRequest request, UserDto userDto);

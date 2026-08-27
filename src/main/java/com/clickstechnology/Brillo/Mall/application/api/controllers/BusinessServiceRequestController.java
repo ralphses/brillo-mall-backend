@@ -8,6 +8,9 @@ import com.clickstechnology.Brillo.Mall.application.enums.ServiceRequestStatus;
 import com.clickstechnology.Brillo.Mall.application.dto.response.ResponseWrapper;
 import com.clickstechnology.Brillo.Mall.application.features.business.ManageBusinessServiceRequest;
 import com.clickstechnology.Brillo.Mall.application.features.business.PlaceBusinessServiceRequest;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -27,12 +30,15 @@ import static com.clickstechnology.Brillo.Mall.application.dto.response.Response
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("api/v1/business-service-requests")
+@Tag(name = "Service Requests", description = "Business service request and negotiation APIs")
+@SecurityRequirement(name = "bearerAuth")
 public class BusinessServiceRequestController {
 
     private final PlaceBusinessServiceRequest placeBusinessServiceRequest;
     private final ManageBusinessServiceRequest manageBusinessServiceRequest;
 
     @PostMapping
+    @Operation(summary = "Place service request")
     public ResponseWrapper<String> placeBusinessServiceRequest(
             @RequestBody @Valid PlaceBusinessServiceRequestPayload request,
             final HttpServletRequest httpServletRequest) {
@@ -41,6 +47,7 @@ public class BusinessServiceRequestController {
     }
 
     @PutMapping("{requestId}")
+    @Operation(summary = "Update service request")
     public ResponseWrapper<BusinessServiceRequestDto> update(
             @PathVariable String requestId,
             @RequestBody @Valid PlaceBusinessServiceRequestPayload request,
@@ -53,6 +60,7 @@ public class BusinessServiceRequestController {
     }
 
     @GetMapping
+    @Operation(summary = "List service requests")
     public ResponseWrapper<PaginatedResponse<BusinessServiceRequestDto>> listBusinessServiceRequests(
             final HttpServletRequest httpServletRequest,
             @RequestParam(required = false) final String businessId,
@@ -72,6 +80,7 @@ public class BusinessServiceRequestController {
     }
 
     @DeleteMapping("{requestId}")
+    @Operation(summary = "Delete service request")
     public ResponseWrapper<String> delete(
             @PathVariable String requestId,
             final HttpServletRequest httpServletRequest) {
@@ -82,6 +91,7 @@ public class BusinessServiceRequestController {
     }
 
     @GetMapping("{requestId}")
+    @Operation(summary = "Get service request")
     public ResponseWrapper<BusinessServiceRequestDto> getRequest(
             @PathVariable String requestId,
             final HttpServletRequest httpServletRequest) {

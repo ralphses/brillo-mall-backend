@@ -11,6 +11,9 @@ import com.clickstechnology.Brillo.Mall.application.dto.response.business.Onboar
 import com.clickstechnology.Brillo.Mall.application.api.contracts.DashboardService;
 import com.clickstechnology.Brillo.Mall.application.features.business.GetBusinessCustomers;
 import com.clickstechnology.Brillo.Mall.application.features.business.OnboardUserBusiness;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +35,8 @@ import static com.clickstechnology.Brillo.Mall.application.dto.response.Response
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("api/v1/businesses")
+@Tag(name = "Businesses", description = "Business onboarding, profile, dashboard, and customer APIs")
+@SecurityRequirement(name = "bearerAuth")
 public class BusinessController {
 
     private final OnboardUserBusiness onboardUserBusiness;
@@ -39,6 +44,7 @@ public class BusinessController {
     private final DashboardService dashboardService;
 
     @PostMapping("onboard")
+    @Operation(summary = "Onboard a business")
     public ResponseWrapper<OnboardBusinessResponse> onboard(
             @RequestBody @Valid final OnboardBusinessRequest request,
             final HttpServletRequest httpServletRequest) {
@@ -51,6 +57,7 @@ public class BusinessController {
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE
     )
+    @Operation(summary = "Upload business logo")
     public ResponseWrapper<OnboardBusinessResponse> uploadLogo(
             @RequestParam("logoFile") final MultipartFile logoFile,
             @PathVariable final String businessId,
@@ -60,6 +67,7 @@ public class BusinessController {
     }
 
     @PutMapping("{businessId}")
+    @Operation(summary = "Update business profile")
     public ResponseWrapper<OnboardBusinessResponse> updateBusiness(
             @PathVariable final String businessId,
             @RequestBody @Valid final UpdateBusinessRequest request,
@@ -69,6 +77,7 @@ public class BusinessController {
     }
 
     @PostMapping("{businessId}/activate-storefront")
+    @Operation(summary = "Activate storefront")
     public ResponseWrapper<OnboardBusinessResponse> activateStorefront(
             @PathVariable final String businessId,
             final HttpServletRequest httpServletRequest) {
@@ -77,6 +86,7 @@ public class BusinessController {
     }
 
     @GetMapping()
+    @Operation(summary = "List owned businesses")
     public ResponseWrapper<PaginatedResponse<BusinessDto>> getBusinesses(
             @RequestParam(value = "page", defaultValue = "1") final Integer page,
             @RequestParam(value = "pageSize", defaultValue = "20")  final Integer pageSize,
@@ -87,24 +97,28 @@ public class BusinessController {
     }
 
     @GetMapping("dashboard")
+    @Operation(summary = "Get business dashboard")
     public ResponseWrapper<DashboardData> getDashboard(final Authentication authentication) {
         DashboardData response = dashboardService.getDashboardData(authentication);
         return success(response);
     }
 
     @GetMapping("{businessId}")
+    @Operation(summary = "Get business by id")
     public ResponseWrapper<BusinessDto> getBusinessById(@PathVariable final String businessId) {
         BusinessDto response = onboardUserBusiness.getBusinessById(businessId);
         return success(response);
     }
 
     @GetMapping("slug/{businessSlug}")
+    @Operation(summary = "Get business by slug")
     public ResponseWrapper<BusinessDto> getBusinessBySlug(@PathVariable final String businessSlug) {
         BusinessDto response = onboardUserBusiness.getBusinessBySlug(businessSlug);
         return success(response);
     }
 
     @GetMapping("{businessId}/customers")
+    @Operation(summary = "List business customers")
     public ResponseWrapper<PaginatedResponse<CustomerDto>> getCustomers(@PathVariable final String businessId,
         @RequestParam(value = "page", defaultValue = "1") final Integer page,
         @RequestParam(value = "pageSize", defaultValue = "20")  final Integer pageSize,

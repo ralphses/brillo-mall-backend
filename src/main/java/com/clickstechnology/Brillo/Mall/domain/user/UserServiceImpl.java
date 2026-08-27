@@ -127,6 +127,13 @@ class UserServiceImpl implements UserService {
     }
 
     @Override
+    public UserDto findById(String userId) {
+        return userRepository.findById(Long.valueOf(userId))
+                .map(User::dto)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+    }
+
+    @Override
     public Optional<UserDto> getIncompleteUserByUser(String username) {
         return userRepository.findByUsernameIgnoreCaseAndStatus(
                 username, EntityStatus.PENDING

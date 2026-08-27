@@ -6,6 +6,9 @@ import com.clickstechnology.Brillo.Mall.application.dto.request.conversation.Upd
 import com.clickstechnology.Brillo.Mall.application.dto.response.PaginatedResponse;
 import com.clickstechnology.Brillo.Mall.application.dto.response.ResponseWrapper;
 import com.clickstechnology.Brillo.Mall.application.features.business.ManageBusinessConversations;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,11 +26,14 @@ import static com.clickstechnology.Brillo.Mall.application.dto.response.Response
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("api/v1/businesses/{businessId}/conversations")
+@Tag(name = "Business Conversations", description = "Business-scoped conversation monitoring and control APIs")
+@SecurityRequirement(name = "bearerAuth")
 public class BusinessConversationController {
 
     private final ManageBusinessConversations manageBusinessConversations;
 
     @GetMapping
+    @Operation(summary = "List business conversations")
     public ResponseWrapper<PaginatedResponse<BusinessConversationSummaryDto>> list(
             @PathVariable String businessId,
             @RequestParam(value = "humanTakeover", required = false) Boolean humanTakeover,
@@ -39,6 +45,7 @@ public class BusinessConversationController {
     }
 
     @GetMapping("{conversationReference}")
+    @Operation(summary = "Get business conversation detail")
     public ResponseWrapper<BusinessConversationDetailDto> detail(
             @PathVariable String businessId,
             @PathVariable String conversationReference,
@@ -47,6 +54,7 @@ public class BusinessConversationController {
     }
 
     @PostMapping("{conversationReference}/takeover")
+    @Operation(summary = "Request business conversation takeover")
     public ResponseWrapper<BusinessConversationDetailDto> requestTakeover(
             @PathVariable String businessId,
             @PathVariable String conversationReference,
@@ -55,6 +63,7 @@ public class BusinessConversationController {
     }
 
     @PostMapping("{conversationReference}/release")
+    @Operation(summary = "Release business conversation takeover")
     public ResponseWrapper<BusinessConversationDetailDto> releaseTakeover(
             @PathVariable String businessId,
             @PathVariable String conversationReference,
@@ -63,6 +72,7 @@ public class BusinessConversationController {
     }
 
     @PutMapping("{conversationReference}/active-business")
+    @Operation(summary = "Reassign active business for shared conversation")
     public ResponseWrapper<BusinessConversationDetailDto> updateActiveBusiness(
             @PathVariable String businessId,
             @PathVariable String conversationReference,

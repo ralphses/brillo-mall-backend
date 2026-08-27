@@ -7,6 +7,9 @@ import com.clickstechnology.Brillo.Mall.application.dto.response.PaginatedRespon
 import com.clickstechnology.Brillo.Mall.application.dto.response.ResponseWrapper;
 import com.clickstechnology.Brillo.Mall.application.features.business.AddBusinessService;
 import com.clickstechnology.Brillo.Mall.application.features.business.ManageBusinessService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -26,12 +29,15 @@ import static com.clickstechnology.Brillo.Mall.application.dto.response.Response
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("api/v1/business-service")
+@Tag(name = "Business Services", description = "Business service catalog management APIs")
+@SecurityRequirement(name = "bearerAuth")
 public class BusinessServiceController {
 
     private final AddBusinessService addBusinessService;
     private final ManageBusinessService manageBusinessService;
 
     @PostMapping
+    @Operation(summary = "Add business service")
     public ResponseWrapper<String> addBusinessService(
             @RequestBody @Valid final AddBusinessServiceRequest request,
             final HttpServletRequest httpServletRequest) {
@@ -40,6 +46,7 @@ public class BusinessServiceController {
     }
 
     @PutMapping("/{serviceId}")
+    @Operation(summary = "Update business service")
     public ResponseWrapper<String> updateBusinessService(
             @PathVariable final String serviceId,
             @RequestBody @Valid final UpdateBusinessServiceRequest request,
@@ -48,6 +55,7 @@ public class BusinessServiceController {
     }
 
     @GetMapping
+    @Operation(summary = "List business services")
     public ResponseWrapper<PaginatedResponse<BusinessServiceDto>> listBusinessServices(
             @RequestParam(required = false) final String businessId,
             @RequestParam(defaultValue = "1") final Integer page,
@@ -56,6 +64,7 @@ public class BusinessServiceController {
     }
 
     @GetMapping("{serviceId}")
+    @Operation(summary = "Get business service")
     public ResponseWrapper<BusinessServiceDto> getBusinessService(
             @PathVariable final String serviceId,
             final HttpServletRequest httpServletRequest) {
@@ -63,6 +72,7 @@ public class BusinessServiceController {
     }
 
     @DeleteMapping("{serviceId}")
+    @Operation(summary = "Delete business service")
     public ResponseWrapper<String> deleteBusinessService(
             @PathVariable final String serviceId,
             final HttpServletRequest httpServletRequest) {

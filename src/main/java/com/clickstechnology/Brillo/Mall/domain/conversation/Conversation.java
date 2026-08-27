@@ -103,6 +103,18 @@ public class Conversation extends JpaAuditor implements Serializable {
     @Column(name = "last_session_event_at")
     private Instant lastSessionEventAt;
 
+    @Column(name = "assigned_support_user_id", length = 36)
+    private String assignedSupportUserId;
+
+    @Column(name = "assigned_support_at")
+    private Instant assignedSupportAt;
+
+    @Column(name = "assignment_status", length = 30)
+    private String assignmentStatus;
+
+    @Column(name = "last_support_action_at")
+    private Instant lastSupportActionAt;
+
     @Builder.Default
     @OneToMany(mappedBy = "conversation", cascade = jakarta.persistence.CascadeType.ALL, orphanRemoval = true)
     private List<Message> messages = new ArrayList<>();

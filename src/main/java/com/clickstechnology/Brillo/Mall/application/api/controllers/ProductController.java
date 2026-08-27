@@ -7,6 +7,9 @@ import com.clickstechnology.Brillo.Mall.application.dto.response.PaginatedRespon
 import com.clickstechnology.Brillo.Mall.application.dto.response.ResponseWrapper;
 import com.clickstechnology.Brillo.Mall.application.enums.EntityStatus;
 import com.clickstechnology.Brillo.Mall.application.features.product.*;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +32,8 @@ import static com.clickstechnology.Brillo.Mall.application.dto.response.Response
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("api/v1/products")
+@Tag(name = "Products", description = "Business product management APIs")
+@SecurityRequirement(name = "bearerAuth")
 public class ProductController {
 
     private final AddProduct addProduct;
@@ -38,6 +43,7 @@ public class ProductController {
     private final DeleteProduct deleteProduct;
 
     @PostMapping("/{businessId}")
+    @Operation(summary = "Add product")
     public ResponseWrapper<ProductDto> addProduct(
             @PathVariable final String businessId,
             @RequestBody @Valid final AddProductRequest request,
@@ -47,6 +53,7 @@ public class ProductController {
     }
 
     @GetMapping
+    @Operation(summary = "List products")
     public ResponseWrapper<PaginatedResponse<ProductDto>> getProducts(
             @RequestParam(required = false) final String businessId,
             @RequestParam(value = "page", defaultValue = "1") final Integer page,
@@ -69,6 +76,7 @@ public class ProductController {
     }
 
     @GetMapping("{productId}")
+    @Operation(summary = "Get product by id")
     public ResponseWrapper<ProductDto> getProduct(
             @PathVariable final String productId) {
         ProductDto response = getProduct.execute(productId);
@@ -76,6 +84,7 @@ public class ProductController {
     }
 
     @GetMapping("by-sku/{sku}")
+    @Operation(summary = "Get product by SKU")
     public ResponseWrapper<ProductDto> getProductBySku(
             @PathVariable final String sku) {
         ProductDto response = getProduct.executeBySku(sku);
@@ -83,6 +92,7 @@ public class ProductController {
     }
 
     @PutMapping("/{businessId}/{productId}")
+    @Operation(summary = "Update product")
     public ResponseWrapper<ProductDto> updateProduct(
             @PathVariable final String businessId,
             @PathVariable final String productId,
@@ -92,6 +102,7 @@ public class ProductController {
     }
 
     @DeleteMapping("/{businessId}/{productId}")
+    @Operation(summary = "Delete product")
     public ResponseWrapper<String> deleteProduct(
             @PathVariable final String businessId,
             @PathVariable final String productId) {
